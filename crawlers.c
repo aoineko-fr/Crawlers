@@ -211,23 +211,30 @@ void UpdateAI(u16 addr)
 	u8 y = ply->PosY;
 
 	u8 rnd = Math_GetRandom8();
-
-	switch(ply->Dir)
+	
+	u8 loop = 3;
+	while(loop != 0)
 	{
-	case DIR_UP:	y--; break;
-	case DIR_RIGHT:	x++; break;
-	case DIR_DOWN:	y++; break;
-	case DIR_LEFT:	x--; break;
-	}
+		switch(ply->Dir)
+		{
+		case DIR_UP:	y--; break;
+		case DIR_RIGHT:	x++; break;
+		case DIR_DOWN:	y++; break;
+		case DIR_LEFT:	x--; break;
+		}
 
-	u8 cell = VDP_Peek_GM2(x, y);
-	if((cell & 0xF0) != 0xF0)
-	{
-		if(rnd & 0x80)
-			ply->Dir++;
-		else
-			ply->Dir--;
-		ply->Dir %= 4;
+		u8 cell = VDP_Peek_GM2(x, y);
+		if(cell < 0xF0)
+		{
+			if(rnd & 0x80)
+				ply->Dir++;
+			else
+				ply->Dir--;
+			ply->Dir %= 4;
+			return;
+		}
+
+		loop--;
 	}
 }
 
