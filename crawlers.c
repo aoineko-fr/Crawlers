@@ -20,13 +20,17 @@
 #define MSX_GL "\x02\x03\x04\x05"
 
 //
-#define LENGTH_MIN					3
+#define LENGTH_MIN					1
 #define LENGTH_MAX					128
 #define LENGTH_DEFAULT				5
 
 #define INPUT_AI_EASY				100
 #define INPUT_AI_MED				101
 #define INPUT_AI_HARD				102
+
+#define TILE_EMPTY					0xF0
+#define TILE_SALAD					0xF1
+#define TILE_MUSH					0xF2
 
 // Direction define
 enum DIRECTION
@@ -38,12 +42,28 @@ enum DIRECTION
 	DIR_MAX,
 };
 
+// Input define
+enum INPUT
+{
+	INPUT_NONE = 0,
+	INPUT_RIGHT,
+	INPUT_LEFT,
+	INPUT_MAX,
+};
+
 // Start position structure
 struct Start
 {
 	u8 X;
 	u8 Y;
 	u8 Dir;
+};
+
+// Vector structure
+struct Vector
+{
+	u8 X;
+	u8 Y;
 };
 
 // Body shapes structure
@@ -53,11 +73,14 @@ struct Shapes
 	u8 B;
 };
 
+//
+typedef void (*InputCB)(u16 addr);
+
 // Player data structure
 struct Player
 {
 	u8 ID;
-	u8 Input;
+	InputCB Input;
 	u8 PosX;
 	u8 PosY;
 	u8 Dir;
@@ -125,7 +148,9 @@ const struct Start g_Starts[] =
 u8 g_Frame = 0;
 c8 g_Buffer[32];
 struct Player g_Players[8];
-
+struct Vector g_Salad;
+u8 g_PrevRow8 = 0xFF;
+u8 g_InKey1;
 
 //=============================================================================
 // FUNCTIONS
@@ -170,9 +195,65 @@ void SpawnSalad()
 	u8 rnd = Math_GetRandom8();
 	u8 x = 8 + rnd % 16;
 	u8 y = 8 + (rnd >> 4) % 8;
-	while(VDP_Peek_GM2(x, y) != 0x00)
+	while(VDP_Peek_GM2(x, y) != TILE_EMPTY)
 		x++;
-	VDP_Poke_GM2(x, y, 0xF5);
+	g_Salad.X = x;
+	g_Salad.Y = y;
+	VDP_Poke_GM2(x, y, TILE_SALAD);
+}
+
+//-----------------------------------------------------------------------------
+//
+void UpdateAI(u16 addr)
+{
+	struct Player* ply = (struct Player*)addr;
+	u8 x = ply->PosX;
+	u8 y = ply->PosY;
+
+	u8 rnd = Math_GetRandom8();
+
+	switch(ply->Dir)
+	{
+	case DIR_UP:	y--; break;
+	case DIR_RIGHT:	x++; break;
+	case DIR_DOWN:	y++; break;
+	case DIR_LEFT:	x--; break;
+	}
+
+	u8 cell = VDP_Peek_GM2(x, y);
+	if((cell & 0xF0) != 0xF0)
+	{
+		if(rnd & 0x80)
+			ply->Dir++;
+		else
+			ply->Dir--;
+		ply->Dir %= 4;
+	}
+}
+
+//-----------------------------------------------------------------------------
+//
+void UpdateKeyboard(u16 addr)
+{
+	struct Player* ply = (struct Player*)addr;
+}
+
+//-----------------------------------------------------------------------------
+//
+void UpdateJoystick(u16 addr)
+{
+	struct Player* ply = (struct Player*)addr;
+	if(g_InKey1 == INPUT_RIGHT)
+	{
+		ply->Dir++;
+		ply->Dir %= 4;
+	}
+	else if(g_InKey1 == INPUT_LEFT)
+	{
+		ply->Dir--;
+		ply->Dir %= 4;
+	}
+	g_InKey1 = INPUT_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -181,7 +262,7 @@ void InitPlayer(struct Player* ply, u8 id)
 {
 	const struct Start* start = &g_Starts[id];
 	ply->ID     = id;
-	ply->Input  = (id == 0) ? 0 : INPUT_AI_EASY;
+	ply->Input  = (id == 0) ? UpdateJoystick : UpdateAI;
 	ply->PosX   = start->X;
 	ply->PosY   = start->Y;
 	ply->Dir    = start->Dir;
@@ -225,19 +306,19 @@ void DrawPlayer(struct Player* ply)
 		}
 		// Clear
 		else if(i == ply->Length)
-			tile = 0x00;
+			tile = TILE_EMPTY;
 		// Body
 		else
 		{
 			u8 prev = idx - 1;
 			prev  %= LENGTH_MAX;
 			const struct Shapes* vec = &g_Body[ply->Path[prev] + (ply->Path[idx] << 2)];
-			if(i & 1)
+			if(idx & 1)
 				tile = vec->A;
 			else
 				tile = vec->B;
 		}
-		VDP_Poke_GM2(x, y, (tile == 0x00) ? 0x00 : tile + (20 * ply->ID));
+		VDP_Poke_GM2(x, y, (tile == TILE_EMPTY) ? TILE_EMPTY : tile + (20 * ply->ID));
 
 		switch(ply->Path[idx])
 		{
@@ -262,7 +343,7 @@ void ClearPlayer(struct Player* ply)
 
 	for(u8 i = 0; i < ply->Length; ++i)
 	{
-		VDP_Poke_GM2(x, y, 0x00);
+		VDP_Poke_GM2(x, y, TILE_EMPTY);
 
 		switch(ply->Path[idx])
 		{
@@ -294,10 +375,10 @@ void MovePlayer(struct Player* ply)
 	u8 cell = VDP_Peek_GM2(x, y);
 	switch(cell)
 	{
-	case 0xF5:
+	case TILE_SALAD:
 		ply->Expect += 5;
 		SpawnSalad();
-	case 0x00:
+	case TILE_EMPTY:
 		ply->PosX = x;
 		ply->PosY = y;
 		ply->Idx--;
@@ -308,29 +389,6 @@ void MovePlayer(struct Player* ply)
 	default:
 		ClearPlayer(ply);
 		InitPlayer(ply, ply->ID);
-	}
-}
-
-//-----------------------------------------------------------------------------
-//
-void UpdateAI(struct Player* ply)
-{
-	u8 x = ply->PosX;
-	u8 y = ply->PosY;
-	
-	switch(ply->Dir)
-	{
-	case DIR_UP:	y--; break;
-	case DIR_RIGHT:	x++; break;
-	case DIR_DOWN:	y++; break;
-	case DIR_LEFT:	x--; break;
-	}
-
-	u8 cell = VDP_Peek_GM2(x, y);
-	if(cell != 0x00)
-	{
-		ply->Dir++;
-		ply->Dir %= 4;
 	}
 }
 
@@ -346,7 +404,7 @@ void main()
 	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
 	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
 
-	VDP_FillScreen_GM2(0x00);
+	VDP_FillScreen_GM2(TILE_EMPTY);
 	for(u8 i = 0; i < 8; ++i)
 	{
 		VDP_Poke_GM2(i * 4, 0, 0x42 + 20 * i);
@@ -370,31 +428,31 @@ void main()
 		InitPlayer(&g_Players[i], i);
 
 	u8 upply = 0;
-	u8 g_PrevRow8 = 0xFF;
 	while(!Keyboard_IsKeyPressed(KEY_ESC))
 	{
+		if(g_InKey1 == INPUT_NONE)
+		{
+			u8 row8 = Keyboard_Read(8);
+			if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
+			{
+				g_InKey1 = INPUT_RIGHT;
+			}
+			if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
+			{
+				g_InKey1 = INPUT_LEFT;
+			}
+			g_PrevRow8 = row8;
+		}
+
 		Halt();
 
-		u8 row8 = Keyboard_Read(8);
-		if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
-		{
-			g_Players[0].Dir++;
-			g_Players[0].Dir %= 4;
-		}
-		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
-		{
-			g_Players[0].Dir--;
-			g_Players[0].Dir %= 4;
-		}
-		g_PrevRow8 = row8;
-
 		struct Player* ply = &g_Players[upply];
-		if(ply->Input >= 100)
-			UpdateAI(ply);
-
+		ply->Input((u16)ply);
 		MovePlayer(ply);
 		upply++;
 		upply %= 8;
+
+		VDP_Poke_GM2(g_Salad.X, g_Salad.Y, TILE_SALAD);
 
 		g_Frame++;
 	}

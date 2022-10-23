@@ -90,6 +90,15 @@ REM set ForceRamAddr=
 :: Data to copy to disk (comma separated list)
 REM set DiskFiles=
 
+:: Add application signature to binary data (0=false, 1=true)
+set AppSignature=1
+
+:: Application company
+set AppCompany="PP"
+
+:: Application ID (0~65535)
+set AppID="CR"
+
 ::*******************************************************************************
 :: MAKE SETTINGS
 ::*******************************************************************************
