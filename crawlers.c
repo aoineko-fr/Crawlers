@@ -31,6 +31,8 @@
 #define TILE_EMPTY					0xF0
 #define TILE_SALAD					0xF1
 #define TILE_MUSH					0xF2
+#define TILE_HOLE					0xF3
+#define TILE_INCOMING				0xF4
 
 // Direction define
 enum DIRECTION
@@ -91,6 +93,14 @@ struct Player
 	u8 Anim;
 };
 
+// Character data structure
+struct Character
+{
+	const c8* Name;
+	u8 TileBase;
+	u8 Sprite;
+};
+
 //=============================================================================
 // READ-ONLY DATA
 //=============================================================================
@@ -98,14 +108,14 @@ struct Player
 // Fonts data
 #include "font\font_mgl_sample8.h"
 
-// Animation characters
-const u8 g_ChrAnim[] = { '-', '/', '|', '\\' };
-
 // Tiles
 #include "content\tiles.h"
 
+// Sprites
+#include "content\sprites.h"
+
 //
-const struct Shapes g_Body[] = 
+const struct Shapes g_Body[] =
 {
 	{ 0x46, 0x47 }, // U+U =>	00:00
 	{ 0x48, 0x48 }, // U+R =>	00:02
@@ -129,7 +139,20 @@ const struct Shapes g_Body[] =
 };
 
 //
-const struct Start g_Starts[] = 
+const struct Character g_Chara[] =
+{
+	{ "Chara 01", 0*20, 0    },
+	{ "Chara 02", 2*20, 1    },
+	{ "Chara 03", 5*20, 0xFF },
+	{ "Chara 04", 6*20, 0xFF },
+	{ "Chara 05", 1*20, 2    },
+	{ "Chara 06", 3*20, 3    },
+	{ "Chara 07", 4*20, 0xFF },
+	{ "Chara 08", 7*20, 0xFF },
+};
+
+//
+const struct Start g_Starts[] =
 {
 	{  5,  6, DIR_RIGHT },
 	{ 26,  6, DIR_DOWN  },
@@ -211,7 +234,8 @@ void UpdateAI(u16 addr)
 	u8 y = ply->PosY;
 
 	u8 rnd = Math_GetRandom8();
-	
+
+	// Check collision
 	u8 loop = 3;
 	while(loop != 0)
 	{
@@ -226,7 +250,7 @@ void UpdateAI(u16 addr)
 		u8 cell = VDP_Peek_GM2(x, y);
 		if(cell < 0xF0)
 		{
-			if(rnd & 0x80)
+			if(rnd & 0x80) // 50%
 				ply->Dir++;
 			else
 				ply->Dir--;
@@ -235,6 +259,29 @@ void UpdateAI(u16 addr)
 		}
 
 		loop--;
+	}
+
+	// Seek salad
+	if((rnd & 0x60) == 0) // 25%
+	{
+		switch(ply->Dir)
+		{
+		case DIR_UP:
+		case DIR_DOWN:
+			if(g_Salad.X > ply->PosX)
+				ply->Dir = DIR_RIGHT;
+			else if(g_Salad.X < ply->PosX)
+				ply->Dir = DIR_LEFT;
+			return;
+
+		case DIR_RIGHT:
+		case DIR_LEFT:
+			if(g_Salad.Y > ply->PosY)
+				ply->Dir = DIR_DOWN;
+			else if(g_Salad.Y < ply->PosY)
+				ply->Dir = DIR_UP;
+			return;
+		}
 	}
 }
 
@@ -279,6 +326,10 @@ void InitPlayer(struct Player* ply, u8 id)
 	ply->Idx    = 0;
 	for(u8 i = 0; i < LENGTH_MIN; ++i)
 		ply->Path[i] = start->Dir;
+
+	const struct Character* chr = &g_Chara[id];
+	if(chr->Sprite != 0xFF)
+		VDP_SetSpriteSM1(chr->Sprite, 0, 0, 0, COLOR_BLACK);
 }
 
 //-----------------------------------------------------------------------------
@@ -288,44 +339,80 @@ void DrawPlayer(struct Player* ply)
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
 	u8 idx = ply->Idx;
+	u8 baseTile = g_Chara[ply->ID].TileBase;
+	bool bGrow = FALSE;
+	bool bReduce = FALSE;
 
 	if((ply->Length < ply->Expect) && (ply->Length < LENGTH_MAX))
+	{
 		ply->Length++;
+		bGrow = TRUE;
+	}
 	else if((ply->Length > ply->Expect) && (ply->Length > LENGTH_MIN))
+	{
 		ply->Length--;
+		bReduce = TRUE;
+	}
 
 	for(u8 i = 0; i < ply->Length + 1; ++i)
 	{
-		u8 tile;
 		// Head
 		if(i == 0)
 		{
-			tile = 0x40 + ply->Path[idx];
+			u8 tile = 0x40 + ply->Path[idx];
+			VDP_Poke_GM2(x, y, tile + baseTile);
+
+			// Sprite
+			const struct Character* chr = &g_Chara[ply->ID];
+			if(chr->Sprite != 0xFF)
+			{
+				if(chr->Sprite & 1) // Snake
+				{
+					u8 sx = x;
+					u8 sy = y;
+					switch(ply->Path[idx])
+					{
+					case DIR_UP:	sy--; break;
+					case DIR_RIGHT:	sx++; break;
+					case DIR_DOWN:	sy++; break;
+					case DIR_LEFT:	sx--; break;
+					}
+					VDP_SetSpriteSM1(chr->Sprite, sx * 8, sy * 8 - 1, 4 + ply->Path[idx], COLOR_DARK_RED);
+				}
+				else // Caterpillar
+				{
+					VDP_SetSpriteSM1(chr->Sprite, x * 8, (y - 1 )* 8 - 1, ply->Path[idx], COLOR_BLACK);
+				}
+			}
+		}
+		// Body
+		else if(i == 1)
+		{
+			u8 prev = idx - 1;
+			prev  %= LENGTH_MAX;
+			const struct Shapes* vec = &g_Body[ply->Path[prev] + (ply->Path[idx] << 2)];
+			u8 tile;
+			if(idx & 1)
+				tile = vec->A;
+			else
+				tile = vec->B;
+			VDP_Poke_GM2(x, y, tile + baseTile);
 		}
 		// Tail
 		else if(i == ply->Length - 1)
 		{
 			u8 prev = idx - 1;
 			prev  %= LENGTH_MAX;
-			tile = 0x4C + ply->Path[prev] * 2;
+			u8 tile = 0x4C + ply->Path[prev] * 2;
 			if(ply->Anim & 1)
 				tile++;
+			VDP_Poke_GM2(x, y, tile + baseTile);
 		}
 		// Clear
-		else if(i == ply->Length)
-			tile = TILE_EMPTY;
-		// Body
-		else
+		else if((!bGrow) && (i == ply->Length))
 		{
-			u8 prev = idx - 1;
-			prev  %= LENGTH_MAX;
-			const struct Shapes* vec = &g_Body[ply->Path[prev] + (ply->Path[idx] << 2)];
-			if(idx & 1)
-				tile = vec->A;
-			else
-				tile = vec->B;
+			VDP_Poke_GM2(x, y, TILE_EMPTY);
 		}
-		VDP_Poke_GM2(x, y, (tile == TILE_EMPTY) ? TILE_EMPTY : tile + (20 * ply->ID));
 
 		switch(ply->Path[idx])
 		{
@@ -348,6 +435,7 @@ void ClearPlayer(struct Player* ply)
 	u8 y = ply->PosY;
 	u8 idx = ply->Idx;
 
+	// Clear tiles
 	for(u8 i = 0; i < ply->Length; ++i)
 	{
 		VDP_Poke_GM2(x, y, TILE_EMPTY);
@@ -362,6 +450,11 @@ void ClearPlayer(struct Player* ply)
 		idx++;
 		idx %= LENGTH_MAX;
 	}
+
+	// Clear spite
+	const struct Character* chr = &g_Chara[ply->ID];
+	if(chr->Sprite != 0xFF)
+		VDP_HideSprite(chr->Sprite);
 }
 
 //-----------------------------------------------------------------------------
@@ -403,20 +496,23 @@ void MovePlayer(struct Player* ply)
 // Program entry point
 void main()
 {
+	// Initialize VDP
 	VDP_SetMode(VDP_MODE_GRAPHIC2);
 	VDP_EnableVBlank(TRUE);
 	VDP_ClearVRAM();
 	VDP_SetColor(COLOR_LIGHT_YELLOW);
 
+	// Initialize tiles data
 	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
 	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
 
+	// Initialize sprites data
+	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
+	VDP_LoadSpritePattern(g_DataSprites, 0, sizeof(g_DataSprites) / 8);
+	VDP_DisableSpritesFrom(4);
+
+	// Draw game field
 	VDP_FillScreen_GM2(TILE_EMPTY);
-	for(u8 i = 0; i < 8; ++i)
-	{
-		VDP_Poke_GM2(i * 4, 0, 0x42 + 20 * i);
-		PrintChrX(i * 4 + 1, 0, '0'-' ', 2);
-	}
 	// Up
 	VDP_Poke_GM2(0,  1, 0xE4);
 	VDP_Poke_GM2(31, 1, 0xE6);
@@ -429,6 +525,14 @@ void main()
 	VDP_Poke_GM2(31, 23, 0xEB);
 	PrintChrX(1, 23, 0xEA, 30);
 
+	// Draw score board
+	for(u8 i = 0; i < 8; ++i)
+	{
+		VDP_Poke_GM2(i * 4, 0, 0x42 + g_Chara[i].TileBase);
+		PrintChrX(i * 4 + 1, 0, '0'-' ', 2);
+	}
+
+	// Initialize Salad
 	SpawnSalad();
 
 	for(u8 i = 0; i < 8; ++i)
@@ -451,6 +555,7 @@ void main()
 			g_PrevRow8 = row8;
 		}
 
+		// Wait V-Synch
 		Halt();
 
 		struct Player* ply = &g_Players[upply];

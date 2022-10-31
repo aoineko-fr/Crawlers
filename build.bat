@@ -16,8 +16,8 @@ call ..\default_config.cmd %0
 :: TOOLS SETTINGS
 ::*****************************************************************************
 
-set Emulator=%ToolsDir%\OpenMSX\openmsx.exe
-REM set Emulator=%ToolsDir%\Emulicious\Emulicious.exe
+REM set Emulator=%ToolsDir%\OpenMSX\openmsx.exe
+set Emulator=%ToolsDir%\Emulicious\Emulicious.exe
 REM set Emulator=%ToolsDir%\BlueMSX\blueMSX.exe
 REM set Emulator=%ToolsDir%\MEISEI\meisei.exe
 REM set Emulator=%ToolsDir%\fMSX\fMSX.exe
@@ -70,8 +70,8 @@ set Target=ROM_32K
 :: ROM mapper size (from 64 to 4096). Must be a multiple of 8 or 16 depending on the mapper type
 set ROMSize=
 
-:: Install BDOS driver for ROM program? (0=false, 1=true)
-REM set InstallBDOS=0
+:: Postpone the ROM startup to let the other ROMs initialize (BDOS for example) (0=false, 1=true)
+REM set ROMDelayBoot=0
 
 :: Set RAM in slot 0 and install ISR there (0=false, 1=true)
 REM set InstallRAMISR=0
@@ -139,11 +139,11 @@ REM set Verbose=0
 ::*******************************************************************************
 
 :: Emulator options: 0 or 1
-REM set EmulMachine=1
+set EmulMachine=1
 REM set Emul60Hz=0
 REM set EmulFullScreen=0
 REM set EmulMute=0
-REM set EmulDebug=0
+set EmulDebug=1
 REM set EmulSCC=0
 REM set EmulMSXMusic=0
 REM set EmulMSXAudio=0
