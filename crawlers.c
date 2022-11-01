@@ -24,15 +24,31 @@
 #define LENGTH_MAX					128
 #define LENGTH_DEFAULT				5
 
-#define INPUT_AI_EASY				100
-#define INPUT_AI_MED				101
-#define INPUT_AI_HARD				102
-
+#define TILE_HOLE					0xE3
+#define TILE_INCOMING				0xE4
 #define TILE_EMPTY					0xF0
 #define TILE_SALAD					0xF1
 #define TILE_MUSH					0xF2
-#define TILE_HOLE					0xF3
-#define TILE_INCOMING				0xF4
+
+#define SPAWN_WAIT					16 // Spawn waiting time (N * 8 frames)
+
+// Input types define
+enum INPUT_TYPE
+{
+	INPUT_JOY_1 = 0,
+	INPUT_JOY_2,
+	INPUT_JOY_3,
+	INPUT_JOY_4,
+	INPUT_JOY_5,
+	INPUT_JOY_6,
+	INPUT_JOY_7,
+	INPUT_JOY_8,
+	INPUT_KEY_1 = 16,
+	INPUT_KEY_2,
+	INPUT_AI_EASY = 128,
+	INPUT_AI_MED,
+	INPUT_AI_HARD,
+};
 
 // Direction define
 enum DIRECTION
@@ -44,13 +60,22 @@ enum DIRECTION
 	DIR_MAX,
 };
 
-// Input define
-enum INPUT
+// Input actions define
+enum INPUT_ACTION
 {
 	INPUT_NONE = 0,
 	INPUT_RIGHT,
 	INPUT_LEFT,
 	INPUT_MAX,
+};
+
+// Player state define
+enum PLAYER_STATE
+{
+	STATE_NONE = 0,
+	STATE_WAITING,					// Waiting for spawn point to be available
+	STATE_SPAWNING,
+	STATE_PLAYING,
 };
 
 // Start position structure
@@ -91,6 +116,8 @@ struct Player
 	u8 Idx;
 	u8 Path[LENGTH_MAX]; // ring buffer
 	u8 Anim;
+	u8 State;
+	u8 Timer;
 };
 
 // Character data structure
@@ -324,6 +351,8 @@ void InitPlayer(struct Player* ply, u8 id)
 	ply->Expect = LENGTH_DEFAULT;
 	ply->Anim   = 0;
 	ply->Idx    = 0;
+	ply->State   = STATE_WAITING;
+	ply->Timer   = 0;
 	for(u8 i = 0; i < LENGTH_MIN; ++i)
 		ply->Path[i] = start->Dir;
 
@@ -459,36 +488,71 @@ void ClearPlayer(struct Player* ply)
 
 //-----------------------------------------------------------------------------
 // Program entry point
-void MovePlayer(struct Player* ply)
+void UpdatePlayer(struct Player* ply)
 {
-	u8 x = ply->PosX;
-	u8 y = ply->PosY;
-	// Move
-	switch(ply->Dir)
+	switch(ply->State)
 	{
-	case DIR_UP:	y--; break;
-	case DIR_RIGHT:	x++; break;
-	case DIR_DOWN:	y++; break;
-	case DIR_LEFT:	x--; break;
+	case STATE_WAITING:
+		if(VDP_Peek_GM2(ply->PosX, ply->PosY) != TILE_EMPTY)
+			return;
+		ply->Timer = SPAWN_WAIT;
+		ply->State = STATE_SPAWNING;
+
+	case STATE_SPAWNING:
+	{
+		// Get input action
+		ply->Input((u16)ply);
+
+		// Diplay hole
+		u8 tile = TILE_HOLE;
+		if((ply->Timer < SPAWN_WAIT / 2) && (ply->Timer & 1))
+			tile += 1 + ply->Dir;
+		VDP_Poke_GM2(ply->PosX, ply->PosY, tile);
+
+		// Check timer
+		ply->Timer--;
+		if(ply->Timer)
+			return;
+		ply->State = STATE_PLAYING;
 	}
 
-	u8 cell = VDP_Peek_GM2(x, y);
-	switch(cell)
+	case STATE_PLAYING:
 	{
-	case TILE_SALAD:
-		ply->Expect += 5;
-		SpawnSalad();
-	case TILE_EMPTY:
-		ply->PosX = x;
-		ply->PosY = y;
-		ply->Idx--;
-		ply->Idx %= LENGTH_MAX;
-		ply->Path[ply->Idx] = ply->Dir;
-		DrawPlayer(ply);
-		break;
-	default:
-		ClearPlayer(ply);
-		InitPlayer(ply, ply->ID);
+		// Get input action
+		ply->Input((u16)ply);
+
+		// Move
+		u8 x = ply->PosX;
+		u8 y = ply->PosY;
+		switch(ply->Dir)
+		{
+		case DIR_UP:	y--; break;
+		case DIR_RIGHT:	x++; break;
+		case DIR_DOWN:	y++; break;
+		case DIR_LEFT:	x--; break;
+		}
+
+		// Check destination
+		u8 cell = VDP_Peek_GM2(x, y);
+		switch(cell)
+		{
+		case TILE_SALAD:
+			ply->Expect += 5;
+			SpawnSalad();
+		case TILE_EMPTY:
+			ply->PosX = x;
+			ply->PosY = y;
+			ply->Idx--;
+			ply->Idx %= LENGTH_MAX;
+			ply->Path[ply->Idx] = ply->Dir;
+			DrawPlayer(ply);
+			break;
+		default:
+			ClearPlayer(ply);
+			InitPlayer(ply, ply->ID);
+		}
+		return;
+	}
 	}
 }
 
@@ -514,16 +578,16 @@ void main()
 	// Draw game field
 	VDP_FillScreen_GM2(TILE_EMPTY);
 	// Up
-	VDP_Poke_GM2(0,  1, 0xE4);
-	VDP_Poke_GM2(31, 1, 0xE6);
-	PrintChrX(1,  1, 0xE5, 30);
+	VDP_Poke_GM2(0,  1, 0xE4+4);
+	VDP_Poke_GM2(31, 1, 0xE6+4);
+	PrintChrX(1,  1, 0xE5+4, 30);
 	// Sides
-	PrintChrY(0,  2, 0xE7, 21);
-	PrintChrY(31, 2, 0xE8, 21);
+	PrintChrY(0,  2, 0xE7+4, 21);
+	PrintChrY(31, 2, 0xE8+4, 21);
 	// Down
-	VDP_Poke_GM2(0, 23, 0xE9);
-	VDP_Poke_GM2(31, 23, 0xEB);
-	PrintChrX(1, 23, 0xEA, 30);
+	VDP_Poke_GM2(0, 23, 0xE9+4);
+	VDP_Poke_GM2(31, 23, 0xEB+4);
+	PrintChrX(1, 23, 0xEA+4, 30);
 
 	// Draw score board
 	for(u8 i = 0; i < 8; ++i)
@@ -559,8 +623,7 @@ void main()
 		Halt();
 
 		struct Player* ply = &g_Players[upply];
-		ply->Input((u16)ply);
-		MovePlayer(ply);
+		UpdatePlayer(ply);
 		upply++;
 		upply %= 8;
 
