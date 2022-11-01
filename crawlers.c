@@ -26,9 +26,11 @@
 
 #define TILE_HOLE					0xE3
 #define TILE_INCOMING				0xE4
+
 #define TILE_EMPTY					0xF0
 #define TILE_SALAD					0xF1
 #define TILE_MUSH					0xF2
+#define TILE_PREHOLE				0xF3
 
 #define SPAWN_WAIT					16 // Spawn waiting time (N * 8 frames)
 
@@ -195,10 +197,17 @@ const struct Start g_Starts[] =
 // MEMORY DATA
 //=============================================================================
 
-u8 g_Frame = 0;
-c8 g_Buffer[32];
-struct Player g_Players[8];
-struct Vector g_Salad;
+// System
+u8 g_VBlank = 0;					// Vertical-synchronization flag
+u8 g_Frame = 0;						// Frame counter
+
+// Gameplay
+struct Player g_Players[8];			// Players information
+struct Vector g_Salad;				// Salad information
+c8 g_StrBuffer[32];					// String temporary buffer
+u8 g_ScreenBuffer[32*24];
+
+// Input
 u8 g_PrevRow8 = 0xFF;
 u8 g_InKey1;
 
@@ -234,8 +243,31 @@ void PrintChrY(u8 x, u8 y, c8 chr, u8 len)
 // 
 void PrintInt(u8 x, u8 y, u8 val)
 {
-	String_FromUInt8ZT(val, g_Buffer);
-	PrintAt(x, y, g_Buffer);
+	String_FromUInt8ZT(val, g_StrBuffer);
+	PrintAt(x, y, g_StrBuffer);
+}
+
+//-----------------------------------------------------------------------------
+// 
+inline void DrawChr(u8 x, u8 y, c8 chr)
+{
+	g_ScreenBuffer[x + (y * 32)] = chr;
+}
+
+//-----------------------------------------------------------------------------
+// 
+void DrawChrX(u8 x, u8 y, c8 chr, u8 len)
+{
+	for(u8 i = 0; i < len; ++i)
+		DrawChr(x++, y, chr);
+}
+
+//-----------------------------------------------------------------------------
+// 
+void DrawChrY(u8 x, u8 y, c8 chr, u8 len)
+{
+	for(u8 i = 0; i < len; ++i)
+		DrawChr(x, y++, chr);
 }
 
 //-----------------------------------------------------------------------------
@@ -440,7 +472,7 @@ void DrawPlayer(struct Player* ply)
 		// Clear
 		else if((!bGrow) && (i == ply->Length))
 		{
-			VDP_Poke_GM2(x, y, TILE_EMPTY);
+			VDP_Poke_GM2(x, y, g_ScreenBuffer[x + (y * 32)]);
 		}
 
 		switch(ply->Path[idx])
@@ -493,7 +525,7 @@ void UpdatePlayer(struct Player* ply)
 	switch(ply->State)
 	{
 	case STATE_WAITING:
-		if(VDP_Peek_GM2(ply->PosX, ply->PosY) != TILE_EMPTY)
+		if(VDP_Peek_GM2(ply->PosX, ply->PosY) < TILE_EMPTY)
 			return;
 		ply->Timer = SPAWN_WAIT;
 		ply->State = STATE_SPAWNING;
@@ -534,26 +566,47 @@ void UpdatePlayer(struct Player* ply)
 
 		// Check destination
 		u8 cell = VDP_Peek_GM2(x, y);
-		switch(cell)
+		if(cell < 0xF0)
 		{
-		case TILE_SALAD:
-			ply->Expect += 5;
-			SpawnSalad();
-		case TILE_EMPTY:
-			ply->PosX = x;
-			ply->PosY = y;
-			ply->Idx--;
-			ply->Idx %= LENGTH_MAX;
-			ply->Path[ply->Idx] = ply->Dir;
-			DrawPlayer(ply);
-			break;
-		default:
 			ClearPlayer(ply);
 			InitPlayer(ply, ply->ID);
+		}
+		else
+		{
+			switch(cell)
+			{
+			case TILE_SALAD:
+				ply->Expect += 5;
+				SpawnSalad();
+			default:
+				ply->PosX = x;
+				ply->PosY = y;
+				ply->Idx--;
+				ply->Idx %= LENGTH_MAX;
+				ply->Path[ply->Idx] = ply->Dir;
+				DrawPlayer(ply);
+				break;
+			}
 		}
 		return;
 	}
 	}
+}
+
+//-----------------------------------------------------------------------------
+// VBlank interrupt
+void VBlankHook()
+{
+	g_VBlank = 1;
+}
+
+//-----------------------------------------------------------------------------
+// Wait for V-Blank period
+void WaitVBlank()
+{
+	while(g_VBlank == 0) {}
+	g_VBlank = 0;
+	g_Frame++;
 }
 
 //-----------------------------------------------------------------------------
@@ -562,7 +615,6 @@ void main()
 {
 	// Initialize VDP
 	VDP_SetMode(VDP_MODE_GRAPHIC2);
-	VDP_EnableVBlank(TRUE);
 	VDP_ClearVRAM();
 	VDP_SetColor(COLOR_LIGHT_YELLOW);
 
@@ -576,31 +628,42 @@ void main()
 	VDP_DisableSpritesFrom(4);
 
 	// Draw game field
-	VDP_FillScreen_GM2(TILE_EMPTY);
+	Mem_Set(TILE_EMPTY, g_ScreenBuffer, 32*24);
 	// Up
-	VDP_Poke_GM2(0,  1, 0xE4+4);
-	VDP_Poke_GM2(31, 1, 0xE6+4);
-	PrintChrX(1,  1, 0xE5+4, 30);
+	DrawChr(0,  1, 0xE8);
+	DrawChr(31, 1, 0xEA);
+	DrawChrX(1,  1, 0xE9, 30);
 	// Sides
-	PrintChrY(0,  2, 0xE7+4, 21);
-	PrintChrY(31, 2, 0xE8+4, 21);
+	DrawChrY(0,  2, 0xEB, 21);
+	DrawChrY(31, 2, 0xEC, 21);
 	// Down
-	VDP_Poke_GM2(0, 23, 0xE9+4);
-	VDP_Poke_GM2(31, 23, 0xEB+4);
-	PrintChrX(1, 23, 0xEA+4, 30);
-
+	DrawChr(0, 23, 0xED);
+	DrawChr(31, 23, 0xEF);
+	DrawChrX(1, 23, 0xEE, 30);
 	// Draw score board
 	for(u8 i = 0; i < 8; ++i)
 	{
-		VDP_Poke_GM2(i * 4, 0, 0x42 + g_Chara[i].TileBase);
-		PrintChrX(i * 4 + 1, 0, '0'-' ', 2);
+		DrawChr(i * 4, 0, 0x42 + g_Chara[i].TileBase);
+		DrawChrX(i * 4 + 1, 0, '0'-' ', 2);
 	}
+	// Draw pre-hole
+	for(u8 i = 0; i < 8; ++i)
+	{
+		const struct Start* start = &g_Starts[i];
+		DrawChr(start->X, start->Y, TILE_PREHOLE);
+	}
+
+	// Copy screen buffer to VRAM
+	VDP_WriteVRAM(g_ScreenBuffer, g_ScreenLayoutLow, g_ScreenLayoutHigh, 32*24);
 
 	// Initialize Salad
 	SpawnSalad();
 
 	for(u8 i = 0; i < 8; ++i)
 		InitPlayer(&g_Players[i], i);
+
+	VDP_EnableVBlank(TRUE);
+	Bios_SetHookCallback(H_TIMI, VBlankHook);
 
 	u8 upply = 0;
 	while(!Keyboard_IsKeyPressed(KEY_ESC))
@@ -620,7 +683,7 @@ void main()
 		}
 
 		// Wait V-Synch
-		Halt();
+		WaitVBlank();
 
 		struct Player* ply = &g_Players[upply];
 		UpdatePlayer(ply);
@@ -628,8 +691,6 @@ void main()
 		upply %= 8;
 
 		VDP_Poke_GM2(g_Salad.X, g_Salad.Y, TILE_SALAD);
-
-		g_Frame++;
 	}
 
 	Bios_Exit(0);
