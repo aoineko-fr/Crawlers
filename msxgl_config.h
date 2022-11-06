@@ -1,8 +1,8 @@
 // ____________________________
-// ██▀▀█▀▀██▀▀▀▀▀▀▀█▀▀█        │   ▄▄▄                ▄▄      
-// ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄▀▀ █  │  ▀█▄  ▄▀██ ▄█▄█ ██▀▄ ██  ▄███
-// █  █ █  ▀▀  ▄█  █  █ ▀▄█ █▄ │  ▄▄█▀ ▀▄██ ██ █ ██▀  ▀█▄ ▀█▄▄
-// ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀────────┘                 ▀▀
+// ██▀▀█▀▀██▀▀▀▀▀▀▀█▀▀█        │    ▄▄                 ▄▄
+// ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄▀▀ █  │   ██ ▀ ██▄▀ ▄▀██ █ ██ ██  ▄███ ██▄▀  ██▀
+// █  █ █  ▀▀  ▄█  █  █ ▀▄█ █▄ │   ▀█▄▀ ██   ▀▄██ █▀█▀ ▀█▄ ▀█▄▄ ██   ▄██
+// ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀────────┘
 //  Library configuration
 //─────────────────────────────────────────────────────────────────────────────
 #pragma once
@@ -83,14 +83,14 @@
 
 #define VDP_USE_VRAM16K				TRUE	// Use 16K VRAM access functions on MSX2
 #define VDP_USE_SPRITE				TRUE	// Use sprite handling functions
-#define VDP_USE_COMMAND				TRUE	// Use VDP commands wrapper functions
+#define VDP_USE_COMMAND				FALSE	// Use VDP commands wrapper functions
 #define VDP_USE_CUSTOM_CMD			FALSE	// Use custom VDP commands through data buffer
 #define VDP_AUTO_INIT				TRUE	// Call VDP_Initialize() at the first call to VDP_SetMode()
 #define VDP_USE_UNDOCUMENTED		FALSE	// Allow the use of undocumented screen mode (WIP)
 #define VDP_USE_VALIDATOR			TRUE	// Let the engine fix some invalid input (highly recommended)
 #define VDP_USE_DEFAULT_PALETTE		FALSE	// Add data for default MSX 2 palette
 #define VDP_USE_MSX1_PALETTE		FALSE	// Add data for default MSX 1 palette
-#define VDP_USE_DEFAULT_SETTINGS	TRUE	// Auto-initialization of common VDP feature
+#define VDP_USE_DEFAULT_SETTINGS	FALSE	// Auto-initialization of common VDP feature
 #define VDP_USE_16X16_SPRITE		TRUE	// Use 16x16 sprites mode
 #define VDP_USE_RESTORE_S0			TRUE	// Do restore of status register pointer to S#0 (needed onlt for default BIOS ISR)
 
@@ -105,7 +105,7 @@
 // - VDP_INIT_ON .................. Force option to be enable
 // - VDP_INIT_AUTO ................ Determining the best value for the context
 // - VDP_INIT_DEFAULT ............. Keep default value
-#define VDP_INIT_50HZ				VDP_INIT_ON
+#define VDP_INIT_50HZ				VDP_INIT_DEFAULT
 
 //-----------------------------------------------------------------------------
 // INPUT MODULE
@@ -353,7 +353,7 @@
 // - NTAP_DRIVER_MSXGL ............ MSXgl custom driver (based on DM-System2 one)
 // - NTAP_DRIVER_GIGAMIX .......... Original Gigamix's DM-System2 driver
 // - NTAP_DRIVER_SHINOBI .......... Shinobi Tap driver by Danjovic
-#define NTAP_DRIVER					NTAP_DRIVER_MSXGL | NTAP_DRIVER_GIGAMIX | NTAP_DRIVER_SHINOBI
+#define NTAP_DRIVER					NTAP_DRIVER_MSXGL | NTAP_DRIVER_GIGAMIX
 #define NTAP_USE_PREVIOUS			TRUE	// Backup previous data to allow push/release detection
 
 //-----------------------------------------------------------------------------

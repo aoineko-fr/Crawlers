@@ -18,8 +18,8 @@ call ..\default_config.cmd %0
 :: TOOLS SETTINGS
 ::*****************************************************************************
 
-REM set Emulator=%ToolsDir%\OpenMSX\openmsx.exe
-set Emulator=%ToolsDir%\Emulicious\Emulicious.exe
+set Emulator=%ToolsDir%\OpenMSX\openmsx.exe
+REM set Emulator=%ToolsDir%\Emulicious\Emulicious.exe
 REM set Emulator=%ToolsDir%\BlueMSX\blueMSX.exe
 REM set Emulator=%ToolsDir%\MEISEI\meisei.exe
 REM set Emulator=%ToolsDir%\fMSX\fMSX.exe
@@ -37,7 +37,7 @@ set ProjName=crawlers
 set ProjModules=%ProjName%
 
 :: List of modules to link
-set LibModules=system,bios,vdp,input,memory,string,math
+set LibModules=device\ninjatap,fsm,system,bios,vdp,input,memory,math
 
 :: MSX machine version:
 :: - 1		MSX 1
@@ -47,7 +47,7 @@ set LibModules=system,bios,vdp,input,memory,string,math
 :: - 2P		MSX 2+
 :: - TR		MSX Turbo-R
 :: - 3		MSX 3 (reserved)
-set Machine=1
+set Machine=12
 
 :: Program media target:
 :: - BIN			.bin	BASIC binary program (8000h~)
@@ -68,6 +68,7 @@ set Machine=1
 :: - DOS2			.com	MSX-DOS 2 program (0100h~) No direct acces to Main-ROM
 :: - DOS2_ARG		.com	[WIP] MSX-DOS 2 program (using command line arguments ; 0100h~) No direct acces to Main-ROM. 
 set Target=ROM_32K
+if not "%1"=="" set Target=%1
 
 :: ROM mapper size (from 64 to 4096). Must be a multiple of 8 or 16 depending on the mapper type
 set ROMSize=
@@ -141,17 +142,25 @@ REM set Verbose=0
 ::*******************************************************************************
 
 :: Emulator options: 0 or 1
-set EmulMachine=1
+set EmulMachine=0
 REM set Emul60Hz=0
 REM set EmulFullScreen=0
 REM set EmulMute=0
 set EmulDebug=1
+
+:: Emulator extensions: 0 or 1
 REM set EmulSCC=0
 REM set EmulMSXMusic=0
 REM set EmulMSXAudio=0
+REM set EmulPSG2=0
+REM set EmulV9990=0
+
+:: Emulator port: joystick, mouse, keyboard (fake joystick)
+REM set EmulPortA=
+REM set EmulPortB=
 
 :: Emulator extra parameters to be add to command-line (emulator sotfware specific)
-REM set EmulExtraParam=
+set EmulExtraParam=-command "plug joyporta ninjatap" -command "plug ninjatap_port_1 joystick1"
 
 ::*******************************************************************************
 :: BUILD STEPS

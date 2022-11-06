@@ -1,134 +1,29 @@
 // ____________________________
-// ██▀▀█▀▀██▀▀▀▀▀▀▀█▀▀█        │   ▄▄▄                ▄▄      
-// ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄▀▀ █  │  ▀█▄  ▄▀██ ▄█▄█ ██▀▄ ██  ▄███
-// █  █ █  ▀▀  ▄█  █  █ ▀▄█ █▄ │  ▄▄█▀ ▀▄██ ██ █ ██▀  ▀█▄ ▀█▄▄
-// ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀────────┘                 ▀▀
-//  Program template
+// ██▀▀█▀▀██▀▀▀▀▀▀▀█▀▀█        │    ▄▄                 ▄▄
+// ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄▀▀ █  │   ██ ▀ ██▄▀ ▄▀██ █ ██ ██  ▄███ ██▄▀  ██▀
+// █  █ █  ▀▀  ▄█  █  █ ▀▄█ █▄ │   ▀█▄▀ ██   ▀▄██ █▀█▀ ▀█▄ ▀█▄▄ ██   ▄██
+// ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀────────┘
+//  Multiplayer snake game
 //─────────────────────────────────────────────────────────────────────────────
 
 //=============================================================================
 // INCLUDES
 //=============================================================================
+
+// MSXgl
 #include "msxgl.h"
 #include "string.h"
+#include "fsm.h"
+#include "device\ninjatap.h"
+
+// Crawlers
+#include "crawlers.h"
 
 //=============================================================================
 // DEFINES
 //=============================================================================
 
-// Library's logo
-#define MSX_GL "\x02\x03\x04\x05"
-
-//
-#define LENGTH_MIN					1
-#define LENGTH_MAX					128
-#define LENGTH_DEFAULT				5
-
-#define TILE_HOLE					0xE3
-#define TILE_INCOMING				0xE4
-
-#define TILE_EMPTY					0xF0
-#define TILE_SALAD					0xF1
-#define TILE_MUSH					0xF2
-#define TILE_PREHOLE				0xF3
-
-#define SPAWN_WAIT					16 // Spawn waiting time (N * 8 frames)
-
-// Input types define
-enum INPUT_TYPE
-{
-	INPUT_JOY_1 = 0,
-	INPUT_JOY_2,
-	INPUT_JOY_3,
-	INPUT_JOY_4,
-	INPUT_JOY_5,
-	INPUT_JOY_6,
-	INPUT_JOY_7,
-	INPUT_JOY_8,
-	INPUT_KEY_1 = 16,
-	INPUT_KEY_2,
-	INPUT_AI_EASY = 128,
-	INPUT_AI_MED,
-	INPUT_AI_HARD,
-};
-
-// Direction define
-enum DIRECTION
-{
-	DIR_UP = 0, // 00
-	DIR_RIGHT,  // 01
-	DIR_DOWN,   // 10
-	DIR_LEFT,   // 11
-	DIR_MAX,
-};
-
-// Input actions define
-enum INPUT_ACTION
-{
-	INPUT_NONE = 0,
-	INPUT_RIGHT,
-	INPUT_LEFT,
-	INPUT_MAX,
-};
-
-// Player state define
-enum PLAYER_STATE
-{
-	STATE_NONE = 0,
-	STATE_WAITING,					// Waiting for spawn point to be available
-	STATE_SPAWNING,
-	STATE_PLAYING,
-};
-
-// Start position structure
-struct Start
-{
-	u8 X;
-	u8 Y;
-	u8 Dir;
-};
-
-// Vector structure
-struct Vector
-{
-	u8 X;
-	u8 Y;
-};
-
-// Body shapes structure
-struct Shapes
-{
-	u8 A;
-	u8 B;
-};
-
-//
-typedef void (*InputCB)(u16 addr);
-
-// Player data structure
-struct Player
-{
-	u8 ID;
-	InputCB Input;
-	u8 PosX;
-	u8 PosY;
-	u8 Dir;
-	u8 Length;
-	u8 Expect;
-	u8 Idx;
-	u8 Path[LENGTH_MAX]; // ring buffer
-	u8 Anim;
-	u8 State;
-	u8 Timer;
-};
-
-// Character data structure
-struct Character
-{
-	const c8* Name;
-	u8 TileBase;
-	u8 Sprite;
-};
+#define MSX2_ENHANCE				1
 
 //=============================================================================
 // READ-ONLY DATA
@@ -142,6 +37,11 @@ struct Character
 
 // Sprites
 #include "content\sprites.h"
+
+// Menu
+#include "content\select.h"
+#include "content\face1.h"
+#include "content\face2.h"
 
 //
 const struct Shapes g_Body[] =
@@ -193,6 +93,46 @@ const struct Start g_Starts[] =
 	{  9, 16, DIR_RIGHT },
 };
 
+#if (MSX2_ENHANCE)
+// Alternative
+const u16 g_MSX2Palette[15] = {
+	RGB16(0, 0, 0), // black				RGB16(0, 0, 0),
+	RGB16(1, 5, 1), // medium green			RGB16(1, 5, 1),
+	RGB16(3, 6, 3), // light green			RGB16(3, 6, 3),
+	RGB16(2, 2, 6), // dark blue			RGB16(2, 2, 6),
+	RGB16(3, 3, 7), // light blue			RGB16(3, 3, 7),
+	RGB16(5, 2, 2), // dark red				RGB16(5, 2, 2),
+	RGB16(5, 5, 7), // *cyan				RGB16(2, 6, 7),
+	RGB16(6, 3, 3), // *medium red			RGB16(6, 2, 2),
+	RGB16(7, 4, 4), // *light red			RGB16(6, 3, 3),
+	RGB16(5, 5, 3), // *dark yellow			RGB16(5, 5, 2),
+	RGB16(6, 6, 4), // *light yellow		RGB16(6, 6, 3),
+	RGB16(1, 4, 1), // dark green			RGB16(1, 4, 1),
+	RGB16(5, 2, 4), // *magenta				RGB16(5, 2, 5),
+	RGB16(5, 5, 5), // gray					RGB16(5, 5, 5),
+	RGB16(7, 7, 7)  // white				RGB16(7, 7, 7) 
+};
+#endif
+
+
+
+void State_Init_Begin();
+void State_Init_Update();
+
+void State_Main_Begin();
+void State_Main_Update();
+
+void State_Select_Begin();
+void State_Select_Update();
+
+void State_Game_Begin();
+void State_Game_Update();
+
+const FSM_State State_Init =	{ 0, State_Init_Begin,		State_Init_Update,		NULL };
+const FSM_State State_Main =	{ 0, State_Main_Begin,		State_Main_Update,		NULL };
+const FSM_State State_Select =	{ 0, State_Select_Begin,	State_Select_Update,	NULL };
+const FSM_State State_Game =	{ 0, State_Game_Begin,		State_Game_Update,		NULL };
+
 //=============================================================================
 // MEMORY DATA
 //=============================================================================
@@ -206,10 +146,17 @@ struct Player g_Players[8];			// Players information
 struct Vector g_Salad;				// Salad information
 c8 g_StrBuffer[32];					// String temporary buffer
 u8 g_ScreenBuffer[32*24];
+u8 g_CurrentPlayer;
 
 // Input
+u8 g_JoyNum;
+u8 g_PrevRow3 = 0xFF;
 u8 g_PrevRow8 = 0xFF;
-u8 g_InKey1;
+u8 g_Input[INPUT_NUM];
+
+#if (MSX2_ENHANCE)
+u8 g_VersionVDP;
+#endif
 
 //=============================================================================
 // FUNCTIONS
@@ -220,7 +167,7 @@ u8 g_InKey1;
 void PrintAt(u8 x, u8 y, const c8* str)
 {
 	while(*str != 0)
-		VDP_Poke_GM2(x++, y, *str++ - ' ');
+		VDP_Poke_GM2(x++, y, *str++ - CHAR_FIRST);
 }
 
 //-----------------------------------------------------------------------------
@@ -244,30 +191,37 @@ void PrintChrY(u8 x, u8 y, c8 chr, u8 len)
 void PrintInt(u8 x, u8 y, u8 val)
 {
 	String_FromUInt8ZT(val, g_StrBuffer);
-	PrintAt(x, y, g_StrBuffer);
+	PrintAt(x, y, g_StrBuffer+1);
 }
 
 //-----------------------------------------------------------------------------
 // 
-inline void DrawChr(u8 x, u8 y, c8 chr)
+inline void DrawTile(u8 x, u8 y, c8 chr)
 {
 	g_ScreenBuffer[x + (y * 32)] = chr;
 }
 
 //-----------------------------------------------------------------------------
 // 
-void DrawChrX(u8 x, u8 y, c8 chr, u8 len)
+void DrawTileX(u8 x, u8 y, c8 chr, u8 len)
 {
 	for(u8 i = 0; i < len; ++i)
-		DrawChr(x++, y, chr);
+		DrawTile(x++, y, chr);
 }
 
 //-----------------------------------------------------------------------------
 // 
-void DrawChrY(u8 x, u8 y, c8 chr, u8 len)
+void DrawTileY(u8 x, u8 y, c8 chr, u8 len)
 {
 	for(u8 i = 0; i < len; ++i)
-		DrawChr(x, y++, chr);
+		DrawTile(x, y++, chr);
+}
+
+//-----------------------------------------------------------------------------
+//
+void SetScore(struct Player* ply)
+{
+	PrintInt(ply->ID * 4 + 1, 0, ply->Score);
 }
 
 //-----------------------------------------------------------------------------
@@ -286,9 +240,8 @@ void SpawnSalad()
 
 //-----------------------------------------------------------------------------
 //
-void UpdateAI(u16 addr)
+void UpdateAI(struct Player* ply)
 {
-	struct Player* ply = (struct Player*)addr;
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
 
@@ -346,36 +299,27 @@ void UpdateAI(u16 addr)
 
 //-----------------------------------------------------------------------------
 //
-void UpdateKeyboard(u16 addr)
+void UpdatePlayerInput(struct Player* ply)
 {
-	struct Player* ply = (struct Player*)addr;
-}
-
-//-----------------------------------------------------------------------------
-//
-void UpdateJoystick(u16 addr)
-{
-	struct Player* ply = (struct Player*)addr;
-	if(g_InKey1 == INPUT_RIGHT)
+	if(g_Input[ply->Input] == ACTION_RIGHT)
 	{
 		ply->Dir++;
 		ply->Dir %= 4;
 	}
-	else if(g_InKey1 == INPUT_LEFT)
+	else if(g_Input[ply->Input] == ACTION_LEFT)
 	{
 		ply->Dir--;
 		ply->Dir %= 4;
 	}
-	g_InKey1 = INPUT_NONE;
+	g_Input[ply->Input] = ACTION_NONE;
 }
 
 //-----------------------------------------------------------------------------
 // 
-void InitPlayer(struct Player* ply, u8 id)
+void InitPlayer(struct Player* ply, u8 id, bool bRespawn)
 {
 	const struct Start* start = &g_Starts[id];
 	ply->ID     = id;
-	ply->Input  = (id == 0) ? UpdateJoystick : UpdateAI;
 	ply->PosX   = start->X;
 	ply->PosY   = start->Y;
 	ply->Dir    = start->Dir;
@@ -383,14 +327,32 @@ void InitPlayer(struct Player* ply, u8 id)
 	ply->Expect = LENGTH_DEFAULT;
 	ply->Anim   = 0;
 	ply->Idx    = 0;
-	ply->State   = STATE_WAITING;
-	ply->Timer   = 0;
+	ply->State  = STATE_WAITING;
+	ply->Timer  = 0;
+	if(!bRespawn)
+		ply->Score  = 0;
 	for(u8 i = 0; i < LENGTH_MIN; ++i)
 		ply->Path[i] = start->Dir;
 
-	const struct Character* chr = &g_Chara[id];
-	if(chr->Sprite != 0xFF)
-		VDP_SetSpriteSM1(chr->Sprite, 0, 0, 0, COLOR_BLACK);
+	switch(id)
+	{
+	case 0:
+		ply->Action = UpdatePlayerInput;
+		ply->Input  = INPUT_KEY_1;
+		break;
+	case 1:
+		ply->Action = UpdatePlayerInput;
+		ply->Input  = INPUT_KEY_2;
+		break;
+	default:
+		ply->Action = UpdateAI;
+		ply->Input  = INPUT_AI_MED;
+		break;
+	};
+
+	// const struct Character* chr = &g_Chara[id];
+	// if(chr->Sprite != 0xFF)
+		// VDP_SetSpriteSM1(chr->Sprite, 0, 213, 0, COLOR_BLACK);
 }
 
 //-----------------------------------------------------------------------------
@@ -407,6 +369,11 @@ void DrawPlayer(struct Player* ply)
 	if((ply->Length < ply->Expect) && (ply->Length < LENGTH_MAX))
 	{
 		ply->Length++;
+		if(ply->Length > ply->Score)
+		{
+			ply->Score = ply->Length;
+			SetScore(ply);
+		}
 		bGrow = TRUE;
 	}
 	else if((ply->Length > ply->Expect) && (ply->Length > LENGTH_MIN))
@@ -522,6 +489,9 @@ void ClearPlayer(struct Player* ply)
 // Program entry point
 void UpdatePlayer(struct Player* ply)
 {
+	if(ply->Input == INPUT_NONE)
+		return;
+
 	switch(ply->State)
 	{
 	case STATE_WAITING:
@@ -533,7 +503,7 @@ void UpdatePlayer(struct Player* ply)
 	case STATE_SPAWNING:
 	{
 		// Get input action
-		ply->Input((u16)ply);
+		ply->Action(ply);
 
 		// Diplay hole
 		u8 tile = TILE_HOLE;
@@ -551,7 +521,7 @@ void UpdatePlayer(struct Player* ply)
 	case STATE_PLAYING:
 	{
 		// Get input action
-		ply->Input((u16)ply);
+		ply->Action(ply);
 
 		// Move
 		u8 x = ply->PosX;
@@ -569,7 +539,7 @@ void UpdatePlayer(struct Player* ply)
 		if(cell < 0xF0)
 		{
 			ClearPlayer(ply);
-			InitPlayer(ply, ply->ID);
+			InitPlayer(ply, ply->ID, TRUE);
 		}
 		else
 		{
@@ -609,15 +579,118 @@ void WaitVBlank()
 	g_Frame++;
 }
 
+//=============================================================================
+// STATES
+//=============================================================================
+
+//.............................................................................
+// INIT STATE
+//.............................................................................
+
 //-----------------------------------------------------------------------------
-// Program entry point
-void main()
+//
+void State_Init_Begin()
 {
+	#if (MSX2_ENHANCE)
+	if(Keyboard_IsKeyPressed(KEY_1))
+		g_VersionVDP = VDP_VERSION_TMS9918A;
+	else if(Keyboard_IsKeyPressed(KEY_2))
+		g_VersionVDP = VDP_VERSION_V9938;
+	else
+		g_VersionVDP = VDP_GetVersion();
+
+	if(g_VersionVDP > VDP_VERSION_TMS9918A)
+		VDP_SetPalette((u8*)g_MSX2Palette);
+	#endif
+
 	// Initialize VDP
 	VDP_SetMode(VDP_MODE_GRAPHIC2);
 	VDP_ClearVRAM();
 	VDP_SetColor(COLOR_LIGHT_YELLOW);
 
+	// Set VBlank hook
+	VDP_EnableVBlank(TRUE);
+	Bios_SetHookCallback(H_TIMI, VBlankHook);
+
+	// Initialize Joystick and/or Ninja Tap
+	NTap_Check();
+	g_JoyNum = NTap_GetPortNum();
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Init_Update()
+{
+	FSM_SetState(&State_Select);
+}
+
+
+//.............................................................................
+// MAIN MENU STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_Main_Begin()
+{
+	
+
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Main_Update()
+{
+	
+
+}
+
+//.............................................................................
+// SELECT STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_Select_Begin()
+{
+	// Initialize tiles data
+	VDP_LoadPattern_GM2(g_DataSelect_Patterns, sizeof(g_DataSelect_Patterns) / 8, 0);
+	VDP_LoadColor_GM2(g_DataSelect_Colors, sizeof(g_DataSelect_Colors) / 8, 0);
+	VDP_WriteLayout_GM2(g_DataSelect_Names, 0, 0, 32, 24);
+
+	// Upper part portaits
+	u16 dst = g_ScreenPatternLow + (128 * 8);
+	VDP_WriteVRAM(g_DataFace1_Patterns, dst, g_ScreenPatternHigh, sizeof(g_DataFace1_Patterns));
+	dst += 0x800;
+	VDP_WriteVRAM(g_DataFace1_Patterns, dst, g_ScreenPatternHigh, sizeof(g_DataFace1_Patterns));
+	dst += 0x800;
+	VDP_WriteVRAM(g_DataFace2_Patterns, dst, g_ScreenPatternHigh, sizeof(g_DataFace2_Patterns));
+
+	// Lower part portaits
+	dst = g_ScreenColorLow + (128 * 8);
+	VDP_WriteVRAM(g_DataFace1_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace1_Colors));
+	dst += 0x800;
+	VDP_WriteVRAM(g_DataFace1_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace1_Colors));
+	dst += 0x800;
+	VDP_WriteVRAM(g_DataFace2_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace2_Colors));
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Select_Update()
+{
+	if(Keyboard_IsKeyPressed(KEY_SPACE))
+		FSM_SetState(&State_Game);
+}
+
+//.............................................................................
+// GAME STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_Game_Begin()
+{
 	// Initialize tiles data
 	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
 	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
@@ -630,27 +703,26 @@ void main()
 	// Draw game field
 	Mem_Set(TILE_EMPTY, g_ScreenBuffer, 32*24);
 	// Up
-	DrawChr(0,  1, 0xE8);
-	DrawChr(31, 1, 0xEA);
-	DrawChrX(1,  1, 0xE9, 30);
+	DrawTile(0,  1, 0xE8);
+	DrawTile(31, 1, 0xEA);
+	DrawTileX(1,  1, 0xE9, 30);
 	// Sides
-	DrawChrY(0,  2, 0xEB, 21);
-	DrawChrY(31, 2, 0xEC, 21);
+	DrawTileY(0,  2, 0xEB, 21);
+	DrawTileY(31, 2, 0xEC, 21);
 	// Down
-	DrawChr(0, 23, 0xED);
-	DrawChr(31, 23, 0xEF);
-	DrawChrX(1, 23, 0xEE, 30);
+	DrawTile(0, 23, 0xED);
+	DrawTile(31, 23, 0xEF);
+	DrawTileX(1, 23, 0xEE, 30);
 	// Draw score board
 	for(u8 i = 0; i < 8; ++i)
 	{
-		DrawChr(i * 4, 0, 0x42 + g_Chara[i].TileBase);
-		DrawChrX(i * 4 + 1, 0, '0'-' ', 2);
+		DrawTile(i * 4, 0, 0x42 + g_Chara[i].TileBase);
 	}
 	// Draw pre-hole
 	for(u8 i = 0; i < 8; ++i)
 	{
 		const struct Start* start = &g_Starts[i];
-		DrawChr(start->X, start->Y, TILE_PREHOLE);
+		DrawTile(start->X, start->Y, TILE_PREHOLE);
 	}
 
 	// Copy screen buffer to VRAM
@@ -660,38 +732,70 @@ void main()
 	SpawnSalad();
 
 	for(u8 i = 0; i < 8; ++i)
-		InitPlayer(&g_Players[i], i);
+		InitPlayer(&g_Players[i], i, FALSE);
 
-	VDP_EnableVBlank(TRUE);
-	Bios_SetHookCallback(H_TIMI, VBlankHook);
+	g_CurrentPlayer = 0;
+}
 
-	u8 upply = 0;
-	while(!Keyboard_IsKeyPressed(KEY_ESC))
+//-----------------------------------------------------------------------------
+//
+void State_Game_Update()
+{
+	WaitVBlank(); // Wait V-Synch
+
+	// Update one of the players
+	struct Player* ply = &g_Players[g_CurrentPlayer];
+	UpdatePlayer(ply);
+	g_CurrentPlayer++;
+	g_CurrentPlayer %= 8;
+
+	VDP_Poke_GM2(g_Salad.X, g_Salad.Y, TILE_SALAD);
+
+	// Update keyboard entries
+	if(g_Input[INPUT_KEY_1] == ACTION_NONE)
 	{
-		if(g_InKey1 == INPUT_NONE)
-		{
-			u8 row8 = Keyboard_Read(8);
-			if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
-			{
-				g_InKey1 = INPUT_RIGHT;
-			}
-			if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
-			{
-				g_InKey1 = INPUT_LEFT;
-			}
-			g_PrevRow8 = row8;
-		}
-
-		// Wait V-Synch
-		WaitVBlank();
-
-		struct Player* ply = &g_Players[upply];
-		UpdatePlayer(ply);
-		upply++;
-		upply %= 8;
-
-		VDP_Poke_GM2(g_Salad.X, g_Salad.Y, TILE_SALAD);
+		u8 row8 = Keyboard_Read(8);
+		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
+			g_Input[INPUT_KEY_1] = ACTION_LEFT;
+		else if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
+			g_Input[INPUT_KEY_1] = ACTION_RIGHT;
+		g_PrevRow8 = row8;
 	}
+	if(g_Input[INPUT_KEY_2] == ACTION_NONE)
+	{
+		u8 row3 = Keyboard_Read(3);
+		if(IS_KEY_PRESSED(row3, KEY_D) && !IS_KEY_PRESSED(g_PrevRow3, KEY_D))
+			g_Input[INPUT_KEY_2] = ACTION_LEFT;
+		else if(IS_KEY_PRESSED(row3, KEY_G) && !IS_KEY_PRESSED(g_PrevRow3, KEY_G))
+			g_Input[INPUT_KEY_2] = ACTION_RIGHT;
+		g_PrevRow3 = row3;
+	}
+	// Update joysticks
+	NTap_Update();
+	for(u8 i = 0; i < g_JoyNum; ++i)
+	{
+		if(g_Input[i] == ACTION_NONE)
+		{
+			if(NTap_IsPushed(i, NTAP_LEFT))
+				g_Input[i] = ACTION_LEFT;
+			else if(NTap_IsPushed(i, NTAP_RIGHT))
+				g_Input[i] = ACTION_RIGHT;
+		}
+	}
+}
+
+//=============================================================================
+// MAIN
+//=============================================================================
+
+//-----------------------------------------------------------------------------
+// Program entry point
+void main()
+{
+	// Start the Final State Machine
+	FSM_SetState(&State_Init);
+	while(!Keyboard_IsKeyPressed(KEY_ESC))
+		FSM_Update();
 
 	Bios_Exit(0);
 }
