@@ -114,10 +114,19 @@ const u16 g_MSX2Palette[15] = {
 };
 #endif
 
-
+const c8 g_TitleTile[] = {
+	0xC0, 0xBD, 0xC1, 0x84, 0x80, 0x85, 0x48, 0x45, 0x49, 0xB5, 0x00, 0xA4, 0xDD, 0x00, 0x00, 0x5C, 0x59, 0x66, 0x98, 0x94, 0x99, 0x70, 0x6C, 0x69,
+	0xBF, 0x00, 0xBA, 0x82, 0x7F, 0x87, 0x47, 0x00, 0x42, 0xAB, 0x00, 0xAB, 0xD3, 0x00, 0x00, 0x56, 0x00, 0x00, 0x96, 0x93, 0x9B, 0x6E, 0x00, 0x00,
+	0xBE, 0x00, 0x00, 0x83, 0x7F, 0x85, 0x46, 0x43, 0x49, 0xAA, 0x00, 0xAA, 0xD2, 0x00, 0x00, 0x5C, 0x55, 0x00, 0x97, 0x93, 0x99, 0x72, 0x6D, 0x71,
+	0xBF, 0x00, 0xC9, 0x82, 0x00, 0x83, 0x47, 0x00, 0x47, 0xAB, 0xA4, 0xAB, 0xD3, 0x00, 0x00, 0x5B, 0x00, 0x00, 0x96, 0x00, 0x96, 0x00, 0x00, 0x6F,
+	0xC2, 0xBC, 0xC3, 0x89, 0x00, 0x88, 0x4D, 0x00, 0x4C, 0xAE, 0xAF, 0xB1, 0xD6, 0xD0, 0xCD, 0x5E, 0x58, 0x67, 0x9C, 0x00, 0x9D, 0x77, 0x6C, 0x73,
+};
 
 void State_Init_Begin();
 void State_Init_Update();
+
+void State_Title_Begin();
+void State_Title_Update();
 
 void State_Main_Begin();
 void State_Main_Update();
@@ -129,6 +138,7 @@ void State_Game_Begin();
 void State_Game_Update();
 
 const FSM_State State_Init =	{ 0, State_Init_Begin,		State_Init_Update,		NULL };
+const FSM_State State_Title =	{ 0, State_Title_Begin,		State_Title_Update,		NULL };
 const FSM_State State_Main =	{ 0, State_Main_Begin,		State_Main_Update,		NULL };
 const FSM_State State_Select =	{ 0, State_Select_Begin,	State_Select_Update,	NULL };
 const FSM_State State_Game =	{ 0, State_Game_Begin,		State_Game_Update,		NULL };
@@ -168,6 +178,13 @@ void PrintAt(u8 x, u8 y, const c8* str)
 {
 	while(*str != 0)
 		VDP_Poke_GM2(x++, y, *str++ - CHAR_FIRST);
+}
+
+//-----------------------------------------------------------------------------
+// 
+void PrintChr(u8 x, u8 y, c8 chr)
+{
+	VDP_Poke_GM2(x++, y, chr);
 }
 
 //-----------------------------------------------------------------------------
@@ -327,7 +344,7 @@ void InitPlayer(struct Player* ply, u8 id, bool bRespawn)
 	ply->Expect = LENGTH_DEFAULT;
 	ply->Anim   = 0;
 	ply->Idx    = 0;
-	ply->State  = STATE_WAITING;
+	ply->State  = STATE_INIT;
 	ply->Timer  = 0;
 	if(!bRespawn)
 		ply->Score  = 0;
@@ -494,6 +511,23 @@ void UpdatePlayer(struct Player* ply)
 
 	switch(ply->State)
 	{
+	case STATE_INIT:
+		ply->Timer = COOLDOWN_WAIT;
+		ply->State = STATE_COOLDOWN;
+
+	case STATE_COOLDOWN:
+		if(VDP_Peek_GM2(ply->PosX, ply->PosY) >= TILE_EMPTY)
+		{
+			u8 tile = (u8)(TILE_PREHOLE + 1);
+			if(ply->Timer <= (COOLDOWN_WAIT / 2))
+				tile++;
+			VDP_Poke_GM2(ply->PosX, ply->PosY, tile);
+		}
+		ply->Timer--;
+		if(ply->Timer)
+			return;
+		ply->State = STATE_WAITING;
+
 	case STATE_WAITING:
 		if(VDP_Peek_GM2(ply->PosX, ply->PosY) < TILE_EMPTY)
 			return;
@@ -621,9 +655,50 @@ void State_Init_Begin()
 //
 void State_Init_Update()
 {
-	FSM_SetState(&State_Select);
+	FSM_SetState(&State_Title);
 }
 
+//.............................................................................
+// TITLE MENU STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_Title_Begin()
+{
+	VDP_ClearVRAM();
+
+	// Initialize tiles data
+	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
+	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
+
+	VDP_WriteLayout_GM2(g_TitleTile, 4, 4, 24, 5);
+	PrintAt(2, 21, "PIXEL PHENIX 2023 USING #$%&");
+
+	// Up
+	PrintChr(0,  0, 0xE8);
+	PrintChr(31, 0, 0xEA);
+	PrintChrX(1,  0, 0xE9, 30);
+	// Sides
+	PrintChrY(0,  1, 0xEB, 22);
+	PrintChrY(31, 1, 0xEC, 22);
+	// Down
+	PrintChr(0, 23, 0xED);
+	PrintChr(31, 23, 0xEF);
+	PrintChrX(1, 23, 0xEE, 30);
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Title_Update()
+{
+	WaitVBlank();
+
+	PrintAt(11, 14, (g_Frame & 0x10) ? "PRESS SPACE" : "           ");
+
+	if(Keyboard_IsKeyPressed(KEY_SPACE))
+		FSM_SetState(&State_Select);
+}
 
 //.............................................................................
 // MAIN MENU STATE

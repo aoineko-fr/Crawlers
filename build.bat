@@ -160,7 +160,8 @@ REM set EmulPortA=
 REM set EmulPortB=
 
 :: Emulator extra parameters to be add to command-line (emulator sotfware specific)
-set EmulExtraParam=-command "plug joyporta ninjatap" -command "plug ninjatap_port_1 joystick1"
+REM set EmulExtraParam=-command "plug joyporta ninjatap" -command "plug ninjatap_port_1 joystick1"
+set EmulExtraParam=-command "plug joyporta ninjatap"
 
 ::*******************************************************************************
 :: BUILD STEPS

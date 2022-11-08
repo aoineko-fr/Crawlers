@@ -34,6 +34,7 @@
 #define TILE_PREHOLE				0xF3
 
 #define SPAWN_WAIT					16 // Spawn waiting time (N * 8 frames)
+#define COOLDOWN_WAIT				4
 
 // Input types define
 enum INPUT_TYPE
@@ -78,6 +79,8 @@ enum INPUT_ACTION
 enum PLAYER_STATE
 {
 	STATE_NONE = 0,
+	STATE_INIT,
+	STATE_COOLDOWN,
 	STATE_WAITING,					// Waiting for spawn point to be available
 	STATE_SPAWNING,
 	STATE_PLAYING,
