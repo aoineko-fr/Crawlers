@@ -7,7 +7,8 @@
 ::─────────────────────────────────────────────────────────────────────────────
 @echo off
 
-call build_data.bat
+:: Build data
+REM call build_data.bat
 
 ::─────────────────────────────────────────────────────────────────────────────
 :: Build Tool configuration
@@ -18,8 +19,8 @@ call ..\default_config.cmd %0
 :: TOOLS SETTINGS
 ::*****************************************************************************
 
-set Emulator=%ToolsDir%\OpenMSX\openmsx.exe
-REM set Emulator=%ToolsDir%\Emulicious\Emulicious.exe
+REM set Emulator=%ToolsDir%\OpenMSX\openmsx.exe
+set Emulator=%ToolsDir%\Emulicious\Emulicious.exe
 REM set Emulator=%ToolsDir%\BlueMSX\blueMSX.exe
 REM set Emulator=%ToolsDir%\MEISEI\meisei.exe
 REM set Emulator=%ToolsDir%\fMSX\fMSX.exe
@@ -37,7 +38,7 @@ set ProjName=crawlers
 set ProjModules=%ProjName%
 
 :: List of modules to link
-set LibModules=device\ninjatap,fsm,system,bios,vdp,input,memory,math
+set LibModules=game_menu,device\ninjatap,fsm,system,bios,vdp,input,memory,math
 
 :: MSX machine version:
 :: - 1		MSX 1
@@ -146,7 +147,7 @@ set EmulMachine=0
 REM set Emul60Hz=0
 REM set EmulFullScreen=0
 REM set EmulMute=0
-set EmulDebug=1
+set EmulDebug=0
 
 :: Emulator extensions: 0 or 1
 REM set EmulSCC=0

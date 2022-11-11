@@ -14,6 +14,7 @@
 #include "msxgl.h"
 #include "string.h"
 #include "fsm.h"
+#include "game_menu.h"
 #include "device\ninjatap.h"
 
 // Crawlers
@@ -23,14 +24,39 @@
 // DEFINES
 //=============================================================================
 
+#define MSXGL						"[\\]^"
+
+// Configuration
 #define MSX2_ENHANCE				1
+
+// Prototypes
+void State_Init_Begin();
+void State_Init_Update();
+
+void State_Title_Begin();
+void State_Title_Update();
+
+void State_Menu_Begin();
+void State_Menu_Update();
+
+void State_Select_Begin();
+void State_Select_Update();
+
+void State_Game_Begin();
+void State_Game_Update();
+
+const c8* MenuAction_Start(u8 op, i8 value);
+const c8* MenuAction_Mode(u8 op, i8 value);
+const c8* MenuAction_Exit(u8 op, i8 value);
+
+void InitPlayer(Player* ply, u8 id, bool bRespawn);
+void DrawPlayer(Player* ply);
+void ClearPlayer(Player* ply);
+void UpdatePlayer(Player* ply);
 
 //=============================================================================
 // READ-ONLY DATA
 //=============================================================================
-
-// Fonts data
-#include "font\font_mgl_sample8.h"
 
 // Tiles
 #include "content\tiles.h"
@@ -44,7 +70,7 @@
 #include "content\face2.h"
 
 //
-const struct Shapes g_Body[] =
+const Shapes g_Body[] =
 {
 	{ 0x46, 0x47 }, // U+U =>	00:00
 	{ 0x48, 0x48 }, // U+R =>	00:02
@@ -68,7 +94,7 @@ const struct Shapes g_Body[] =
 };
 
 //
-const struct Character g_Chara[] =
+const Character g_Chara[] =
 {
 	{ "Chara 01", 0*20, 0    },
 	{ "Chara 02", 2*20, 1    },
@@ -81,7 +107,7 @@ const struct Character g_Chara[] =
 };
 
 //
-const struct Start g_Starts[] =
+const Start g_Starts[] =
 {
 	{  5,  6, DIR_RIGHT },
 	{ 26,  6, DIR_DOWN  },
@@ -114,6 +140,7 @@ const u16 g_MSX2Palette[15] = {
 };
 #endif
 
+//
 const c8 g_TitleTile[] = {
 	0xC0, 0xBD, 0xC1, 0x84, 0x80, 0x85, 0x48, 0x45, 0x49, 0xB5, 0x00, 0xA4, 0xDD, 0x00, 0x00, 0x5C, 0x59, 0x66, 0x98, 0x94, 0x99, 0x70, 0x6C, 0x69,
 	0xBF, 0x00, 0xBA, 0x82, 0x7F, 0x87, 0x47, 0x00, 0x42, 0xAB, 0x00, 0xAB, 0xD3, 0x00, 0x00, 0x56, 0x00, 0x00, 0x96, 0x93, 0x9B, 0x6E, 0x00, 0x00,
@@ -122,24 +149,53 @@ const c8 g_TitleTile[] = {
 	0xC2, 0xBC, 0xC3, 0x89, 0x00, 0x88, 0x4D, 0x00, 0x4C, 0xAE, 0xAF, 0xB1, 0xD6, 0xD0, 0xCD, 0x5E, 0x58, 0x67, 0x9C, 0x00, 0x9D, 0x77, 0x6C, 0x73,
 };
 
-void State_Init_Begin();
-void State_Init_Update();
+extern i16 g_Test;
 
-void State_Title_Begin();
-void State_Title_Update();
+//
+const MenuItem g_MenuMain[] = {
+	{ "PLAY",                MENU_ITEM_GOTO, NULL, MENU_PLAY },
+	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
+	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "EXIT",                MENU_ITEM_ACTION, MenuAction_Exit, 0 },
+};
 
-void State_Main_Begin();
-void State_Main_Update();
+//
+const MenuItem g_MenuPlay[] = {
+	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, 0 },
+	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
+	{ "COUNT",               MENU_ITEM_INT, &g_GameCount, 1 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
+};
 
-void State_Select_Begin();
-void State_Select_Update();
+//
+const MenuItem g_MenuOption[] = {
+	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
+};
 
-void State_Game_Begin();
-void State_Game_Update();
+//
+const MenuItem g_MenuCredit[] = {
+	{ "CODE:  AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
+	{ "GFX:   AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
+	{ "MUSIC: ???",          MENU_ITEM_TEXT, NULL, 0 },
+	{ "SFX:   AYFX SAMPLE",  MENU_ITEM_TEXT, NULL, 0 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
+};
+
+//
+const Menu g_Menus[MENU_MAX] =
+{
+	{ NULL, g_MenuMain,   numberof(g_MenuMain) },
+	{ NULL, g_MenuPlay,   numberof(g_MenuPlay) },
+	{ NULL, g_MenuOption, numberof(g_MenuOption) },
+	{ NULL, g_MenuCredit, numberof(g_MenuCredit) },
+};
 
 const FSM_State State_Init =	{ 0, State_Init_Begin,		State_Init_Update,		NULL };
 const FSM_State State_Title =	{ 0, State_Title_Begin,		State_Title_Update,		NULL };
-const FSM_State State_Main =	{ 0, State_Main_Begin,		State_Main_Update,		NULL };
+const FSM_State State_Menu =	{ 0, State_Menu_Begin,		State_Menu_Update,		NULL };
 const FSM_State State_Select =	{ 0, State_Select_Begin,	State_Select_Update,	NULL };
 const FSM_State State_Game =	{ 0, State_Game_Begin,		State_Game_Update,		NULL };
 
@@ -152,8 +208,10 @@ u8 g_VBlank = 0;					// Vertical-synchronization flag
 u8 g_Frame = 0;						// Frame counter
 
 // Gameplay
-struct Player g_Players[8];			// Players information
-struct Vector g_Salad;				// Salad information
+u8 g_GameMode = MODE_BATTLEROYAL;
+u8 g_GameCount = 3;
+Player g_Players[8];			// Players information
+Vector g_Salad;				// Salad information
 c8 g_StrBuffer[32];					// String temporary buffer
 u8 g_ScreenBuffer[32*24];
 u8 g_CurrentPlayer;
@@ -168,17 +226,11 @@ u8 g_Input[INPUT_NUM];
 u8 g_VersionVDP;
 #endif
 
+i16 g_Test = 0;
+
 //=============================================================================
 // FUNCTIONS
 //=============================================================================
-
-//-----------------------------------------------------------------------------
-// Program entry point
-void PrintAt(u8 x, u8 y, const c8* str)
-{
-	while(*str != 0)
-		VDP_Poke_GM2(x++, y, *str++ - CHAR_FIRST);
-}
 
 //-----------------------------------------------------------------------------
 // 
@@ -191,8 +243,7 @@ void PrintChr(u8 x, u8 y, c8 chr)
 // 
 void PrintChrX(u8 x, u8 y, c8 chr, u8 len)
 {
-	for(u8 i = 0; i < len; ++i)
-		VDP_Poke_GM2(x++, y, chr);
+	VDP_FillLayout_GM2(chr, x, y, len, 1);
 }
 
 //-----------------------------------------------------------------------------
@@ -205,15 +256,7 @@ void PrintChrY(u8 x, u8 y, c8 chr, u8 len)
 
 //-----------------------------------------------------------------------------
 // 
-void PrintInt(u8 x, u8 y, u8 val)
-{
-	String_FromUInt8ZT(val, g_StrBuffer);
-	PrintAt(x, y, g_StrBuffer+1);
-}
-
-//-----------------------------------------------------------------------------
-// 
-inline void DrawTile(u8 x, u8 y, c8 chr)
+void DrawTile(u8 x, u8 y, c8 chr)
 {
 	g_ScreenBuffer[x + (y * 32)] = chr;
 }
@@ -236,9 +279,32 @@ void DrawTileY(u8 x, u8 y, c8 chr, u8 len)
 
 //-----------------------------------------------------------------------------
 //
-void SetScore(struct Player* ply)
+void SetScore(Player* ply)
 {
-	PrintInt(ply->ID * 4 + 1, 0, ply->Score);
+	Print_DrawIntAt(ply->ID * 4 + 1, 0, ply->Score);
+}
+
+//-----------------------------------------------------------------------------
+//
+void CheckBattleRoyal()
+{
+	Player* lastPly = NULL;
+	for(u8 i = 0; i < 8; ++i)
+	{
+		if(g_Players[i].State != STATE_NONE)
+		{
+			if(lastPly)
+				return;
+			lastPly = &g_Players[i];
+		}
+	}
+
+	lastPly->Score++;
+	SetScore(lastPly);
+	ClearPlayer(lastPly);
+
+	for(u8 i = 0; i < 8; ++i)
+		InitPlayer(&g_Players[i], i, TRUE);
 }
 
 //-----------------------------------------------------------------------------
@@ -257,7 +323,7 @@ void SpawnSalad()
 
 //-----------------------------------------------------------------------------
 //
-void UpdateAI(struct Player* ply)
+void UpdateAI(Player* ply)
 {
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
@@ -316,7 +382,7 @@ void UpdateAI(struct Player* ply)
 
 //-----------------------------------------------------------------------------
 //
-void UpdatePlayerInput(struct Player* ply)
+void UpdatePlayerInput(Player* ply)
 {
 	if(g_Input[ply->Input] == ACTION_RIGHT)
 	{
@@ -333,9 +399,9 @@ void UpdatePlayerInput(struct Player* ply)
 
 //-----------------------------------------------------------------------------
 // 
-void InitPlayer(struct Player* ply, u8 id, bool bRespawn)
+void InitPlayer(Player* ply, u8 id, bool bRespawn)
 {
-	const struct Start* start = &g_Starts[id];
+	const Start* start = &g_Starts[id];
 	ply->ID     = id;
 	ply->PosX   = start->X;
 	ply->PosY   = start->Y;
@@ -367,14 +433,12 @@ void InitPlayer(struct Player* ply, u8 id, bool bRespawn)
 		break;
 	};
 
-	// const struct Character* chr = &g_Chara[id];
-	// if(chr->Sprite != 0xFF)
-		// VDP_SetSpriteSM1(chr->Sprite, 0, 213, 0, COLOR_BLACK);
+	SetScore(ply);
 }
 
 //-----------------------------------------------------------------------------
 //
-void DrawPlayer(struct Player* ply)
+void DrawPlayer(Player* ply)
 {
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
@@ -386,7 +450,7 @@ void DrawPlayer(struct Player* ply)
 	if((ply->Length < ply->Expect) && (ply->Length < LENGTH_MAX))
 	{
 		ply->Length++;
-		if(ply->Length > ply->Score)
+		if((g_GameMode == MODE_SIZEMATTER) && (ply->Length > ply->Score))
 		{
 			ply->Score = ply->Length;
 			SetScore(ply);
@@ -408,7 +472,7 @@ void DrawPlayer(struct Player* ply)
 			VDP_Poke_GM2(x, y, tile + baseTile);
 
 			// Sprite
-			const struct Character* chr = &g_Chara[ply->ID];
+			const Character* chr = &g_Chara[ply->ID];
 			if(chr->Sprite != 0xFF)
 			{
 				if(chr->Sprite & 1) // Snake
@@ -435,7 +499,7 @@ void DrawPlayer(struct Player* ply)
 		{
 			u8 prev = idx - 1;
 			prev  %= LENGTH_MAX;
-			const struct Shapes* vec = &g_Body[ply->Path[prev] + (ply->Path[idx] << 2)];
+			const Shapes* vec = &g_Body[ply->Path[prev] + (ply->Path[idx] << 2)];
 			u8 tile;
 			if(idx & 1)
 				tile = vec->A;
@@ -474,7 +538,7 @@ void DrawPlayer(struct Player* ply)
 
 //-----------------------------------------------------------------------------
 //
-void ClearPlayer(struct Player* ply)
+void ClearPlayer(Player* ply)
 {
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
@@ -483,7 +547,7 @@ void ClearPlayer(struct Player* ply)
 	// Clear tiles
 	for(u8 i = 0; i < ply->Length; ++i)
 	{
-		VDP_Poke_GM2(x, y, TILE_EMPTY);
+		VDP_Poke_GM2(x, y, g_ScreenBuffer[x + (y * 32)]);
 
 		switch(ply->Path[idx])
 		{
@@ -497,20 +561,25 @@ void ClearPlayer(struct Player* ply)
 	}
 
 	// Clear spite
-	const struct Character* chr = &g_Chara[ply->ID];
+	const Character* chr = &g_Chara[ply->ID];
 	if(chr->Sprite != 0xFF)
 		VDP_HideSprite(chr->Sprite);
+
+	ply->State = STATE_NONE;
 }
 
 //-----------------------------------------------------------------------------
 // Program entry point
-void UpdatePlayer(struct Player* ply)
+void UpdatePlayer(Player* ply)
 {
 	if(ply->Input == INPUT_NONE)
 		return;
 
 	switch(ply->State)
 	{
+	case STATE_NONE:
+		return;
+
 	case STATE_INIT:
 		ply->Timer = COOLDOWN_WAIT;
 		ply->State = STATE_COOLDOWN;
@@ -519,7 +588,7 @@ void UpdatePlayer(struct Player* ply)
 		if(VDP_Peek_GM2(ply->PosX, ply->PosY) >= TILE_EMPTY)
 		{
 			u8 tile = (u8)(TILE_PREHOLE + 1);
-			if(ply->Timer <= (COOLDOWN_WAIT / 2))
+			if(ply->Timer <= (COOLDOWN_WAIT / 4))
 				tile++;
 			VDP_Poke_GM2(ply->PosX, ply->PosY, tile);
 		}
@@ -541,7 +610,7 @@ void UpdatePlayer(struct Player* ply)
 
 		// Diplay hole
 		u8 tile = TILE_HOLE;
-		if((ply->Timer < SPAWN_WAIT / 2) && (ply->Timer & 1))
+		if((ply->Timer < (3 * SPAWN_WAIT / 4)) && (ply->Timer & 1))
 			tile += 1 + ply->Dir;
 		VDP_Poke_GM2(ply->PosX, ply->PosY, tile);
 
@@ -573,7 +642,16 @@ void UpdatePlayer(struct Player* ply)
 		if(cell < 0xF0)
 		{
 			ClearPlayer(ply);
-			InitPlayer(ply, ply->ID, TRUE);
+			switch(g_GameMode)
+			{
+			case MODE_BATTLEROYAL:
+				CheckBattleRoyal();
+				return;
+			case MODE_DEATHMATCH:
+			case MODE_SIZEMATTER:
+				InitPlayer(ply, ply->ID, TRUE);
+				return;
+			};
 		}
 		else
 		{
@@ -611,6 +689,61 @@ void WaitVBlank()
 	while(g_VBlank == 0) {}
 	g_VBlank = 0;
 	g_Frame++;
+}
+
+//=============================================================================
+// MENU
+//=============================================================================
+
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Start(u8 op, i8 value)
+{
+	if(op == MENU_ACTION_SET)
+		FSM_SetState(&State_Select);
+	return NULL;
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Mode(u8 op, i8 value)
+{
+	switch(op)
+	{
+	case MENU_ACTION_SET:
+	case MENU_ACTION_INC:
+		if(g_GameMode < MODE_MAX-1)
+			g_GameMode++;
+		else
+			g_GameMode = 0;
+		break;
+
+	case MENU_ACTION_DEC:
+		if(g_GameMode > 0)
+			g_GameMode--;
+		else
+			g_GameMode = MODE_MAX-1;
+		break;
+
+	case MENU_ACTION_GET:
+		switch(g_GameMode)
+		{
+		case MODE_BATTLEROYAL: return "BATTLE ROYAL";
+		case MODE_DEATHMATCH:  return "DEATH MATCH";
+		case MODE_SIZEMATTER:  return "SIZE MATTER";
+		};
+	};
+	return "";
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Exit(u8 op, i8 value)
+{
+	if(op == MENU_ACTION_SET)
+		Bios_Exit(0);
+	return NULL;
 }
 
 //=============================================================================
@@ -668,24 +801,41 @@ void State_Title_Begin()
 {
 	VDP_ClearVRAM();
 
+	// Initialize sprites data
+	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
+	VDP_LoadSpritePattern(g_DataSprites, 0, sizeof(g_DataSprites) / 8);
+
 	// Initialize tiles data
 	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
 	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
 
-	VDP_WriteLayout_GM2(g_TitleTile, 4, 4, 24, 5);
-	PrintAt(2, 21, "PIXEL PHENIX 2023 USING #$%&");
+	VDP_WriteLayout_GM2(g_TitleTile, 4, 3, 24, 5);
 
-	// Up
+	// Draw field
 	PrintChr(0,  0, 0xE8);
 	PrintChr(31, 0, 0xEA);
-	PrintChrX(1,  0, 0xE9, 30);
-	// Sides
-	PrintChrY(0,  1, 0xEB, 22);
-	PrintChrY(31, 1, 0xEC, 22);
-	// Down
+	PrintChrX(1, 0, 0xE9, 30);
+	PrintChrY(0, 1, 0xEB, 22);
+	PrintChrY(31,1, 0xEC, 22);
 	PrintChr(0, 23, 0xED);
 	PrintChr(31, 23, 0xEF);
 	PrintChrX(1, 23, 0xEE, 30);
+
+	// Initialize font
+	g_PrintData.ScreenWidth = 32;
+	g_PrintData.PatternOffset = 0;
+	Print_SetFontEx(8, 8, 1, 1, ' ', '_', NULL);
+	Print_SetMode(PRINT_MODE_TEXT);
+	Print_SetTabSize(3);
+
+	Print_DrawTextAt(2, 21, "PIXEL PHENIX 2023   " MSXGL);
+
+	// Initialize sprites data
+	VDP_SetSpriteSM1(0, (u8)(26 * 8), (u8)(21 * 8 - 1), 12, COLOR_DARK_GREEN);
+	VDP_SetSpriteSM1(1, (u8)(27 * 8), (u8)(21 * 8 - 1), 13, COLOR_DARK_GREEN);
+	VDP_SetSpriteSM1(2, (u8)(28 * 8), (u8)(21 * 8 - 1), 14, COLOR_DARK_GREEN);
+	VDP_SetSpriteSM1(3, (u8)(29 * 8), (u8)(21 * 8 - 1), 15, COLOR_DARK_GREEN);
+	VDP_DisableSpritesFrom(4);
 }
 
 //-----------------------------------------------------------------------------
@@ -694,10 +844,10 @@ void State_Title_Update()
 {
 	WaitVBlank();
 
-	PrintAt(11, 14, (g_Frame & 0x10) ? "PRESS SPACE" : "           ");
+	Print_DrawTextAt(11, 14, (g_Frame & 0x10) ? "PRESS SPACE" : "           ");
 
 	if(Keyboard_IsKeyPressed(KEY_SPACE))
-		FSM_SetState(&State_Select);
+		FSM_SetState(&State_Menu);
 }
 
 //.............................................................................
@@ -706,18 +856,20 @@ void State_Title_Update()
 
 //-----------------------------------------------------------------------------
 //
-void State_Main_Begin()
+void State_Menu_Begin()
 {
-	
-
+	// Initialize menu
+	Menu_Initialize(g_Menus);
+	Menu_DrawPage(MENU_MAIN);
 }
 
 //-----------------------------------------------------------------------------
 //
-void State_Main_Update()
+void State_Menu_Update()
 {
-	
-
+	// Update menu
+	WaitVBlank();
+	Menu_Update();
 }
 
 //.............................................................................
@@ -728,6 +880,8 @@ void State_Main_Update()
 //
 void State_Select_Begin()
 {
+	VDP_DisableSpritesFrom(0);
+
 	// Initialize tiles data
 	VDP_LoadPattern_GM2(g_DataSelect_Patterns, sizeof(g_DataSelect_Patterns) / 8, 0);
 	VDP_LoadColor_GM2(g_DataSelect_Colors, sizeof(g_DataSelect_Colors) / 8, 0);
@@ -771,8 +925,6 @@ void State_Game_Begin()
 	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
 
 	// Initialize sprites data
-	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
-	VDP_LoadSpritePattern(g_DataSprites, 0, sizeof(g_DataSprites) / 8);
 	VDP_DisableSpritesFrom(4);
 
 	// Draw game field
@@ -796,7 +948,7 @@ void State_Game_Begin()
 	// Draw pre-hole
 	for(u8 i = 0; i < 8; ++i)
 	{
-		const struct Start* start = &g_Starts[i];
+		const Start* start = &g_Starts[i];
 		DrawTile(start->X, start->Y, TILE_PREHOLE);
 	}
 
@@ -819,7 +971,7 @@ void State_Game_Update()
 	WaitVBlank(); // Wait V-Synch
 
 	// Update one of the players
-	struct Player* ply = &g_Players[g_CurrentPlayer];
+	Player* ply = &g_Players[g_CurrentPlayer];
 	UpdatePlayer(ply);
 	g_CurrentPlayer++;
 	g_CurrentPlayer %= 8;
@@ -857,6 +1009,9 @@ void State_Game_Update()
 				g_Input[i] = ACTION_RIGHT;
 		}
 	}
+
+	if(Keyboard_IsKeyPressed(KEY_ESC))
+		FSM_SetState(&State_Title);
 }
 
 //=============================================================================
@@ -869,7 +1024,7 @@ void main()
 {
 	// Start the Final State Machine
 	FSM_SetState(&State_Init);
-	while(!Keyboard_IsKeyPressed(KEY_ESC))
+	while(1)
 		FSM_Update();
 
 	Bios_Exit(0);

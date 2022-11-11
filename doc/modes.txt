@@ -1,0 +1,21 @@
+
+
+
+Battle Royal
+	Point:		Last standing (1 point)
+	Victory:	First at X points
+
+Death Match
+	Point:		1 point for each defeated opponent and -1 point for a single loss
+	Victory:	First at X points
+
+Length matters
+	Point:		Points is equal to the maximum length of the character
+	Victory:	Highest score after X minutes
+
+
+
+
+
+
+

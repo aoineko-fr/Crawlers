@@ -34,7 +34,7 @@
 #define TILE_PREHOLE				0xF3
 
 #define SPAWN_WAIT					16 // Spawn waiting time (N * 8 frames)
-#define COOLDOWN_WAIT				4
+#define COOLDOWN_WAIT				8
 
 // Input types define
 enum INPUT_TYPE
@@ -86,35 +86,54 @@ enum PLAYER_STATE
 	STATE_PLAYING,
 };
 
+// Menu pages enumeration
+enum MENU_PAGE
+{
+	MENU_MAIN = 0,
+	MENU_PLAY,
+	MENU_OPTION,
+	MENU_CREDIT,
+	MENU_MAX,
+};
+
+// Game mdoes enumeration
+enum GAME_MODE
+{
+	MODE_BATTLEROYAL = 0,
+	MODE_DEATHMATCH,
+	MODE_SIZEMATTER,
+	MODE_MAX,
+};
+
 // Start position structure
-struct Start
+typedef struct
 {
 	u8 X;
 	u8 Y;
 	u8 Dir;
-};
+} Start;
 
 // Vector structure
-struct Vector
+typedef struct
 {
 	u8 X;
 	u8 Y;
-};
+} Vector;
 
 // Body shapes structure
-struct Shapes
+typedef struct
 {
 	u8 A;
 	u8 B;
-};
+} Shapes;
 
-struct Player;
+struct PlayerTag;
 
 //
-typedef void (*InputCB)(struct Player* ply);
+typedef void (*InputCB)(struct PlayerTag* ply);
 
 // Player data structure
-struct Player
+typedef struct PlayerTag
 {
 	u8 ID;
 	InputCB Action;
@@ -130,12 +149,12 @@ struct Player
 	u8 State;
 	u8 Timer;
 	u8 Score;
-};
+} Player;
 
 // Character data structure
-struct Character
+typedef struct
 {
 	const c8* Name;
 	u8 TileBase;
 	u8 Sprite;
-};
+} Character;

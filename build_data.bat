@@ -14,6 +14,11 @@ set MSXtk=%Tools%\MSXtk\bin
 if not exist "content" ( md content )
 
 echo -----------------------------------------------------------------------------
+echo  Convert Font...
+
+REM %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\font.h -pos 0 0 -size 8 8 -gap 0 0 -num 16 4 -trans 0xDED087 -bpc 1 -name g_DataFont -font 8 8 0x20 _
+
+echo -----------------------------------------------------------------------------
 echo  Convert SC2 Images...
 
 %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\tiles.h -mode gm2 --gm2unique -name g_DataTiles -pos 0 0 -size 128 128
@@ -35,4 +40,4 @@ REM %MSXtk%\MSXimg.exe datasrc\menu.png -out content\select.h -mode gm2 -name g_
 echo -----------------------------------------------------------------------------
 echo  Convert sprite...
 
-%MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\sprites.h -pos 128 0 -size 8 8 -num 4 2 -name g_DataSprites -trans 0xDED087 -bpc 1
+%MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\sprites.h -pos 128 0 -size 8 8 -num 4 4 -name g_DataSprites -trans 0xDED087 -bpc 1
