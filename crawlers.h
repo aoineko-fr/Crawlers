@@ -54,6 +54,7 @@ enum INPUT_TYPE
 	INPUT_AI_MED,
 	INPUT_AI_HARD,
 	INPUT_NONE,						// 14
+	INPUT_MAX,
 };
 
 // Direction define
@@ -103,6 +104,15 @@ enum GAME_MODE
 	MODE_DEATHMATCH,
 	MODE_SIZEMATTER,
 	MODE_MAX,
+};
+
+// Frequence enumaration
+enum FREQ_MODE
+{
+	FREQ_AUTO,							// Use auto-detection
+	FREQ_60HZ,							// Force 60 Hz
+	FREQ_50HZ,							// Force 50 Hz
+	FREQ_MAX,
 };
 
 // Start position structure
@@ -158,3 +168,99 @@ typedef struct
 	u8 TileBase;
 	u8 Sprite;
 } Character;
+
+// Device
+typedef struct
+{
+	const u8*	Default;
+	const u8*	Edit;
+} SelectDevice;
+
+// Device
+typedef struct
+{
+	u8			X;
+	u8			Y;
+	const u8*	Data;
+} SelectFace;
+
+// Slot
+typedef struct
+{
+	Vector		UL;
+	Vector		DR;
+	i8			Left;
+	i8			Right;
+	i8			Up;
+	i8			Down;
+} SelectSlot;
+
+// Select menu
+#define SELECT_DEV_NONE_S		g_DataSelectL0_Names	// 7x3
+#define SELECT_DEV_AI_1_S		g_DataSelectL1_Names	// 7x3
+#define SELECT_DEV_AI_2_S		g_DataSelectL2_Names	// 7x3
+#define SELECT_DEV_AI_3_S		g_DataSelectL3_Names	// 7x3
+#define SELECT_DEV_NONE			g_DataSelectL4_Names	// 7x3
+#define SELECT_DEV_AI_1			g_DataSelectL5_Names	// 7x3
+#define SELECT_DEV_AI_2			g_DataSelectL6_Names	// 7x3
+#define SELECT_DEV_AI_3			g_DataSelectL7_Names	// 7x3
+#define SELECT_DEV_JOY_1_S		g_DataSelectL8_Names	// 7x3
+#define SELECT_DEV_JOY_2_S		g_DataSelectL9_Names	// 7x3
+#define SELECT_DEV_JOY_3_S		g_DataSelectL10_Names	// 7x3
+#define SELECT_DEV_JOY_4_S		g_DataSelectL11_Names	// 7x3
+#define SELECT_DEV_JOY_1		g_DataSelectL12_Names	// 7x3
+#define SELECT_DEV_JOY_2		g_DataSelectL13_Names	// 7x3
+#define SELECT_DEV_JOY_3		g_DataSelectL14_Names	// 7x3
+#define SELECT_DEV_JOY_4		g_DataSelectL15_Names	// 7x3
+#define SELECT_DEV_JOY_5_S		g_DataSelectL16_Names	// 7x3
+#define SELECT_DEV_JOY_6_S		g_DataSelectL17_Names	// 7x3
+#define SELECT_DEV_JOY_7_S		g_DataSelectL18_Names	// 7x3
+#define SELECT_DEV_JOY_8_S		g_DataSelectL19_Names	// 7x3
+#define SELECT_DEV_JOY_5		g_DataSelectL20_Names	// 7x3
+#define SELECT_DEV_JOY_6		g_DataSelectL21_Names	// 7x3
+#define SELECT_DEV_JOY_7		g_DataSelectL22_Names	// 7x3
+#define SELECT_DEV_JOY_8		g_DataSelectL23_Names	// 7x3
+#define SELECT_DEV_KEYB_1_S		g_DataSelectL24_Names	// 7x3
+#define SELECT_DEV_KEYB_2_S		g_DataSelectL25_Names	// 7x3
+#define SELECT_DEV_KEYB_1		g_DataSelectL26_Names	// 7x3
+#define SELECT_DEV_KEYB_2		g_DataSelectL27_Names	// 7x3
+
+#define SELECT_FRAME			g_DataSelectL28_Names	// 7x6
+
+#define SELECT_START			g_DataSelectL29_Names	// 7x2
+#define SELECT_EXIT				g_DataSelectL30_Names	// 6x2
+
+#define SELECT_FACE_1			g_DataFace1L0_Names		// 5x5
+#define SELECT_FACE_2			g_DataFace1L1_Names		// 5x5
+#define SELECT_FACE_3			g_DataFace1L2_Names		// 5x5
+#define SELECT_FACE_4			g_DataFace1L3_Names		// 5x5
+#define SELECT_FACE_5			g_DataFace2L0_Names		// 5x5
+#define SELECT_FACE_6			g_DataFace2L1_Names		// 5x5
+#define SELECT_FACE_7			g_DataFace2L2_Names		// 5x5
+#define SELECT_FACE_8			g_DataFace2L3_Names		// 5x5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

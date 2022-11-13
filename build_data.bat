@@ -23,21 +23,49 @@ echo  Convert SC2 Images...
 
 %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\tiles.h -mode gm2 --gm2unique -name g_DataTiles -pos 0 0 -size 128 128
 
-%MSXtk%\MSXimg.exe datasrc\menu.png -out content\select.h -mode gm2 -name g_DataSelect -pos 0 0 -size 256 192
-%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face1.h -mode gm2 -name g_DataFace1 -pos 0 216 -size 200 40 -offset 128
-%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face2.h -mode gm2 -name g_DataFace2 -pos 0 256 -size 200 40 -offset 128
+%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face1.h -mode gm2 -name g_DataFace1 -pos 0 216 -size 40 40 -offset 128 ^
+	-l gm2 40  216 40 40 ^
+	-l gm2 80  216 40 40 ^
+	-l gm2 120 216 40 40
 
+%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face2.h -mode gm2 -name g_DataFace2 -pos 0 256 -size 40 40 -offset 128 ^
+	-l gm2 40  256 40 40 ^
+	-l gm2 80  256 40 40 ^
+	-l gm2 120 256 40 40
 
-REM %MSXtk%\MSXimg.exe datasrc\menu.png -out content\select.h -mode gm2 -name g_DataSelect -pos 0 0 -size 40 40 ^
-	REM -l gm2 40 0 40 40 ^
-	REM -l gm2 80 0 40 40 ^
-	REM -l gm2 120 0 40 40 ^
-	REM -l gm2 0 40 40 40 ^
-	REM -l gm2 40 40 40 40 ^
-	REM -l gm2 80 40 40 40 ^
-	REM -l gm2 120 40 40 40
+%MSXtk%\MSXimg.exe datasrc\menu.png -out content\select.h -mode gm2 -name g_DataSelect -pos 0 0 -size 56 24 ^
+	-l gm2 56  0 56 24 ^
+	-l gm2 112 0 56 24 ^
+	-l gm2 168 0 56 24 ^
+	-l gm2 0   24 56 24 ^
+	-l gm2 56  24 56 24 ^
+	-l gm2 112 24 56 24 ^
+	-l gm2 168 24 56 24 ^
+	-l gm2 0   48 56 24 ^
+	-l gm2 56  48 56 24 ^
+	-l gm2 112 48 56 24 ^
+	-l gm2 168 48 56 24 ^
+	-l gm2 0   72 56 24 ^
+	-l gm2 56  72 56 24 ^
+	-l gm2 112 72 56 24 ^
+	-l gm2 168 72 56 24 ^
+	-l gm2 0   96 56 24 ^
+	-l gm2 56  96 56 24 ^
+	-l gm2 112 96 56 24 ^
+	-l gm2 168 96 56 24 ^
+	-l gm2 0   120 56 24 ^
+	-l gm2 56  120 56 24 ^
+	-l gm2 112 120 56 24 ^
+	-l gm2 168 120 56 24 ^
+	-l gm2 0   144 56 24 ^
+	-l gm2 56  144 56 24 ^
+	-l gm2 0   168 56 24 ^
+	-l gm2 56  168 56 24 ^
+	-l gm2 112 144 56 48 ^
+	-l gm2 168 144 56 16 ^
+	-l gm2 168 160 48 16
 
 echo -----------------------------------------------------------------------------
 echo  Convert sprite...
 
-%MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\sprites.h -pos 128 0 -size 8 8 -num 4 4 -name g_DataSprites -trans 0xDED087 -bpc 1
+%MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\sprites.h -pos 128 0 -size 8 8 -num 4 5 -name g_DataSprites -trans 0xDED087 -bpc 1

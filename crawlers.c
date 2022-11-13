@@ -47,9 +47,12 @@ void State_Game_Update();
 
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
+const c8* MenuAction_Freq(u8 op, i8 value);
+const c8* MenuAction_Port(u8 op, i8 value);
 const c8* MenuAction_Exit(u8 op, i8 value);
 
-void InitPlayer(Player* ply, u8 id, bool bRespawn);
+void InitPlayer(Player* ply, u8 id);
+void SpawnPlayer(Player* ply);
 void DrawPlayer(Player* ply);
 void ClearPlayer(Player* ply);
 void UpdatePlayer(Player* ply);
@@ -149,8 +152,6 @@ const c8 g_TitleTile[] = {
 	0xC2, 0xBC, 0xC3, 0x89, 0x00, 0x88, 0x4D, 0x00, 0x4C, 0xAE, 0xAF, 0xB1, 0xD6, 0xD0, 0xCD, 0x5E, 0x58, 0x67, 0x9C, 0x00, 0x9D, 0x77, 0x6C, 0x73,
 };
 
-extern i16 g_Test;
-
 //
 const MenuItem g_MenuMain[] = {
 	{ "PLAY",                MENU_ITEM_GOTO, NULL, MENU_PLAY },
@@ -171,6 +172,11 @@ const MenuItem g_MenuPlay[] = {
 
 //
 const MenuItem g_MenuOption[] = {
+	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
+	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
+	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
+	{ "MAXPLY",              MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, 0 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
 
@@ -193,40 +199,93 @@ const Menu g_Menus[MENU_MAX] =
 	{ NULL, g_MenuCredit, numberof(g_MenuCredit) },
 };
 
+// 
 const FSM_State State_Init =	{ 0, State_Init_Begin,		State_Init_Update,		NULL };
 const FSM_State State_Title =	{ 0, State_Title_Begin,		State_Title_Update,		NULL };
 const FSM_State State_Menu =	{ 0, State_Menu_Begin,		State_Menu_Update,		NULL };
 const FSM_State State_Select =	{ 0, State_Select_Begin,	State_Select_Update,	NULL };
 const FSM_State State_Game =	{ 0, State_Game_Begin,		State_Game_Update,		NULL };
 
+// 
+const SelectDevice g_Devices[INPUT_MAX] =
+{
+	{ SELECT_DEV_JOY_1,		SELECT_DEV_JOY_1_S },
+	{ SELECT_DEV_JOY_2,		SELECT_DEV_JOY_2_S },
+	{ SELECT_DEV_JOY_3,		SELECT_DEV_JOY_3_S },
+	{ SELECT_DEV_JOY_4,		SELECT_DEV_JOY_4_S },
+	{ SELECT_DEV_JOY_5,		SELECT_DEV_JOY_5_S },
+	{ SELECT_DEV_JOY_6,		SELECT_DEV_JOY_6_S },
+	{ SELECT_DEV_JOY_7,		SELECT_DEV_JOY_7_S },
+	{ SELECT_DEV_JOY_8,		SELECT_DEV_JOY_8_S },
+	{ SELECT_DEV_KEYB_1,	SELECT_DEV_KEYB_1_S },
+	{ SELECT_DEV_KEYB_2,	SELECT_DEV_KEYB_2_S },
+	{ SELECT_DEV_AI_1,		SELECT_DEV_AI_1_S },
+	{ SELECT_DEV_AI_2,		SELECT_DEV_AI_2_S },
+	{ SELECT_DEV_AI_3,		SELECT_DEV_AI_3_S },
+	{ SELECT_DEV_NONE,		SELECT_DEV_NONE_S },
+};
+
+// 
+const SelectFace g_Faces[8] =
+{
+	{ 2,    6,  SELECT_FACE_1 },
+	{ 2+7,  6,  SELECT_FACE_2 },
+	{ 2+14, 6,  SELECT_FACE_3 },
+	{ 2+21, 6,  SELECT_FACE_4 },
+	{ 2,    15, SELECT_FACE_5 },
+	{ 2+7,  15, SELECT_FACE_6 },
+	{ 2+14, 15, SELECT_FACE_7 },
+	{ 2+21, 15, SELECT_FACE_8 },
+};
+
+const SelectSlot g_SelectSlot[] =
+{	//                             L   R   U   D
+	{ {  22,  53 }, {  58,  89 }, -1,  1,  8,  4 }, // 0 - Face 1
+	{ {  78,  53 }, { 115,  89 },  0,  2, -1,  5 }, // 1 - Face 2
+	{ { 134,  53 }, { 170,  89 },  1,  3, -1,  6 }, // 2 - Face 3
+	{ { 190,  53 }, { 226,  89 },  2, -1,  9,  7 }, // 3 - Face 4
+	{ {  22, 125 }, {  58, 161 }, -1,  5,  0, -1 }, // 4 - Face 5
+	{ {  78, 125 }, { 114, 161 },  4,  6,  1, -1 }, // 5 - Face 6
+	{ { 134, 125 }, { 170, 161 },  5,  7,  2, -1 }, // 6 - Face 7
+	{ { 190, 125 }, { 226, 161 },  6, -1,  3, -1 }, // 7 - Face 8
+	{ {  22,  15 }, {  58,  22 }, -1,  9, -1,  0 }, // 8 - Start
+	{ { 198,  15 }, { 226,  22 },  8, -1, -1,  3 }, // 9 - Exit
+};
+
+
 //=============================================================================
 // MEMORY DATA
 //=============================================================================
 
 // System
-u8 g_VBlank = 0;					// Vertical-synchronization flag
-u8 g_Frame = 0;						// Frame counter
+u8 			g_VBlank = 0;					// Vertical-synchronization flag
+u8 			g_Frame = 0;						// Frame counter
+u8			g_Freq;
+u8			g_FreqDetected;
+u8			g_FreqOpt = FREQ_AUTO;
 
 // Gameplay
-u8 g_GameMode = MODE_BATTLEROYAL;
-u8 g_GameCount = 3;
-Player g_Players[8];			// Players information
-Vector g_Salad;				// Salad information
-c8 g_StrBuffer[32];					// String temporary buffer
-u8 g_ScreenBuffer[32*24];
-u8 g_CurrentPlayer;
+u8 			g_GameMode = MODE_BATTLEROYAL;
+u8 			g_GameCount = 3;
+Player		g_Players[8];			// Players information
+u8			g_PlayerMax;
+Vector		g_Salad;				// Salad information
+c8			g_StrBuffer[32];					// String temporary buffer
+u8			g_ScreenBuffer[32*24];
+u8			g_CurrentPlayer;
 
 // Input
-u8 g_JoyNum;
-u8 g_PrevRow3 = 0xFF;
-u8 g_PrevRow8 = 0xFF;
-u8 g_Input[INPUT_NUM];
+u8			g_JoyInfo;
+u8			g_JoyNum;
+u8			g_PrevRow3;
+u8			g_PrevRow8;
+u8			g_Input[INPUT_NUM];
+u8			g_SlotIdx;
+bool		g_SelectEdit;
 
 #if (MSX2_ENHANCE)
-u8 g_VersionVDP;
+u8			g_VersionVDP;
 #endif
-
-i16 g_Test = 0;
 
 //=============================================================================
 // FUNCTIONS
@@ -286,6 +345,30 @@ void SetScore(Player* ply)
 
 //-----------------------------------------------------------------------------
 //
+void MoveCursor(i8 idx)
+{
+	idx %= numberof(g_SelectSlot);
+
+	g_SlotIdx = idx;
+	VDP_SetSpriteSM1(0, g_SelectSlot[idx].UL.X, g_SelectSlot[idx].UL.Y, 16, COLOR_DARK_RED);
+	VDP_SetSpriteSM1(1, g_SelectSlot[idx].DR.X, g_SelectSlot[idx].UL.Y, 17, COLOR_DARK_RED);
+	VDP_SetSpriteSM1(2, g_SelectSlot[idx].UL.X, g_SelectSlot[idx].DR.Y, 18, COLOR_DARK_RED);
+	VDP_SetSpriteSM1(3, g_SelectSlot[idx].DR.X, g_SelectSlot[idx].DR.Y, 19, COLOR_DARK_RED);
+}
+
+//-----------------------------------------------------------------------------
+//
+void EditPlayer(u8 id, bool bEdit)
+{
+	u8 x = g_Faces[id].X;
+	u8 y = g_Faces[id].Y;
+	u8 in = g_Players[id].Input;
+	VDP_WriteLayout_GM2(bEdit ? g_Devices[in].Edit : g_Devices[in].Default, x, y + 6, 7, 3);
+	g_SelectEdit = bEdit;
+}
+
+//-----------------------------------------------------------------------------
+//
 void CheckBattleRoyal()
 {
 	Player* lastPly = NULL;
@@ -304,7 +387,7 @@ void CheckBattleRoyal()
 	ClearPlayer(lastPly);
 
 	for(u8 i = 0; i < 8; ++i)
-		InitPlayer(&g_Players[i], i, TRUE);
+		SpawnPlayer(&g_Players[i]);
 }
 
 //-----------------------------------------------------------------------------
@@ -399,10 +482,57 @@ void UpdatePlayerInput(Player* ply)
 
 //-----------------------------------------------------------------------------
 // 
-void InitPlayer(Player* ply, u8 id, bool bRespawn)
+void SetPlayerInput(Player* ply, u8 in)
 {
-	const Start* start = &g_Starts[id];
+	ply->Input  = in;
+	switch(in)
+	{
+	case INPUT_JOY_1:
+	case INPUT_JOY_2:
+	case INPUT_JOY_3:
+	case INPUT_JOY_4:
+	case INPUT_JOY_5:
+	case INPUT_JOY_6:
+	case INPUT_JOY_7:
+	case INPUT_JOY_8:
+	case INPUT_KEY_1:
+	case INPUT_KEY_2:
+		ply->Action = UpdatePlayerInput;
+		break;
+	case INPUT_AI_EASY:
+	case INPUT_AI_MED:
+	case INPUT_AI_HARD:
+		ply->Action = UpdateAI;
+		break;
+	case INPUT_NONE:
+		ply->Action = NULL;
+		break;
+	};
+}
+
+//-----------------------------------------------------------------------------
+// 
+void InitPlayer(Player* ply, u8 id)
+{
 	ply->ID     = id;
+	ply->Score  = 0;
+
+	if(id < g_JoyNum)
+		SetPlayerInput(ply, id);
+	else if(id < g_JoyNum + 2)
+		SetPlayerInput(ply, INPUT_KEY_1 + id - g_JoyNum);
+	else
+		SetPlayerInput(ply, INPUT_AI_MED);
+}
+
+//-----------------------------------------------------------------------------
+// 
+void SpawnPlayer(Player* ply)
+{
+	if(ply->Input == INPUT_NONE)
+		return;
+	
+	const Start* start = &g_Starts[ply->ID];
 	ply->PosX   = start->X;
 	ply->PosY   = start->Y;
 	ply->Dir    = start->Dir;
@@ -412,26 +542,8 @@ void InitPlayer(Player* ply, u8 id, bool bRespawn)
 	ply->Idx    = 0;
 	ply->State  = STATE_INIT;
 	ply->Timer  = 0;
-	if(!bRespawn)
-		ply->Score  = 0;
 	for(u8 i = 0; i < LENGTH_MIN; ++i)
 		ply->Path[i] = start->Dir;
-
-	switch(id)
-	{
-	case 0:
-		ply->Action = UpdatePlayerInput;
-		ply->Input  = INPUT_KEY_1;
-		break;
-	case 1:
-		ply->Action = UpdatePlayerInput;
-		ply->Input  = INPUT_KEY_2;
-		break;
-	default:
-		ply->Action = UpdateAI;
-		ply->Input  = INPUT_AI_MED;
-		break;
-	};
 
 	SetScore(ply);
 }
@@ -649,7 +761,7 @@ void UpdatePlayer(Player* ply)
 				return;
 			case MODE_DEATHMATCH:
 			case MODE_SIZEMATTER:
-				InitPlayer(ply, ply->ID, TRUE);
+				SpawnPlayer(ply);
 				return;
 			};
 		}
@@ -739,6 +851,62 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 
 //-----------------------------------------------------------------------------
 //
+const c8* MenuAction_Freq(u8 op, i8 value)
+{
+	switch(op)
+	{
+	case MENU_ACTION_SET:
+	case MENU_ACTION_INC:
+		g_FreqOpt = (g_FreqOpt + 1) % FREQ_MAX;
+		break;
+	case MENU_ACTION_DEC:
+		g_FreqOpt = (g_FreqOpt + (FREQ_MAX - 1)) % FREQ_MAX;
+		break;
+	}
+	
+	if(g_FreqOpt == FREQ_60HZ) 
+	{
+		g_Freq = FREQ_60HZ;
+		return "60 HZ";
+	}
+	else if(g_FreqOpt == FREQ_50HZ)
+	{
+		g_Freq = FREQ_50HZ;
+		return "50 HZ";
+	}
+	else
+	{
+		g_Freq = g_FreqDetected;
+		if(g_Freq == FREQ_50HZ)
+			return "AUTO (50 HZ)";
+		else
+			return "AUTO (60 HZ)";
+	}
+	
+	return "";
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Port(u8 op, i8 value)
+{
+	u8 tap = NTAP_TYPE_NONE;
+	if(value == 0) // port 1
+		tap = (g_JoyInfo >> 4) & 0x03;
+	else if(value == 1)
+		tap = (g_JoyInfo >> 6);
+	switch(tap)
+	{
+	case NTAP_TYPE_NONE:    return "JOYSTICK";
+	case NTAP_TYPE_NINJA:   return "NINJA TAP";
+	case NTAP_TYPE_SHINOBI: return "SHINOBI TAP";
+	case NTAP_TYPE_UNKNOW:  break;
+	}
+	return "UNKNOW";
+}
+
+//-----------------------------------------------------------------------------
+//
 const c8* MenuAction_Exit(u8 op, i8 value)
 {
 	if(op == MENU_ACTION_SET)
@@ -770,6 +938,12 @@ void State_Init_Begin()
 		VDP_SetPalette((u8*)g_MSX2Palette);
 	#endif
 
+	if(g_BASRVN[0] & 0x80)
+		g_FreqDetected = FREQ_50HZ;
+	else
+		g_FreqDetected = FREQ_60HZ;
+	g_Freq = g_FreqDetected;
+
 	// Initialize VDP
 	VDP_SetMode(VDP_MODE_GRAPHIC2);
 	VDP_ClearVRAM();
@@ -781,7 +955,13 @@ void State_Init_Begin()
 
 	// Initialize Joystick and/or Ninja Tap
 	NTap_Check();
+	g_JoyInfo = NTap_GetInfo();
 	g_JoyNum = NTap_GetPortNum();
+	g_PlayerMax = MIN(g_JoyNum + 2, 8);
+
+	// Initialize players
+	for(u8 i = 0; i < 8; ++i)
+		InitPlayer(&g_Players[i], i);
 }
 
 //-----------------------------------------------------------------------------
@@ -799,6 +979,7 @@ void State_Init_Update()
 //
 void State_Title_Begin()
 {
+	VDP_EnableDisplay(FALSE);
 	VDP_ClearVRAM();
 
 	// Initialize sprites data
@@ -831,18 +1012,21 @@ void State_Title_Begin()
 	Print_DrawTextAt(2, 21, "PIXEL PHENIX 2023   " MSXGL);
 
 	// Initialize sprites data
-	VDP_SetSpriteSM1(0, (u8)(26 * 8), (u8)(21 * 8 - 1), 12, COLOR_DARK_GREEN);
-	VDP_SetSpriteSM1(1, (u8)(27 * 8), (u8)(21 * 8 - 1), 13, COLOR_DARK_GREEN);
-	VDP_SetSpriteSM1(2, (u8)(28 * 8), (u8)(21 * 8 - 1), 14, COLOR_DARK_GREEN);
-	VDP_SetSpriteSM1(3, (u8)(29 * 8), (u8)(21 * 8 - 1), 15, COLOR_DARK_GREEN);
+	VDP_SetSpriteSM1(0, (u8)(26 * 8), (u8)(21 * 8 - 1), 12, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(1, (u8)(27 * 8), (u8)(21 * 8 - 1), 13, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(2, (u8)(28 * 8), (u8)(21 * 8 - 1), 14, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(3, (u8)(29 * 8), (u8)(21 * 8 - 1), 15, COLOR_DARK_BLUE);
 	VDP_DisableSpritesFrom(4);
+
+	VDP_EnableDisplay(TRUE);
 }
+
 
 //-----------------------------------------------------------------------------
 //
 void State_Title_Update()
 {
-	WaitVBlank();
+	WaitVBlank(); // Wait V-Synch
 
 	Print_DrawTextAt(11, 14, (g_Frame & 0x10) ? "PRESS SPACE" : "           ");
 
@@ -867,8 +1051,9 @@ void State_Menu_Begin()
 //
 void State_Menu_Update()
 {
+	WaitVBlank(); // Wait V-Synch
+
 	// Update menu
-	WaitVBlank();
 	Menu_Update();
 }
 
@@ -880,36 +1065,123 @@ void State_Menu_Update()
 //
 void State_Select_Begin()
 {
-	VDP_DisableSpritesFrom(0);
+	// Sprite
+	VDP_DisableSpritesFrom(4);
+
+	//........................................
+	// Load tiles
 
 	// Initialize tiles data
 	VDP_LoadPattern_GM2(g_DataSelect_Patterns, sizeof(g_DataSelect_Patterns) / 8, 0);
 	VDP_LoadColor_GM2(g_DataSelect_Colors, sizeof(g_DataSelect_Colors) / 8, 0);
-	VDP_WriteLayout_GM2(g_DataSelect_Names, 0, 0, 32, 24);
-
-	// Upper part portaits
+	// Portaits tiles
 	u16 dst = g_ScreenPatternLow + (128 * 8);
 	VDP_WriteVRAM(g_DataFace1_Patterns, dst, g_ScreenPatternHigh, sizeof(g_DataFace1_Patterns));
 	dst += 0x800;
 	VDP_WriteVRAM(g_DataFace1_Patterns, dst, g_ScreenPatternHigh, sizeof(g_DataFace1_Patterns));
 	dst += 0x800;
 	VDP_WriteVRAM(g_DataFace2_Patterns, dst, g_ScreenPatternHigh, sizeof(g_DataFace2_Patterns));
-
-	// Lower part portaits
+	// Portaits colors
 	dst = g_ScreenColorLow + (128 * 8);
 	VDP_WriteVRAM(g_DataFace1_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace1_Colors));
 	dst += 0x800;
 	VDP_WriteVRAM(g_DataFace1_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace1_Colors));
 	dst += 0x800;
 	VDP_WriteVRAM(g_DataFace2_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace2_Colors));
+
+
+	//........................................
+	// Draw page
+
+	// Background
+	VDP_FillScreen_GM2(0x1C);
+	// Buttons
+	VDP_WriteLayout_GM2(SELECT_START, 2, 2, 7, 2);
+	VDP_WriteLayout_GM2(SELECT_EXIT, 24, 2, 6, 2);
+	// Frames and devices
+	for(u8 i = 0; i < 8; ++i)
+	{
+		u8 x = g_Faces[i].X;
+		u8 y = g_Faces[i].Y;
+		VDP_WriteLayout_GM2(SELECT_FRAME, x, y, 7, 6);
+		VDP_WriteLayout_GM2(g_Faces[i].Data, x + 1, y + 1, 5, 5);
+		u8 in = g_Players[i].Input;
+		VDP_WriteLayout_GM2(g_Devices[in].Default, x, y + 6, 7, 3);
+	}
+
+	g_PrevRow8 = 0;
+	MoveCursor(8);
 }
 
 //-----------------------------------------------------------------------------
 //
 void State_Select_Update()
 {
-	if(Keyboard_IsKeyPressed(KEY_SPACE))
-		FSM_SetState(&State_Game);
+	WaitVBlank(); // Wait V-Synch
+
+	u8 row8 = Keyboard_Read(8);
+
+	if(g_SelectEdit)
+	{
+		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
+		{
+			if(g_Players[g_SlotIdx].Input > 0)
+			{
+				g_Players[g_SlotIdx].Input--;
+				EditPlayer(g_SlotIdx, TRUE);
+			}
+		}
+		else if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
+		{
+			if(g_Players[g_SlotIdx].Input < INPUT_MAX-1)
+			{
+				g_Players[g_SlotIdx].Input++;
+				EditPlayer(g_SlotIdx, TRUE);
+			}
+		}
+
+		if(IS_KEY_PRESSED(row8, KEY_SPACE) && !IS_KEY_PRESSED(g_PrevRow8, KEY_SPACE))
+			EditPlayer(g_SlotIdx, FALSE);
+	}
+	else
+	{
+		i8 newSlot = -1;
+		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
+			newSlot = g_SelectSlot[g_SlotIdx].Left;
+		else if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
+			newSlot = g_SelectSlot[g_SlotIdx].Right;
+		if(IS_KEY_PRESSED(row8, KEY_UP) && !IS_KEY_PRESSED(g_PrevRow8, KEY_UP))
+			newSlot = g_SelectSlot[g_SlotIdx].Up;
+		else if(IS_KEY_PRESSED(row8, KEY_DOWN) && !IS_KEY_PRESSED(g_PrevRow8, KEY_DOWN))
+			newSlot = g_SelectSlot[g_SlotIdx].Down;
+		if(newSlot != -1)
+			MoveCursor(newSlot);
+
+		if(IS_KEY_PRESSED(row8, KEY_SPACE) && !IS_KEY_PRESSED(g_PrevRow8, KEY_SPACE))
+		{
+			switch(g_SlotIdx)
+			{
+			case 0:
+			case 1:
+			case 2:
+			case 3:
+			case 4:
+			case 5:
+			case 6:
+			case 7:
+				EditPlayer(g_SlotIdx, TRUE);
+				break;
+			case 8:
+				FSM_SetState(&State_Game);
+				break;
+			case 9:
+				FSM_SetState(&State_Title);
+				break;
+			};
+		}
+	}
+
+	g_PrevRow8 = row8;
 }
 
 //.............................................................................
@@ -925,6 +1197,10 @@ void State_Game_Begin()
 	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
 
 	// Initialize sprites data
+	VDP_HideSprite(0);
+	VDP_HideSprite(1);
+	VDP_HideSprite(2);
+	VDP_HideSprite(3);
 	VDP_DisableSpritesFrom(4);
 
 	// Draw game field
@@ -958,10 +1234,13 @@ void State_Game_Begin()
 	// Initialize Salad
 	SpawnSalad();
 
+	// Spawn players
 	for(u8 i = 0; i < 8; ++i)
-		InitPlayer(&g_Players[i], i, FALSE);
+		SpawnPlayer(&g_Players[i]);
 
 	g_CurrentPlayer = 0;
+	g_PrevRow3 = 0;
+	g_PrevRow8 = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -969,6 +1248,9 @@ void State_Game_Begin()
 void State_Game_Update()
 {
 	WaitVBlank(); // Wait V-Synch
+
+	if((g_Freq == FREQ_60HZ) && ((g_Frame % 6) == 0)) // skip 6th frame for 60 Hz
+		return;
 
 	// Update one of the players
 	Player* ply = &g_Players[g_CurrentPlayer];
