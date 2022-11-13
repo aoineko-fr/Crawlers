@@ -14,6 +14,9 @@
 #define MSX_GL						"\x02\x03\x04\x05"
 
 // 
+#define PLAYER_MAX					8
+
+// 
 #define CHAR_FIRST					' '
 
 //
@@ -33,29 +36,30 @@
 #define TILE_MUSH					0xF2
 #define TILE_PREHOLE				0xF3
 
-#define SPAWN_WAIT					16 // Spawn waiting time (N * 8 frames)
+#define SPAWN_WAIT					20 // Spawn waiting time (N * 8 frames)
 #define COOLDOWN_WAIT				8
 
-// Input types define
-enum INPUT_TYPE
+// Controller types define
+enum CTRL_TYPE
 {
-	INPUT_JOY_1 = 0,
-	INPUT_JOY_2,
-	INPUT_JOY_3,
-	INPUT_JOY_4,
-	INPUT_JOY_5,
-	INPUT_JOY_6,
-	INPUT_JOY_7,
-	INPUT_JOY_8,
-	INPUT_KEY_1,					// 9
-	INPUT_KEY_2,
-	INPUT_NUM,
-	INPUT_AI_EASY = INPUT_NUM,		// 11
-	INPUT_AI_MED,
-	INPUT_AI_HARD,
-	INPUT_NONE,						// 14
-	INPUT_MAX,
+	CTRL_JOY_1 = 0,
+	CTRL_JOY_2,
+	CTRL_JOY_3,
+	CTRL_JOY_4,
+	CTRL_JOY_5,
+	CTRL_JOY_6,
+	CTRL_JOY_7,
+	CTRL_JOY_8,
+	CTRL_KEY_1,					// 9
+	CTRL_KEY_2,
+	CTRL_PLY_NUM,
+	CTRL_AI_EASY = CTRL_PLY_NUM,	// 11
+	CTRL_AI_MED,
+	CTRL_AI_HARD,
+	CTRL_NONE,						// 14
+	CTRL_MAX,
 };
+#define CTRL_FREE					0xFF
 
 // Direction define
 enum DIRECTION
@@ -68,7 +72,7 @@ enum DIRECTION
 };
 
 // Input actions define
-enum INPUT_ACTION
+enum ACTION_TYPE
 {
 	ACTION_NONE = 0,
 	ACTION_RIGHT,
@@ -147,7 +151,7 @@ typedef struct PlayerTag
 {
 	u8 ID;
 	InputCB Action;
-	u8 Input;
+	u8 Controller;
 	u8 PosX;
 	u8 PosY;
 	u8 Dir;
@@ -165,8 +169,11 @@ typedef struct PlayerTag
 typedef struct
 {
 	const c8* Name;
-	u8 TileBase;
-	u8 Sprite;
+	u8        TileBase;
+	u8        Sprite;
+	u8        FrameX;
+	u8        FrameY;
+	const u8* Face;
 } Character;
 
 // Device
@@ -175,14 +182,6 @@ typedef struct
 	const u8*	Default;
 	const u8*	Edit;
 } SelectDevice;
-
-// Device
-typedef struct
-{
-	u8			X;
-	u8			Y;
-	const u8*	Data;
-} SelectFace;
 
 // Slot
 typedef struct

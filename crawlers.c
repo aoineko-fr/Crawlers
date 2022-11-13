@@ -97,20 +97,20 @@ const Shapes g_Body[] =
 };
 
 //
-const Character g_Chara[] =
+const Character g_CharaInfo[PLAYER_MAX] =
 {
-	{ "Chara 01", 0*20, 0    },
-	{ "Chara 02", 2*20, 1    },
-	{ "Chara 03", 5*20, 0xFF },
-	{ "Chara 04", 6*20, 0xFF },
-	{ "Chara 05", 1*20, 2    },
-	{ "Chara 06", 3*20, 3    },
-	{ "Chara 07", 4*20, 0xFF },
-	{ "Chara 08", 7*20, 0xFF },
+	{ "Chara 01", 0*20, 0   , 2,    6,  SELECT_FACE_1 },
+	{ "Chara 02", 2*20, 1   , 2+7,  6,  SELECT_FACE_2 },
+	{ "Chara 03", 6*20, 0xFF, 2+14, 6,  SELECT_FACE_3 },
+	{ "Chara 04", 5*20, 0xFF, 2+21, 6,  SELECT_FACE_4 },
+	{ "Chara 05", 7*20, 0xFF, 2,    15, SELECT_FACE_5 },
+	{ "Chara 06", 4*20, 0xFF, 2+7,  15, SELECT_FACE_6 },
+	{ "Chara 07", 1*20, 2   , 2+14, 15, SELECT_FACE_7 },
+	{ "Chara 08", 3*20, 3   , 2+21, 15, SELECT_FACE_8 },
 };
 
 //
-const Start g_Starts[] =
+const Start g_Starts[PLAYER_MAX] =
 {
 	{  5,  6, DIR_RIGHT },
 	{ 26,  6, DIR_DOWN  },
@@ -152,6 +152,10 @@ const c8 g_TitleTile[] = {
 	0xC2, 0xBC, 0xC3, 0x89, 0x00, 0x88, 0x4D, 0x00, 0x4C, 0xAE, 0xAF, 0xB1, 0xD6, 0xD0, 0xCD, 0x5E, 0x58, 0x67, 0x9C, 0x00, 0x9D, 0x77, 0x6C, 0x73,
 };
 
+const MenuItemMinMax g_MenuRoundsMinMax = { 1, 10, 1 };
+const MenuItemMinMax g_MenuTreesMinMax =  { 0, 50, 5 };
+
+
 //
 const MenuItem g_MenuMain[] = {
 	{ "PLAY",                MENU_ITEM_GOTO, NULL, MENU_PLAY },
@@ -165,7 +169,8 @@ const MenuItem g_MenuMain[] = {
 const MenuItem g_MenuPlay[] = {
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, 0 },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
-	{ "COUNT",               MENU_ITEM_INT, &g_GameCount, 1 },
+	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
+	{ "TREES",               MENU_ITEM_INT, &g_Obstacle, (i16)&g_MenuTreesMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -175,7 +180,7 @@ const MenuItem g_MenuOption[] = {
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
 	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
-	{ "MAXPLY",              MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, 0 },
+	{ "MAXPLY",              MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -207,42 +212,30 @@ const FSM_State State_Select =	{ 0, State_Select_Begin,	State_Select_Update,	NUL
 const FSM_State State_Game =	{ 0, State_Game_Begin,		State_Game_Update,		NULL };
 
 // 
-const SelectDevice g_Devices[INPUT_MAX] =
+const SelectDevice g_Devices[CTRL_MAX] =
 {
-	{ SELECT_DEV_JOY_1,		SELECT_DEV_JOY_1_S },
-	{ SELECT_DEV_JOY_2,		SELECT_DEV_JOY_2_S },
-	{ SELECT_DEV_JOY_3,		SELECT_DEV_JOY_3_S },
-	{ SELECT_DEV_JOY_4,		SELECT_DEV_JOY_4_S },
-	{ SELECT_DEV_JOY_5,		SELECT_DEV_JOY_5_S },
-	{ SELECT_DEV_JOY_6,		SELECT_DEV_JOY_6_S },
-	{ SELECT_DEV_JOY_7,		SELECT_DEV_JOY_7_S },
-	{ SELECT_DEV_JOY_8,		SELECT_DEV_JOY_8_S },
-	{ SELECT_DEV_KEYB_1,	SELECT_DEV_KEYB_1_S },
-	{ SELECT_DEV_KEYB_2,	SELECT_DEV_KEYB_2_S },
-	{ SELECT_DEV_AI_1,		SELECT_DEV_AI_1_S },
-	{ SELECT_DEV_AI_2,		SELECT_DEV_AI_2_S },
-	{ SELECT_DEV_AI_3,		SELECT_DEV_AI_3_S },
-	{ SELECT_DEV_NONE,		SELECT_DEV_NONE_S },
+	{ SELECT_DEV_JOY_1,  SELECT_DEV_JOY_1_S },
+	{ SELECT_DEV_JOY_2,  SELECT_DEV_JOY_2_S },
+	{ SELECT_DEV_JOY_3,  SELECT_DEV_JOY_3_S },
+	{ SELECT_DEV_JOY_4,  SELECT_DEV_JOY_4_S },
+	{ SELECT_DEV_JOY_5,  SELECT_DEV_JOY_5_S },
+	{ SELECT_DEV_JOY_6,  SELECT_DEV_JOY_6_S },
+	{ SELECT_DEV_JOY_7,  SELECT_DEV_JOY_7_S },
+	{ SELECT_DEV_JOY_8,  SELECT_DEV_JOY_8_S },
+	{ SELECT_DEV_KEYB_1, SELECT_DEV_KEYB_1_S },
+	{ SELECT_DEV_KEYB_2, SELECT_DEV_KEYB_2_S },
+	{ SELECT_DEV_AI_1,   SELECT_DEV_AI_1_S },
+	{ SELECT_DEV_AI_2,   SELECT_DEV_AI_2_S },
+	{ SELECT_DEV_AI_3,   SELECT_DEV_AI_3_S },
+	{ SELECT_DEV_NONE,   SELECT_DEV_NONE_S },
 };
 
-// 
-const SelectFace g_Faces[8] =
-{
-	{ 2,    6,  SELECT_FACE_1 },
-	{ 2+7,  6,  SELECT_FACE_2 },
-	{ 2+14, 6,  SELECT_FACE_3 },
-	{ 2+21, 6,  SELECT_FACE_4 },
-	{ 2,    15, SELECT_FACE_5 },
-	{ 2+7,  15, SELECT_FACE_6 },
-	{ 2+14, 15, SELECT_FACE_7 },
-	{ 2+21, 15, SELECT_FACE_8 },
-};
-
+//
 const SelectSlot g_SelectSlot[] =
 {	//                             L   R   U   D
 	{ {  22,  53 }, {  58,  89 }, -1,  1,  8,  4 }, // 0 - Face 1
-	{ {  78,  53 }, { 115,  89 },  0,  2, -1,  5 }, // 1 - Face 2
-	{ { 134,  53 }, { 170,  89 },  1,  3, -1,  6 }, // 2 - Face 3
+	{ {  78,  53 }, { 114,  89 },  0,  2,  8,  5 }, // 1 - Face 2
+	{ { 134,  53 }, { 170,  89 },  1,  3,  9,  6 }, // 2 - Face 3
 	{ { 190,  53 }, { 226,  89 },  2, -1,  9,  7 }, // 3 - Face 4
 	{ {  22, 125 }, {  58, 161 }, -1,  5,  0, -1 }, // 4 - Face 5
 	{ {  78, 125 }, { 114, 161 },  4,  6,  1, -1 }, // 5 - Face 6
@@ -252,6 +245,8 @@ const SelectSlot g_SelectSlot[] =
 	{ { 198,  15 }, { 226,  22 },  8, -1, -1,  3 }, // 9 - Exit
 };
 
+// Cursor animation
+const u8 g_CursorAnim[] = { 1, 1, 2, 1, 1, 0, 0, 0 };
 
 //=============================================================================
 // MEMORY DATA
@@ -267,21 +262,23 @@ u8			g_FreqOpt = FREQ_AUTO;
 // Gameplay
 u8 			g_GameMode = MODE_BATTLEROYAL;
 u8 			g_GameCount = 3;
-Player		g_Players[8];			// Players information
+Player		g_Players[PLAYER_MAX];			// Players information
 u8			g_PlayerMax;
 Vector		g_Salad;				// Salad information
 c8			g_StrBuffer[32];					// String temporary buffer
 u8			g_ScreenBuffer[32*24];
 u8			g_CurrentPlayer;
+u8			g_Obstacle = 0;
 
 // Input
 u8			g_JoyInfo;
 u8			g_JoyNum;
 u8			g_PrevRow3;
 u8			g_PrevRow8;
-u8			g_Input[INPUT_NUM];
+u8			g_Input[CTRL_PLY_NUM];
 u8			g_SlotIdx;
 bool		g_SelectEdit;
+u8			g_CtrlReg[CTRL_MAX];
 
 #if (MSX2_ENHANCE)
 u8			g_VersionVDP;
@@ -348,31 +345,40 @@ void SetScore(Player* ply)
 void MoveCursor(i8 idx)
 {
 	idx %= numberof(g_SelectSlot);
-
 	g_SlotIdx = idx;
-	VDP_SetSpriteSM1(0, g_SelectSlot[idx].UL.X, g_SelectSlot[idx].UL.Y, 16, COLOR_DARK_RED);
-	VDP_SetSpriteSM1(1, g_SelectSlot[idx].DR.X, g_SelectSlot[idx].UL.Y, 17, COLOR_DARK_RED);
-	VDP_SetSpriteSM1(2, g_SelectSlot[idx].UL.X, g_SelectSlot[idx].DR.Y, 18, COLOR_DARK_RED);
-	VDP_SetSpriteSM1(3, g_SelectSlot[idx].DR.X, g_SelectSlot[idx].DR.Y, 19, COLOR_DARK_RED);
+
+	VDP_SetSpriteSM1(0, 0, 0, 16, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(1, 0, 0, 17, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(2, 0, 0, 18, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(3, 0, 0, 19, COLOR_DARK_BLUE);
 }
 
 //-----------------------------------------------------------------------------
 //
 void EditPlayer(u8 id, bool bEdit)
 {
-	u8 x = g_Faces[id].X;
-	u8 y = g_Faces[id].Y;
-	u8 in = g_Players[id].Input;
-	VDP_WriteLayout_GM2(bEdit ? g_Devices[in].Edit : g_Devices[in].Default, x, y + 6, 7, 3);
+	u8 x = g_CharaInfo[id].FrameX;
+	u8 y = g_CharaInfo[id].FrameY;
+	u8 ctrl = g_Players[id].Controller;
+	VDP_WriteLayout_GM2(bEdit ? g_Devices[ctrl].Edit : g_Devices[ctrl].Default, x, y + 6, 7, 3);
 	g_SelectEdit = bEdit;
+
+	if(bEdit)
+	{
+		VDP_SetSpritePosition(0, g_SelectSlot[g_SlotIdx].UL.X, g_SelectSlot[g_SlotIdx].UL.Y);
+		VDP_SetSpritePosition(1, g_SelectSlot[g_SlotIdx].DR.X, g_SelectSlot[g_SlotIdx].UL.Y);
+		VDP_SetSpritePosition(2, g_SelectSlot[g_SlotIdx].UL.X, g_SelectSlot[g_SlotIdx].DR.Y + 16);
+		VDP_SetSpritePosition(3, g_SelectSlot[g_SlotIdx].DR.X, g_SelectSlot[g_SlotIdx].DR.Y + 16);
+	}
 }
 
 //-----------------------------------------------------------------------------
 //
 void CheckBattleRoyal()
 {
+	// Check is there is a last standing
 	Player* lastPly = NULL;
-	for(u8 i = 0; i < 8; ++i)
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
 	{
 		if(g_Players[i].State != STATE_NONE)
 		{
@@ -382,11 +388,16 @@ void CheckBattleRoyal()
 		}
 	}
 
+	// Score a point
 	lastPly->Score++;
 	SetScore(lastPly);
-	ClearPlayer(lastPly);
 
-	for(u8 i = 0; i < 8; ++i)
+	// Check victory condition
+	/* ... */
+
+	// Clean field and start a new round
+	ClearPlayer(lastPly);
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		SpawnPlayer(&g_Players[i]);
 }
 
@@ -467,44 +478,51 @@ void UpdateAI(Player* ply)
 //
 void UpdatePlayerInput(Player* ply)
 {
-	if(g_Input[ply->Input] == ACTION_RIGHT)
+	if(g_Input[ply->Controller] == ACTION_RIGHT)
 	{
 		ply->Dir++;
 		ply->Dir %= 4;
 	}
-	else if(g_Input[ply->Input] == ACTION_LEFT)
+	else if(g_Input[ply->Controller] == ACTION_LEFT)
 	{
 		ply->Dir--;
 		ply->Dir %= 4;
 	}
-	g_Input[ply->Input] = ACTION_NONE;
+	g_Input[ply->Controller] = ACTION_NONE;
 }
 
 //-----------------------------------------------------------------------------
 // 
-void SetPlayerInput(Player* ply, u8 in)
+void SetPlayerController(Player* ply, u8 ctrl)
 {
-	ply->Input  = in;
-	switch(in)
+	// Register device
+	if(ply->Controller < CTRL_PLY_NUM) // Free previous
+		g_CtrlReg[ply->Controller] = CTRL_FREE;
+	if(ctrl < CTRL_PLY_NUM)
+		g_CtrlReg[ctrl] = ply->ID;
+
+	ply->Controller  = ctrl;
+
+	switch(ctrl)
 	{
-	case INPUT_JOY_1:
-	case INPUT_JOY_2:
-	case INPUT_JOY_3:
-	case INPUT_JOY_4:
-	case INPUT_JOY_5:
-	case INPUT_JOY_6:
-	case INPUT_JOY_7:
-	case INPUT_JOY_8:
-	case INPUT_KEY_1:
-	case INPUT_KEY_2:
+	case CTRL_JOY_1:
+	case CTRL_JOY_2:
+	case CTRL_JOY_3:
+	case CTRL_JOY_4:
+	case CTRL_JOY_5:
+	case CTRL_JOY_6:
+	case CTRL_JOY_7:
+	case CTRL_JOY_8:
+	case CTRL_KEY_1:
+	case CTRL_KEY_2:
 		ply->Action = UpdatePlayerInput;
 		break;
-	case INPUT_AI_EASY:
-	case INPUT_AI_MED:
-	case INPUT_AI_HARD:
+	case CTRL_AI_EASY:
+	case CTRL_AI_MED:
+	case CTRL_AI_HARD:
 		ply->Action = UpdateAI;
 		break;
-	case INPUT_NONE:
+	case CTRL_NONE:
 		ply->Action = NULL;
 		break;
 	};
@@ -512,24 +530,65 @@ void SetPlayerInput(Player* ply, u8 in)
 
 //-----------------------------------------------------------------------------
 // 
+void SetPrevPlayerController(Player* ply)
+{
+	u8 ctrl = ply->Controller;
+	bool bLoop = TRUE;
+	while(bLoop)
+	{
+		if(ctrl > 0)
+			ctrl--;
+		else
+			ctrl = CTRL_MAX - 1;
+		if((ctrl <= CTRL_JOY_8) && (ctrl >= g_JoyNum))
+			continue;
+		if(g_CtrlReg[ctrl] == CTRL_FREE)
+			break;
+	}
+	SetPlayerController(ply, ctrl);
+}
+
+//-----------------------------------------------------------------------------
+// 
+void SetNextPlayerController(Player* ply)
+{
+	u8 ctrl = ply->Controller;
+	bool bLoop = TRUE;
+	while(bLoop)
+	{
+		if(ctrl < CTRL_MAX - 1)
+			ctrl++;
+		else
+			ctrl = 0;
+		if((ctrl <= CTRL_JOY_8) && (ctrl >= g_JoyNum))
+			continue;
+		if(g_CtrlReg[ctrl] == CTRL_FREE)
+			break;
+	}
+	SetPlayerController(ply, ctrl);
+}
+
+//-----------------------------------------------------------------------------
+// 
 void InitPlayer(Player* ply, u8 id)
 {
-	ply->ID     = id;
-	ply->Score  = 0;
+	ply->ID         = id;
+	ply->Score      = 0;
+	ply->Controller = CTRL_FREE;
 
 	if(id < g_JoyNum)
-		SetPlayerInput(ply, id);
-	else if(id < g_JoyNum + 2)
-		SetPlayerInput(ply, INPUT_KEY_1 + id - g_JoyNum);
+		SetPlayerController(ply, id);
+	else if(id < g_PlayerMax)
+		SetPlayerController(ply, CTRL_KEY_1 + id - g_JoyNum);
 	else
-		SetPlayerInput(ply, INPUT_AI_MED);
+		SetPlayerController(ply, CTRL_AI_MED);
 }
 
 //-----------------------------------------------------------------------------
 // 
 void SpawnPlayer(Player* ply)
 {
-	if(ply->Input == INPUT_NONE)
+	if(ply->Controller == CTRL_NONE)
 		return;
 	
 	const Start* start = &g_Starts[ply->ID];
@@ -555,7 +614,7 @@ void DrawPlayer(Player* ply)
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
 	u8 idx = ply->Idx;
-	u8 baseTile = g_Chara[ply->ID].TileBase;
+	u8 baseTile = g_CharaInfo[ply->ID].TileBase;
 	bool bGrow = FALSE;
 	bool bReduce = FALSE;
 
@@ -584,7 +643,7 @@ void DrawPlayer(Player* ply)
 			VDP_Poke_GM2(x, y, tile + baseTile);
 
 			// Sprite
-			const Character* chr = &g_Chara[ply->ID];
+			const Character* chr = &g_CharaInfo[ply->ID];
 			if(chr->Sprite != 0xFF)
 			{
 				if(chr->Sprite & 1) // Snake
@@ -673,7 +732,7 @@ void ClearPlayer(Player* ply)
 	}
 
 	// Clear spite
-	const Character* chr = &g_Chara[ply->ID];
+	const Character* chr = &g_CharaInfo[ply->ID];
 	if(chr->Sprite != 0xFF)
 		VDP_HideSprite(chr->Sprite);
 
@@ -684,7 +743,7 @@ void ClearPlayer(Player* ply)
 // Program entry point
 void UpdatePlayer(Player* ply)
 {
-	if(ply->Input == INPUT_NONE)
+	if(ply->Controller == CTRL_NONE)
 		return;
 
 	switch(ply->State)
@@ -751,7 +810,7 @@ void UpdatePlayer(Player* ply)
 
 		// Check destination
 		u8 cell = VDP_Peek_GM2(x, y);
-		if(cell < 0xF0)
+		if(cell < 0xF0) // Obstacle
 		{
 			ClearPlayer(ply);
 			switch(g_GameMode)
@@ -765,7 +824,7 @@ void UpdatePlayer(Player* ply)
 				return;
 			};
 		}
-		else
+		else // No obstacle
 		{
 			switch(cell)
 			{
@@ -959,9 +1018,14 @@ void State_Init_Begin()
 	g_JoyNum = NTap_GetPortNum();
 	g_PlayerMax = MIN(g_JoyNum + 2, 8);
 
+	// Initialize free device
+	for(u8 i = 0; i < CTRL_MAX; ++i)
+		g_CtrlReg[i] = CTRL_FREE;
+
 	// Initialize players
-	for(u8 i = 0; i < 8; ++i)
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		InitPlayer(&g_Players[i], i);
+
 }
 
 //-----------------------------------------------------------------------------
@@ -1042,6 +1106,8 @@ void State_Title_Update()
 //
 void State_Menu_Begin()
 {
+	State_Title_Begin();
+
 	// Initialize menu
 	Menu_Initialize(g_Menus);
 	Menu_DrawPage(MENU_MAIN);
@@ -1099,14 +1165,14 @@ void State_Select_Begin()
 	VDP_WriteLayout_GM2(SELECT_START, 2, 2, 7, 2);
 	VDP_WriteLayout_GM2(SELECT_EXIT, 24, 2, 6, 2);
 	// Frames and devices
-	for(u8 i = 0; i < 8; ++i)
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
 	{
-		u8 x = g_Faces[i].X;
-		u8 y = g_Faces[i].Y;
+		u8 x = g_CharaInfo[i].FrameX;
+		u8 y = g_CharaInfo[i].FrameY;
 		VDP_WriteLayout_GM2(SELECT_FRAME, x, y, 7, 6);
-		VDP_WriteLayout_GM2(g_Faces[i].Data, x + 1, y + 1, 5, 5);
-		u8 in = g_Players[i].Input;
-		VDP_WriteLayout_GM2(g_Devices[in].Default, x, y + 6, 7, 3);
+		VDP_WriteLayout_GM2(g_CharaInfo[i].Face, x + 1, y + 1, 5, 5);
+		u8 ctrl = g_Players[i].Controller;
+		VDP_WriteLayout_GM2(g_Devices[ctrl].Default, x, y + 6, 7, 3);
 	}
 
 	g_PrevRow8 = 0;
@@ -1123,21 +1189,16 @@ void State_Select_Update()
 
 	if(g_SelectEdit)
 	{
+		Player* ply = &g_Players[g_SlotIdx];
 		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
 		{
-			if(g_Players[g_SlotIdx].Input > 0)
-			{
-				g_Players[g_SlotIdx].Input--;
-				EditPlayer(g_SlotIdx, TRUE);
-			}
+			SetPrevPlayerController(ply);
+			EditPlayer(g_SlotIdx, TRUE);
 		}
 		else if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
 		{
-			if(g_Players[g_SlotIdx].Input < INPUT_MAX-1)
-			{
-				g_Players[g_SlotIdx].Input++;
-				EditPlayer(g_SlotIdx, TRUE);
-			}
+			SetNextPlayerController(ply);
+			EditPlayer(g_SlotIdx, TRUE);
 		}
 
 		if(IS_KEY_PRESSED(row8, KEY_SPACE) && !IS_KEY_PRESSED(g_PrevRow8, KEY_SPACE))
@@ -1157,6 +1218,12 @@ void State_Select_Update()
 		if(newSlot != -1)
 			MoveCursor(newSlot);
 
+		u8 offset = g_CursorAnim[(g_Frame >> 2) % 8];
+		VDP_SetSpritePosition(0, g_SelectSlot[g_SlotIdx].UL.X - offset, g_SelectSlot[g_SlotIdx].UL.Y - offset);
+		VDP_SetSpritePosition(1, g_SelectSlot[g_SlotIdx].DR.X + offset, g_SelectSlot[g_SlotIdx].UL.Y - offset);
+		VDP_SetSpritePosition(2, g_SelectSlot[g_SlotIdx].UL.X - offset, g_SelectSlot[g_SlotIdx].DR.Y + offset);
+		VDP_SetSpritePosition(3, g_SelectSlot[g_SlotIdx].DR.X + offset, g_SelectSlot[g_SlotIdx].DR.Y + offset);
+
 		if(IS_KEY_PRESSED(row8, KEY_SPACE) && !IS_KEY_PRESSED(g_PrevRow8, KEY_SPACE))
 		{
 			switch(g_SlotIdx)
@@ -1175,7 +1242,7 @@ void State_Select_Update()
 				FSM_SetState(&State_Game);
 				break;
 			case 9:
-				FSM_SetState(&State_Title);
+				FSM_SetState(&State_Menu);
 				break;
 			};
 		}
@@ -1217,12 +1284,12 @@ void State_Game_Begin()
 	DrawTile(31, 23, 0xEF);
 	DrawTileX(1, 23, 0xEE, 30);
 	// Draw score board
-	for(u8 i = 0; i < 8; ++i)
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
 	{
-		DrawTile(i * 4, 0, 0x42 + g_Chara[i].TileBase);
+		DrawTile(i * 4, 0, 0x42 + g_CharaInfo[i].TileBase);
 	}
 	// Draw pre-hole
-	for(u8 i = 0; i < 8; ++i)
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
 	{
 		const Start* start = &g_Starts[i];
 		DrawTile(start->X, start->Y, TILE_PREHOLE);
@@ -1231,11 +1298,42 @@ void State_Game_Begin()
 	// Copy screen buffer to VRAM
 	VDP_WriteVRAM(g_ScreenBuffer, g_ScreenLayoutLow, g_ScreenLayoutHigh, 32*24);
 
+	// Initialize obstacles
+	for(u8 i = 0; i < g_Obstacle; ++i)
+	{
+		u8 x = 0, y = 0;
+		bool bLoop = TRUE;
+		while(bLoop)
+		{
+			bLoop = FALSE;
+			x = Math_GetRandom8() % 32;
+			y = 2 + (Math_GetRandom8() % 21);
+			// No obstacle on non-empty tile
+			if(VDP_Peek_GM2(x, y) != TILE_EMPTY)
+				bLoop = TRUE;
+			// No obstacle in hole lines
+			for(u8 j = 0; j < PLAYER_MAX; ++j)
+			{
+				if(x == g_Starts[j].X)
+				{
+					bLoop = TRUE;
+					break;
+				}
+				if(y == g_Starts[j].Y)
+				{
+					bLoop = TRUE;
+					break;
+				}
+			}
+		}
+		VDP_Poke_GM2(x, y, TILE_TREE);
+	}
+
 	// Initialize Salad
 	SpawnSalad();
 
 	// Spawn players
-	for(u8 i = 0; i < 8; ++i)
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		SpawnPlayer(&g_Players[i]);
 
 	g_CurrentPlayer = 0;
@@ -1256,27 +1354,27 @@ void State_Game_Update()
 	Player* ply = &g_Players[g_CurrentPlayer];
 	UpdatePlayer(ply);
 	g_CurrentPlayer++;
-	g_CurrentPlayer %= 8;
+	g_CurrentPlayer %= PLAYER_MAX;
 
 	VDP_Poke_GM2(g_Salad.X, g_Salad.Y, TILE_SALAD);
 
 	// Update keyboard entries
-	if(g_Input[INPUT_KEY_1] == ACTION_NONE)
+	if(g_Input[CTRL_KEY_1] == ACTION_NONE)
 	{
 		u8 row8 = Keyboard_Read(8);
 		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
-			g_Input[INPUT_KEY_1] = ACTION_LEFT;
+			g_Input[CTRL_KEY_1] = ACTION_LEFT;
 		else if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
-			g_Input[INPUT_KEY_1] = ACTION_RIGHT;
+			g_Input[CTRL_KEY_1] = ACTION_RIGHT;
 		g_PrevRow8 = row8;
 	}
-	if(g_Input[INPUT_KEY_2] == ACTION_NONE)
+	if(g_Input[CTRL_KEY_2] == ACTION_NONE)
 	{
 		u8 row3 = Keyboard_Read(3);
 		if(IS_KEY_PRESSED(row3, KEY_D) && !IS_KEY_PRESSED(g_PrevRow3, KEY_D))
-			g_Input[INPUT_KEY_2] = ACTION_LEFT;
+			g_Input[CTRL_KEY_2] = ACTION_LEFT;
 		else if(IS_KEY_PRESSED(row3, KEY_G) && !IS_KEY_PRESSED(g_PrevRow3, KEY_G))
-			g_Input[INPUT_KEY_2] = ACTION_RIGHT;
+			g_Input[CTRL_KEY_2] = ACTION_RIGHT;
 		g_PrevRow3 = row3;
 	}
 	// Update joysticks
