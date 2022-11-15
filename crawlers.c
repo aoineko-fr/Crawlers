@@ -33,6 +33,9 @@
 void State_Init_Begin();
 void State_Init_Update();
 
+void State_Logo_Begin();
+void State_Logo_Update();
+
 void State_Title_Begin();
 void State_Title_Update();
 
@@ -63,9 +66,11 @@ void UpdatePlayer(Player* ply);
 
 // Tiles
 #include "content\tiles.h"
+#include "content\logo_tile.h"
 
 // Sprites
 #include "content\sprites.h"
+#include "content\logo_sprt.h"
 
 // Menu
 #include "content\select.h"
@@ -187,6 +192,10 @@ const MenuItem g_MenuOption[] = {
 
 //
 const MenuItem g_MenuCredit[] = {
+	{ "PIXEL PHENIX 2023",   MENU_ITEM_TEXT, NULL, 1 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "POWERED BY " MSXGL,   MENU_ITEM_TEXT, NULL, 2 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "CODE:  AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
 	{ "GFX:   AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
 	{ "MUSIC: ???",          MENU_ITEM_TEXT, NULL, 0 },
@@ -206,6 +215,7 @@ const Menu g_Menus[MENU_MAX] =
 
 // 
 const FSM_State State_Init =	{ 0, State_Init_Begin,		State_Init_Update,		NULL };
+const FSM_State State_Logo =	{ 0, State_Logo_Begin,		State_Logo_Update,		NULL };
 const FSM_State State_Title =	{ 0, State_Title_Begin,		State_Title_Update,		NULL };
 const FSM_State State_Menu =	{ 0, State_Menu_Begin,		State_Menu_Update,		NULL };
 const FSM_State State_Select =	{ 0, State_Select_Begin,	State_Select_Update,	NULL };
@@ -253,19 +263,20 @@ const u8 g_CursorAnim[] = { 1, 1, 2, 1, 1, 0, 0, 0 };
 //=============================================================================
 
 // System
-u8 			g_VBlank = 0;					// Vertical-synchronization flag
-u8 			g_Frame = 0;						// Frame counter
+u8 			g_VBlank = 0;			// Vertical-synchronization flag
+u8 			g_Frame = 0;			// Frame counter
 u8			g_Freq;
 u8			g_FreqDetected;
 u8			g_FreqOpt = FREQ_AUTO;
+u8 			g_6thFrameCount = 0;	// Frame counter
 
 // Gameplay
 u8 			g_GameMode = MODE_BATTLEROYAL;
 u8 			g_GameCount = 3;
-Player		g_Players[PLAYER_MAX];			// Players information
+Player		g_Players[PLAYER_MAX];	// Players information
 u8			g_PlayerMax;
 Vector		g_Salad;				// Salad information
-c8			g_StrBuffer[32];					// String temporary buffer
+c8			g_StrBuffer[32];		// String temporary buffer
 u8			g_ScreenBuffer[32*24];
 u8			g_CurrentPlayer;
 u8			g_Obstacle = 0;
@@ -860,6 +871,17 @@ void WaitVBlank()
 	while(g_VBlank == 0) {}
 	g_VBlank = 0;
 	g_Frame++;
+
+	// Remove the 6th frame on 60 Hz VDP
+	if(g_Freq == FREQ_60HZ)
+	{
+		if(g_6thFrameCount == 5)
+		{
+			g_6thFrameCount = 0;
+			WaitVBlank();
+		}
+		g_6thFrameCount++;
+	}
 }
 
 //=============================================================================
@@ -1006,7 +1028,6 @@ void State_Init_Begin()
 	// Initialize VDP
 	VDP_SetMode(VDP_MODE_GRAPHIC2);
 	VDP_ClearVRAM();
-	VDP_SetColor(COLOR_LIGHT_YELLOW);
 
 	// Set VBlank hook
 	VDP_EnableVBlank(TRUE);
@@ -1032,7 +1053,68 @@ void State_Init_Begin()
 //
 void State_Init_Update()
 {
-	FSM_SetState(&State_Title);
+	FSM_SetState(&State_Logo);
+}
+
+
+//.............................................................................
+// LOGO STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_Logo_Begin()
+{
+	// Initialize VDP
+	VDP_ClearVRAM();
+	VDP_SetColor(COLOR_BLACK);
+
+	// Load tiles data
+	VDP_LoadPattern_GM2(g_DataLogoTile_Patterns, sizeof(g_DataLogoTile_Patterns) / 8, 0);
+	VDP_LoadColor_GM2(g_DataLogoTile_Colors, sizeof(g_DataLogoTile_Colors) / 8, 0);
+	// Draw tiles data
+	VDP_FillScreen_GM2(0x00);
+	VDP_WriteLayout_GM2(g_DataLogoTileL0_Names, 12, 12, 6, 2);
+	VDP_WriteLayout_GM2(g_DataLogoTileL1_Names, 14, 10, 2, 2);
+
+	// Load sprites data
+	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_16);
+	VDP_LoadSpritePattern(g_DataLogoSprt, 0, sizeof(g_DataSprites) / 8);
+	VDP_FillVRAM_16K(0xFF, g_SpritePatternLow + (16 * 8), 4 * 8);
+	// Set sprites data
+	VDP_SetSpriteSM1(0, 112, 79, 16, COLOR_BLACK);
+	VDP_SetSpriteSM1(1,  96, 95, 16, COLOR_BLACK);
+	VDP_SetSpriteSM1(2, 112, 95, 16, COLOR_BLACK);
+	VDP_SetSpriteSM1(3, 128, 95, 16, COLOR_BLACK);
+	VDP_SetSpriteSM1(4, 112, 79,  0, COLOR_LIGHT_YELLOW);
+	VDP_SetSpriteSM1(5, 112, 79,  4, COLOR_DARK_YELLOW);
+	VDP_SetSpriteSM1(6, 112, 79,  8, COLOR_MEDIUM_RED);
+	VDP_SetSpriteSM1(7, 112, 79, 12, COLOR_LIGHT_RED);
+	VDP_DisableSpritesFrom(8);
+
+	*g_ScreenBuffer = 0;
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Logo_Update()
+{
+	// Wait V-Synch
+	WaitVBlank();
+
+	if(g_Frame & 0x02)
+		(*g_ScreenBuffer)++;
+
+	if(((*g_ScreenBuffer) >= LOGO_START) && ((*g_ScreenBuffer) < LOGO_START + LOGO_OFFSET))
+	{
+		VDP_SetSpritePositionY(0, 79 + LOGO_START - *g_ScreenBuffer);
+		VDP_SetSpritePositionY(1, 95 + LOGO_START - *g_ScreenBuffer);
+		VDP_SetSpritePositionY(2, 95 + LOGO_START - *g_ScreenBuffer);
+		VDP_SetSpritePositionY(3, 95 + LOGO_START - *g_ScreenBuffer);
+	}
+
+	if(((*g_ScreenBuffer) == LOGO_END) || Keyboard_IsKeyPressed(KEY_SPACE))
+		FSM_SetState(&State_Title);
 }
 
 //.............................................................................
@@ -1045,6 +1127,7 @@ void State_Title_Begin()
 {
 	VDP_EnableDisplay(FALSE);
 	VDP_ClearVRAM();
+	VDP_SetColor(COLOR_LIGHT_YELLOW);
 
 	// Initialize sprites data
 	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
@@ -1053,7 +1136,6 @@ void State_Title_Begin()
 	// Initialize tiles data
 	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
 	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
-
 	VDP_WriteLayout_GM2(g_TitleTile, 4, 3, 24, 5);
 
 	// Draw field
@@ -1073,14 +1155,7 @@ void State_Title_Begin()
 	Print_SetMode(PRINT_MODE_TEXT);
 	Print_SetTabSize(3);
 
-	Print_DrawTextAt(2, 21, "PIXEL PHENIX 2023   " MSXGL);
-
-	// Initialize sprites data
-	VDP_SetSpriteSM1(0, (u8)(26 * 8), (u8)(21 * 8 - 1), 12, COLOR_DARK_BLUE);
-	VDP_SetSpriteSM1(1, (u8)(27 * 8), (u8)(21 * 8 - 1), 13, COLOR_DARK_BLUE);
-	VDP_SetSpriteSM1(2, (u8)(28 * 8), (u8)(21 * 8 - 1), 14, COLOR_DARK_BLUE);
-	VDP_SetSpriteSM1(3, (u8)(29 * 8), (u8)(21 * 8 - 1), 15, COLOR_DARK_BLUE);
-	VDP_DisableSpritesFrom(4);
+	VDP_DisableSpritesFrom(0);
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -1090,9 +1165,10 @@ void State_Title_Begin()
 //
 void State_Title_Update()
 {
-	WaitVBlank(); // Wait V-Synch
+	// Wait V-Synch
+	WaitVBlank();
 
-	Print_DrawTextAt(11, 14, (g_Frame & 0x10) ? "PRESS SPACE" : "           ");
+	Print_DrawTextAt(11, 15, (g_Frame & 0x10) ? "PRESS SPACE" : "           ");
 
 	if(Keyboard_IsKeyPressed(KEY_SPACE))
 		FSM_SetState(&State_Menu);
@@ -1117,7 +1193,8 @@ void State_Menu_Begin()
 //
 void State_Menu_Update()
 {
-	WaitVBlank(); // Wait V-Synch
+	// Wait V-Synch
+	WaitVBlank();
 
 	// Update menu
 	Menu_Update();
@@ -1183,7 +1260,8 @@ void State_Select_Begin()
 //
 void State_Select_Update()
 {
-	WaitVBlank(); // Wait V-Synch
+	// Wait V-Synch
+	WaitVBlank();
 
 	u8 row8 = Keyboard_Read(8);
 
@@ -1345,10 +1423,8 @@ void State_Game_Begin()
 //
 void State_Game_Update()
 {
-	WaitVBlank(); // Wait V-Synch
-
-	if((g_Freq == FREQ_60HZ) && ((g_Frame % 6) == 0)) // skip 6th frame for 60 Hz
-		return;
+	// Wait V-Synch
+	WaitVBlank();
 
 	// Update one of the players
 	Player* ply = &g_Players[g_CurrentPlayer];
@@ -1391,7 +1467,7 @@ void State_Game_Update()
 	}
 
 	if(Keyboard_IsKeyPressed(KEY_ESC))
-		FSM_SetState(&State_Title);
+		FSM_SetState(&State_Menu);
 }
 
 //=============================================================================

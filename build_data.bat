@@ -65,7 +65,16 @@ echo  Convert SC2 Images...
 	-l gm2 168 144 56 16 ^
 	-l gm2 168 160 48 16
 
+%MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_tile.h -mode gm2 -name g_DataLogoTile -pos 0 0 -size 48 16 ^
+	-l gm2 48 0 16 16
+
 echo -----------------------------------------------------------------------------
 echo  Convert sprite...
 
 %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\sprites.h -pos 128 0 -size 8 8 -num 4 5 -name g_DataSprites -trans 0xDED087 -bpc 1
+
+%MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_sprt.h -mode sprt -name g_DataLogoSprt -pos 64 0 -size 16 16 -num 1 1 ^
+	-l i16 0 0 1 1 0xDED087 ^
+	-l i16 0 0 1 1 0xCCC35E ^
+	-l i16 0 0 1 1 0xFF897D ^
+	-l i16 0 0 1 1 0xDB6559
