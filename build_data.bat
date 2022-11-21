@@ -72,6 +72,7 @@ echo ---------------------------------------------------------------------------
 echo  Convert sprite...
 
 %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\sprites.h -pos 128 0 -size 8 8 -num 4 5 -name g_DataSprites -trans 0xDED087 -bpc 1
+%MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\sprites.asm -pos 128 0 -size 8 8 -num 4 5 -name g_DataSprites -trans 0xDED087 -bpc 1
 
 %MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_sprt.h -mode sprt -name g_DataLogoSprt -pos 64 0 -size 16 16 -num 1 1 ^
 	-l i16 0 0 1 1 0xDED087 ^

@@ -39,9 +39,9 @@
 #define SPAWN_WAIT					20 // Spawn waiting time (N * 8 frames)
 #define COOLDOWN_WAIT				8
 
-#define LOGO_START					32
+#define LOGO_START					8
 #define LOGO_OFFSET					33
-#define LOGO_END					128
+#define LOGO_END					64
 
 
 // Controller types define

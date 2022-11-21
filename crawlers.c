@@ -428,60 +428,137 @@ void SpawnSalad()
 
 //-----------------------------------------------------------------------------
 //
+u8 CheckDir(u8 x, u8 y, u8 dir, u8 max)
+{
+	u8 dist = 0;
+	while(dist < max)
+	{
+		switch(dir)
+		{
+		case DIR_UP:
+			if(VDP_Peek_GM2(x, --y) < 0xF0)
+				return dist;
+			break;
+		case DIR_RIGHT:	
+			if(VDP_Peek_GM2(++x, y) < 0xF0)
+				return dist;
+			break;
+		case DIR_DOWN:	
+			if(VDP_Peek_GM2(x, ++y) < 0xF0)
+				return dist;
+			break;
+		case DIR_LEFT:	
+			if(VDP_Peek_GM2(--x, y) < 0xF0)
+				return dist;
+			break;
+		}
+		dist++;
+	}
+	return max;
+}
+
+const u8 g_DistWight[] = { 10, 6, 3, 1 };
+
+//-----------------------------------------------------------------------------
+//
 void UpdateAI(Player* ply)
 {
+	u8 weight[ACTION_MAX] = { 0, 0, 0 };
+
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
 
-	u8 rnd = Math_GetRandom8();
-
-	// Check collision
-	u8 loop = 3;
-	while(loop != 0)
+	// Front
+	u8 dist = CheckDir(x, y, ply->Dir, 3);
+	if(dist < 3)
 	{
-		switch(ply->Dir)
-		{
-		case DIR_UP:	y--; break;
-		case DIR_RIGHT:	x++; break;
-		case DIR_DOWN:	y++; break;
-		case DIR_LEFT:	x--; break;
-		}
+		weight[ACTION_LEFT] += g_DistWight[dist];
+		weight[ACTION_RIGHT] += g_DistWight[dist];
+	}
 
-		u8 cell = VDP_Peek_GM2(x, y);
-		if(cell < 0xF0)
-		{
-			if(rnd & 0x80) // 50%
-				ply->Dir++;
-			else
-				ply->Dir--;
-			ply->Dir %= 4;
-			return;
-		}
+	// Check right
+	dist = CheckDir(x, y, (ply->Dir + 1) % DIR_MAX, 3);
+	if(dist < 3)
+	{
+		weight[ACTION_NONE] += g_DistWight[dist];
+		weight[ACTION_LEFT] += g_DistWight[dist];
+	}
 
-		loop--;
+	// Check left
+	dist = CheckDir(x, y, (ply->Dir + DIR_MAX - 1) % DIR_MAX, 3);
+	if(dist < 3)
+	{
+		weight[ACTION_NONE] += g_DistWight[dist];
+		weight[ACTION_RIGHT] += g_DistWight[dist];
 	}
 
 	// Seek salad
-	if((rnd & 0x60) == 0) // 25%
+	switch(ply->Dir)
 	{
-		switch(ply->Dir)
-		{
-		case DIR_UP:
-		case DIR_DOWN:
-			if(g_Salad.X > ply->PosX)
-				ply->Dir = DIR_RIGHT;
-			else if(g_Salad.X < ply->PosX)
-				ply->Dir = DIR_LEFT;
-			return;
+	case DIR_UP:
+		if(g_Salad.X > ply->PosX)
+			weight[ACTION_RIGHT]++;
+		else if(g_Salad.X < ply->PosX)
+			weight[ACTION_LEFT]++;
+		break;
 
-		case DIR_RIGHT:
-		case DIR_LEFT:
-			if(g_Salad.Y > ply->PosY)
-				ply->Dir = DIR_DOWN;
-			else if(g_Salad.Y < ply->PosY)
-				ply->Dir = DIR_UP;
-			return;
-		}
+	case DIR_DOWN:
+		if(g_Salad.X < ply->PosX)
+			weight[ACTION_RIGHT]++;
+		else if(g_Salad.X > ply->PosX)
+			weight[ACTION_LEFT]++;
+		break;
+
+	case DIR_RIGHT:
+		if(g_Salad.Y > ply->PosY)
+			weight[ACTION_RIGHT]++;
+		else if(g_Salad.Y < ply->PosY)
+			weight[ACTION_LEFT]++;
+		break;
+
+	case DIR_LEFT:
+		if(g_Salad.Y < ply->PosY)
+			weight[ACTION_RIGHT]++;
+		else if(g_Salad.Y > ply->PosY)
+			weight[ACTION_LEFT]++;
+		break;
+	}
+
+	// Randomize
+	/*if(ply->Controller == CTRL_AI_EASY)
+	{
+		weight[ACTION_NONE]  += Math_GetRandom8() & 0x07;
+		weight[ACTION_RIGHT] += Math_GetRandom8() & 0x07;
+		weight[ACTION_LEFT]  += Math_GetRandom8() & 0x07;
+	}
+	else if(ply->Controller == CTRL_AI_MED)
+	{
+		weight[ACTION_NONE]  += Math_GetRandom8() & 0x03;
+		weight[ACTION_RIGHT] += Math_GetRandom8() & 0x03;
+		weight[ACTION_LEFT]  += Math_GetRandom8() & 0x03;
+	}
+	else // if(ply->Controller == CTRL_AI_HARD)
+	{
+		weight[ACTION_NONE]  += Math_GetRandom8() & 0x01;
+		weight[ACTION_RIGHT] += Math_GetRandom8() & 0x01;
+		weight[ACTION_LEFT]  += Math_GetRandom8() & 0x01;
+	}*/
+
+	u8 choice = ACTION_NONE;
+	if(weight[ACTION_NONE] < weight[ACTION_RIGHT])
+		choice = ACTION_RIGHT;
+	if(weight[choice] < weight[ACTION_LEFT])
+		choice = ACTION_LEFT;
+
+	if(choice == ACTION_RIGHT)
+	{
+		ply->Dir++;
+		ply->Dir %= 4;
+	}
+	else if(choice == ACTION_LEFT)
+	{
+		ply->Dir--;
+		ply->Dir %= 4;
 	}
 }
 
@@ -1102,7 +1179,7 @@ void State_Logo_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
-	if(g_Frame & 0x02)
+	if((g_Frame & 0x03) == 0)
 		(*g_ScreenBuffer)++;
 
 	if(((*g_ScreenBuffer) >= LOGO_START) && ((*g_ScreenBuffer) < LOGO_START + LOGO_OFFSET))
