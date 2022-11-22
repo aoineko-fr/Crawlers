@@ -258,6 +258,23 @@ const SelectSlot g_SelectSlot[] =
 // Cursor animation
 const u8 g_CursorAnim[] = { 1, 1, 2, 1, 1, 0, 0, 0 };
 
+const CtrlBind g_CtrlBind[] = {
+	{ KEY_DEL,	CTRL_NONE },
+	{ KEY_F1,	CTRL_AI_EASY },
+	{ KEY_F2,	CTRL_AI_MED },
+	{ KEY_F3,	CTRL_AI_HARD },
+	{ KEY_F4,	CTRL_KEY_1 },
+	{ KEY_F5,	CTRL_KEY_2 },
+	{ KEY_1,	CTRL_JOY_1 },
+	{ KEY_2,	CTRL_JOY_2 },
+	{ KEY_3,	CTRL_JOY_3 },
+	{ KEY_4,	CTRL_JOY_4 },
+	{ KEY_5,	CTRL_JOY_5 },
+	{ KEY_6,	CTRL_JOY_6 },
+	{ KEY_7,	CTRL_JOY_7 },
+	{ KEY_8,	CTRL_JOY_8 },
+};
+
 //=============================================================================
 // MEMORY DATA
 //=============================================================================
@@ -269,6 +286,7 @@ u8			g_Freq;
 u8			g_FreqDetected;
 u8			g_FreqOpt = FREQ_AUTO;
 u8 			g_6thFrameCount = 0;	// Frame counter
+bool		g_DoSynch;
 
 // Gameplay
 u8 			g_GameMode = MODE_BATTLEROYAL;
@@ -385,13 +403,25 @@ void EditPlayer(u8 id, bool bEdit)
 
 //-----------------------------------------------------------------------------
 //
+u8 GetHumanCount()
+{
+	u8 count = 0;
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
+		if((g_Players[i].Controller < CTRL_PLY_NUM) && (g_Players[i].State != STATE_NONE))
+			count++;
+
+	return count;
+}
+
+//-----------------------------------------------------------------------------
+//
 void CheckBattleRoyal()
 {
 	// Check is there is a last standing
 	Player* lastPly = NULL;
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 	{
-		if(g_Players[i].State != STATE_NONE)
+		if((g_Players[i].Controller != CTRL_NONE) && (g_Players[i].State != STATE_NONE))
 		{
 			if(lastPly)
 				return;
@@ -586,7 +616,7 @@ void SetPlayerController(Player* ply, u8 ctrl)
 	// Register device
 	if(ply->Controller < CTRL_PLY_NUM) // Free previous
 		g_CtrlReg[ply->Controller] = CTRL_FREE;
-	if(ctrl < CTRL_PLY_NUM)
+	if(ctrl < CTRL_PLY_NUM) // Reserve next
 		g_CtrlReg[ctrl] = ply->ID;
 
 	ply->Controller  = ctrl;
@@ -663,6 +693,7 @@ void InitPlayer(Player* ply, u8 id)
 	ply->ID         = id;
 	ply->Score      = 0;
 	ply->Controller = CTRL_FREE;
+	ply->State      = STATE_NONE;
 
 	if(id < g_JoyNum)
 		SetPlayerController(ply, id);
@@ -905,6 +936,7 @@ void UpdatePlayer(Player* ply)
 			{
 			case MODE_BATTLEROYAL:
 				CheckBattleRoyal();
+				g_DoSynch = (GetHumanCount() > 0);
 				return;
 			case MODE_DEATHMATCH:
 			case MODE_SIZEMATTER:
@@ -1118,7 +1150,9 @@ void State_Init_Begin()
 
 	// Initialize free device
 	for(u8 i = 0; i < CTRL_MAX; ++i)
-		g_CtrlReg[i] = CTRL_FREE;
+	{
+		g_CtrlReg[i] = ((i >= g_JoyNum) && (i <= CTRL_JOY_8)) ? CTRL_UNAVAILABLE : CTRL_FREE;
+	}
 
 	// Initialize players
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -1329,6 +1363,7 @@ void State_Select_Begin()
 		VDP_WriteLayout_GM2(g_Devices[ctrl].Default, x, y + 6, 7, 3);
 	}
 
+	g_SelectEdit = FALSE;
 	g_PrevRow8 = 0;
 	MoveCursor(8);
 }
@@ -1342,7 +1377,7 @@ void State_Select_Update()
 
 	u8 row8 = Keyboard_Read(8);
 
-	if(g_SelectEdit)
+	if(g_SelectEdit) // Handle character edit
 	{
 		Player* ply = &g_Players[g_SlotIdx];
 		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
@@ -1359,8 +1394,9 @@ void State_Select_Update()
 		if(IS_KEY_PRESSED(row8, KEY_SPACE) && !IS_KEY_PRESSED(g_PrevRow8, KEY_SPACE))
 			EditPlayer(g_SlotIdx, FALSE);
 	}
-	else
+	else // Handle menu update
 	{
+		// Move cursor
 		i8 newSlot = -1;
 		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
 			newSlot = g_SelectSlot[g_SlotIdx].Left;
@@ -1373,12 +1409,14 @@ void State_Select_Update()
 		if(newSlot != -1)
 			MoveCursor(newSlot);
 
+		// Animate cursor
 		u8 offset = g_CursorAnim[(g_Frame >> 2) % 8];
 		VDP_SetSpritePosition(0, g_SelectSlot[g_SlotIdx].UL.X - offset, g_SelectSlot[g_SlotIdx].UL.Y - offset);
 		VDP_SetSpritePosition(1, g_SelectSlot[g_SlotIdx].DR.X + offset, g_SelectSlot[g_SlotIdx].UL.Y - offset);
 		VDP_SetSpritePosition(2, g_SelectSlot[g_SlotIdx].UL.X - offset, g_SelectSlot[g_SlotIdx].DR.Y + offset);
 		VDP_SetSpritePosition(3, g_SelectSlot[g_SlotIdx].DR.X + offset, g_SelectSlot[g_SlotIdx].DR.Y + offset);
 
+		// Handle validation
 		if(IS_KEY_PRESSED(row8, KEY_SPACE) && !IS_KEY_PRESSED(g_PrevRow8, KEY_SPACE))
 		{
 			switch(g_SlotIdx)
@@ -1400,6 +1438,24 @@ void State_Select_Update()
 				FSM_SetState(&State_Menu);
 				break;
 			};
+		}
+
+		// Handle special keys
+		if(g_SlotIdx < 8)
+		{
+			Player* ply = &g_Players[g_SlotIdx];
+			for(u8 i = 0; i < numberof(g_CtrlBind); ++i)
+			{
+				if(g_CtrlReg[g_CtrlBind[i].Ctrl] == CTRL_FREE)
+				{
+					if(Keyboard_IsKeyPressed(g_CtrlBind[i].Key))
+					{
+						SetPlayerController(ply, g_CtrlBind[i].Ctrl);
+						EditPlayer(g_SlotIdx, FALSE);
+						break;
+					}
+				}
+			}
 		}
 	}
 
@@ -1494,6 +1550,8 @@ void State_Game_Begin()
 	g_CurrentPlayer = 0;
 	g_PrevRow3 = 0;
 	g_PrevRow8 = 0;
+
+	g_DoSynch = (GetHumanCount() > 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -1501,7 +1559,8 @@ void State_Game_Begin()
 void State_Game_Update()
 {
 	// Wait V-Synch
-	WaitVBlank();
+	if(g_DoSynch)
+		WaitVBlank();
 
 	// Update one of the players
 	Player* ply = &g_Players[g_CurrentPlayer];

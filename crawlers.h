@@ -55,7 +55,7 @@ enum CTRL_TYPE
 	CTRL_JOY_6,
 	CTRL_JOY_7,
 	CTRL_JOY_8,
-	CTRL_KEY_1,					// 9
+	CTRL_KEY_1,						// 9
 	CTRL_KEY_2,
 	CTRL_PLY_NUM,
 	CTRL_AI_EASY = CTRL_PLY_NUM,	// 11
@@ -65,6 +65,7 @@ enum CTRL_TYPE
 	CTRL_MAX,
 };
 #define CTRL_FREE					0xFF
+#define CTRL_UNAVAILABLE			0xFE
 
 // Direction define
 enum DIRECTION
@@ -145,6 +146,13 @@ typedef struct
 	u8 A;
 	u8 B;
 } Shapes;
+
+// Controller binding structure
+typedef struct
+{
+	u8 Key;
+	u8 Ctrl;
+} CtrlBind;
 
 struct PlayerTag;
 
