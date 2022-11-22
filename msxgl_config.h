@@ -88,8 +88,8 @@
 #define VDP_AUTO_INIT				TRUE	// Call VDP_Initialize() at the first call to VDP_SetMode()
 #define VDP_USE_UNDOCUMENTED		FALSE	// Allow the use of undocumented screen mode (WIP)
 #define VDP_USE_VALIDATOR			TRUE	// Let the engine fix some invalid input (highly recommended)
-#define VDP_USE_DEFAULT_PALETTE		FALSE	// Add data for default MSX 2 palette
-#define VDP_USE_MSX1_PALETTE		FALSE	// Add data for default MSX 1 palette
+#define VDP_USE_DEFAULT_PALETTE		TRUE	// Add data for default MSX 2 palette
+#define VDP_USE_MSX1_PALETTE		TRUE	// Add data for default MSX 1 palette
 #define VDP_USE_DEFAULT_SETTINGS	FALSE	// Auto-initialization of common VDP feature
 #define VDP_USE_16X16_SPRITE		TRUE	// Use 16x16 sprites mode
 #define VDP_USE_RESTORE_S0			TRUE	// Do restore of status register pointer to S#0 (needed onlt for default BIOS ISR)
@@ -235,7 +235,7 @@
 #define MENU_ITEM_X_GOTO			6		// Goto type item label X position
 #define MENU_ITEM_ALIGN				MENU_ITEM_ALIGN_LEFT // Item label alignment
 #define MENU_ITEM_ALIGN_GOTO		MENU_ITEM_ALIGN_LEFT // Goto type item label alignment
-#define MENU_VALUE_X				13		// Item value X position
+#define MENU_VALUE_X				14		// Item value X position
 
 //-----------------------------------------------------------------------------
 // STRING MODULE

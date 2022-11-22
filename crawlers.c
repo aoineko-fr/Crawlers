@@ -51,6 +51,7 @@ void State_Game_Update();
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
 const c8* MenuAction_Freq(u8 op, i8 value);
+const c8* MenuAction_Palette(u8 op, i8 value);
 const c8* MenuAction_Port(u8 op, i8 value);
 const c8* MenuAction_Exit(u8 op, i8 value);
 
@@ -183,6 +184,7 @@ const MenuItem g_MenuPlay[] = {
 //
 const MenuItem g_MenuOption[] = {
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
+	{ "PALETTE",             MENU_ITEM_ACTION, MenuAction_Palette, 0 },
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
 	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
 	{ "MAXPLY",              MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
@@ -285,6 +287,7 @@ u8 			g_Frame = 0;			// Frame counter
 u8			g_Freq;
 u8			g_FreqDetected;
 u8			g_FreqOpt = FREQ_AUTO;
+u8			g_PalOpt;
 u8 			g_6thFrameCount = 0;	// Frame counter
 bool		g_DoSynch;
 
@@ -465,23 +468,13 @@ u8 CheckDir(u8 x, u8 y, u8 dir, u8 max)
 	{
 		switch(dir)
 		{
-		case DIR_UP:
-			if(VDP_Peek_GM2(x, --y) < 0xF0)
-				return dist;
-			break;
-		case DIR_RIGHT:	
-			if(VDP_Peek_GM2(++x, y) < 0xF0)
-				return dist;
-			break;
-		case DIR_DOWN:	
-			if(VDP_Peek_GM2(x, ++y) < 0xF0)
-				return dist;
-			break;
-		case DIR_LEFT:	
-			if(VDP_Peek_GM2(--x, y) < 0xF0)
-				return dist;
-			break;
+		case DIR_UP:	y--; break;
+		case DIR_RIGHT:	x++; break;
+		case DIR_DOWN:	y++; break;
+		case DIR_LEFT:	x--; break;
 		}
+		if(VDP_Peek_GM2(x, y) < 0xF0)
+			return dist;
 		dist++;
 	}
 	return max;
@@ -507,7 +500,7 @@ void UpdateAI(Player* ply)
 	}
 
 	// Check right
-	dist = CheckDir(x, y, (ply->Dir + 1) % DIR_MAX, 3);
+	dist = CheckDir(x, y, (ply->Dir + 1) & 0x3 /*% DIR_MAX*/, 3);
 	if(dist < 3)
 	{
 		weight[ACTION_NONE] += g_DistWight[dist];
@@ -515,7 +508,7 @@ void UpdateAI(Player* ply)
 	}
 
 	// Check left
-	dist = CheckDir(x, y, (ply->Dir + DIR_MAX - 1) % DIR_MAX, 3);
+	dist = CheckDir(x, y, (ply->Dir + DIR_MAX - 1) & 0x3 /*% DIR_MAX*/, 3);
 	if(dist < 3)
 	{
 		weight[ACTION_NONE] += g_DistWight[dist];
@@ -555,24 +548,24 @@ void UpdateAI(Player* ply)
 	}
 
 	// Randomize
-	/*if(ply->Controller == CTRL_AI_EASY)
+	if(ply->Controller == CTRL_AI_EASY)
 	{
 		weight[ACTION_NONE]  += Math_GetRandom8() & 0x07;
-		weight[ACTION_RIGHT] += Math_GetRandom8() & 0x07;
-		weight[ACTION_LEFT]  += Math_GetRandom8() & 0x07;
+		// weight[ACTION_RIGHT] += Math_GetRandom8() & 0x07;
+		// weight[ACTION_LEFT]  += Math_GetRandom8() & 0x07;
 	}
 	else if(ply->Controller == CTRL_AI_MED)
 	{
 		weight[ACTION_NONE]  += Math_GetRandom8() & 0x03;
-		weight[ACTION_RIGHT] += Math_GetRandom8() & 0x03;
-		weight[ACTION_LEFT]  += Math_GetRandom8() & 0x03;
+		// weight[ACTION_RIGHT] += Math_GetRandom8() & 0x03;
+		// weight[ACTION_LEFT]  += Math_GetRandom8() & 0x03;
 	}
 	else // if(ply->Controller == CTRL_AI_HARD)
 	{
 		weight[ACTION_NONE]  += Math_GetRandom8() & 0x01;
-		weight[ACTION_RIGHT] += Math_GetRandom8() & 0x01;
-		weight[ACTION_LEFT]  += Math_GetRandom8() & 0x01;
-	}*/
+		// weight[ACTION_RIGHT] += Math_GetRandom8() & 0x01;
+		// weight[ACTION_LEFT]  += Math_GetRandom8() & 0x01;
+	}
 
 	u8 choice = ACTION_NONE;
 	if(weight[ACTION_NONE] < weight[ACTION_RIGHT])
@@ -1078,6 +1071,38 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 
 //-----------------------------------------------------------------------------
 //
+const c8* MenuAction_Palette(u8 op, i8 value)
+{
+	if(g_VersionVDP == VDP_VERSION_TMS9918A)
+		return "MSX1";
+
+	switch(op)
+	{
+	case MENU_ACTION_SET:
+	case MENU_ACTION_INC:
+		g_PalOpt = (g_PalOpt + 1) % PAL_MAX;
+		break;
+	case MENU_ACTION_DEC:
+		g_PalOpt = (g_PalOpt + (PAL_MAX - 1)) % PAL_MAX;
+		break;
+	}
+
+	switch(g_PalOpt)
+	{
+	case PAL_CUSTOM: 
+		VDP_SetPalette((u8*)g_MSX2Palette);
+		return "CUSTOM";
+	case PAL_MSX1: 
+		VDP_SetMSX1Palette();
+		return "MSX1";
+	case PAL_MSX2: 
+		VDP_SetDefaultPalette();
+		return "MSX2";
+	}
+}
+
+//-----------------------------------------------------------------------------
+//
 const c8* MenuAction_Port(u8 op, i8 value)
 {
 	u8 tap = NTAP_TYPE_NONE;
@@ -1439,6 +1464,11 @@ void State_Select_Update()
 				break;
 			};
 		}
+
+		if(Keyboard_IsKeyPressed(KEY_RET))
+			FSM_SetState(&State_Game);
+		if(Keyboard_IsKeyPressed(KEY_ESC))
+			FSM_SetState(&State_Menu);
 
 		// Handle special keys
 		if(g_SlotIdx < 8)

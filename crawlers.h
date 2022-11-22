@@ -125,6 +125,15 @@ enum FREQ_MODE
 	FREQ_MAX,
 };
 
+// Palette enumaration
+enum PAL_ID
+{
+	PAL_CUSTOM = 0,
+	PAL_MSX1,
+	PAL_MSX2,
+	PAL_MAX,
+};
+
 // Start position structure
 typedef struct
 {
