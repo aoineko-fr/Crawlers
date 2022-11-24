@@ -43,6 +43,7 @@
 #define LOGO_OFFSET					33
 #define LOGO_END					64
 
+#define AI_WEIGHT_SALAD				1
 
 // Controller types define
 enum CTRL_TYPE

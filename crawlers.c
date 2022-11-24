@@ -1,4 +1,9 @@
 // ____________________________
+// ██▀▀█▀▀██▀▀▀▀▀▀▀█▀▀█        │  ▄▄ ▄ ▄▄▄  ▄▄▄ 
+// ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄▀▀ █  │  ██ █ ██ █ ██▄▀
+// █  █ █  ▀▀  ▄█  █  █ ▀▄█ █▄ │  ▀█▀  ██▄▀ ██  
+// ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀────────┘
+// ____________________________
 // ██▀▀█▀▀██▀▀▀▀▀▀▀█▀▀█        │    ▄▄                 ▄▄
 // ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄▀▀ █  │   ██ ▀ ██▄▀ ▄▀██ █ ██ ██  ▄███ ██▄▀  ██▀
 // █  █ █  ▀▀  ▄█  █  █ ▀▄█ █▄ │   ▀█▄▀ ██   ▀▄██ █▀█▀ ▀█▄ ▀█▄▄ ██   ▄██
@@ -56,6 +61,7 @@ const c8* MenuAction_Port(u8 op, i8 value);
 const c8* MenuAction_Exit(u8 op, i8 value);
 
 void InitPlayer(Player* ply, u8 id);
+void ResetPlayer(Player* ply);
 void SpawnPlayer(Player* ply);
 void DrawPlayer(Player* ply);
 void ClearPlayer(Player* ply);
@@ -480,13 +486,18 @@ u8 CheckDir(u8 x, u8 y, u8 dir, u8 max)
 	return max;
 }
 
-const u8 g_DistWight[] = { 10, 6, 3, 1 };
+const u8 g_DistWeight[] = {
+	10, 8, 4, 1,
+	10, 8, 4, 1,
+	10, 8, 4, 1,
+};
 
 //-----------------------------------------------------------------------------
 //
 void UpdateAI(Player* ply)
 {
 	u8 weight[ACTION_MAX] = { 0, 0, 0 };
+	const u8* distWeight = &g_DistWeight[(ply->Controller - CTRL_AI_EASY) * 4];
 
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
@@ -495,24 +506,24 @@ void UpdateAI(Player* ply)
 	u8 dist = CheckDir(x, y, ply->Dir, 3);
 	if(dist < 3)
 	{
-		weight[ACTION_LEFT] += g_DistWight[dist];
-		weight[ACTION_RIGHT] += g_DistWight[dist];
+		weight[ACTION_LEFT] += distWeight[dist];
+		weight[ACTION_RIGHT] += distWeight[dist];
 	}
 
 	// Check right
 	dist = CheckDir(x, y, (ply->Dir + 1) & 0x3 /*% DIR_MAX*/, 3);
 	if(dist < 3)
 	{
-		weight[ACTION_NONE] += g_DistWight[dist];
-		weight[ACTION_LEFT] += g_DistWight[dist];
+		weight[ACTION_NONE] += distWeight[dist];
+		weight[ACTION_LEFT] += distWeight[dist];
 	}
 
 	// Check left
 	dist = CheckDir(x, y, (ply->Dir + DIR_MAX - 1) & 0x3 /*% DIR_MAX*/, 3);
 	if(dist < 3)
 	{
-		weight[ACTION_NONE] += g_DistWight[dist];
-		weight[ACTION_RIGHT] += g_DistWight[dist];
+		weight[ACTION_NONE] += distWeight[dist];
+		weight[ACTION_RIGHT] += distWeight[dist];
 	}
 
 	// Seek salad
@@ -520,51 +531,50 @@ void UpdateAI(Player* ply)
 	{
 	case DIR_UP:
 		if(g_Salad.X > ply->PosX)
-			weight[ACTION_RIGHT]++;
+			weight[ACTION_RIGHT] += AI_WEIGHT_SALAD;
 		else if(g_Salad.X < ply->PosX)
-			weight[ACTION_LEFT]++;
+			weight[ACTION_LEFT] += AI_WEIGHT_SALAD;
 		break;
 
 	case DIR_DOWN:
 		if(g_Salad.X < ply->PosX)
-			weight[ACTION_RIGHT]++;
+			weight[ACTION_RIGHT] += AI_WEIGHT_SALAD;
 		else if(g_Salad.X > ply->PosX)
-			weight[ACTION_LEFT]++;
+			weight[ACTION_LEFT] += AI_WEIGHT_SALAD;
 		break;
 
 	case DIR_RIGHT:
 		if(g_Salad.Y > ply->PosY)
-			weight[ACTION_RIGHT]++;
+			weight[ACTION_RIGHT] += AI_WEIGHT_SALAD;
 		else if(g_Salad.Y < ply->PosY)
-			weight[ACTION_LEFT]++;
+			weight[ACTION_LEFT] += AI_WEIGHT_SALAD;
 		break;
 
 	case DIR_LEFT:
 		if(g_Salad.Y < ply->PosY)
-			weight[ACTION_RIGHT]++;
+			weight[ACTION_RIGHT] += AI_WEIGHT_SALAD;
 		else if(g_Salad.Y > ply->PosY)
-			weight[ACTION_LEFT]++;
+			weight[ACTION_LEFT] += AI_WEIGHT_SALAD;
 		break;
 	}
 
 	// Randomize
 	if(ply->Controller == CTRL_AI_EASY)
 	{
-		weight[ACTION_NONE]  += Math_GetRandom8() & 0x07;
-		// weight[ACTION_RIGHT] += Math_GetRandom8() & 0x07;
-		// weight[ACTION_LEFT]  += Math_GetRandom8() & 0x07;
+		weight[ACTION_NONE]  += Math_GetRandom8() & 0x0F;
 	}
 	else if(ply->Controller == CTRL_AI_MED)
 	{
-		weight[ACTION_NONE]  += Math_GetRandom8() & 0x03;
-		// weight[ACTION_RIGHT] += Math_GetRandom8() & 0x03;
-		// weight[ACTION_LEFT]  += Math_GetRandom8() & 0x03;
+		weight[ACTION_NONE]  += Math_GetRandom8() & 0x07;
 	}
 	else // if(ply->Controller == CTRL_AI_HARD)
 	{
-		weight[ACTION_NONE]  += Math_GetRandom8() & 0x01;
-		// weight[ACTION_RIGHT] += Math_GetRandom8() & 0x01;
-		// weight[ACTION_LEFT]  += Math_GetRandom8() & 0x01;
+		u8 rnd;
+		if(g_GameMode == MODE_SIZEMATTER)
+			rnd = Math_GetRandom8() & 0x01;
+		else
+			rnd = Math_GetRandom8() & 0x07;
+		weight[ACTION_NONE] += rnd;
 	}
 
 	u8 choice = ACTION_NONE;
@@ -694,6 +704,15 @@ void InitPlayer(Player* ply, u8 id)
 		SetPlayerController(ply, CTRL_KEY_1 + id - g_JoyNum);
 	else
 		SetPlayerController(ply, CTRL_AI_MED);
+}
+
+//-----------------------------------------------------------------------------
+// 
+void ResetPlayer(Player* ply)
+{
+	ply->Score      = 0;
+
+	SpawnPlayer(ply);
 }
 
 //-----------------------------------------------------------------------------
@@ -1141,6 +1160,13 @@ const c8* MenuAction_Exit(u8 op, i8 value)
 //
 void State_Init_Begin()
 {
+	// Initialize VDP
+	VDP_SetMode(VDP_MODE_GRAPHIC2);
+	VDP_SetColor(COLOR_BLACK);
+	VDP_EnableDisplay(FALSE);
+	VDP_ClearVRAM();
+
+	// Initialize palette
 	#if (MSX2_ENHANCE)
 	if(Keyboard_IsKeyPressed(KEY_1))
 		g_VersionVDP = VDP_VERSION_TMS9918A;
@@ -1153,15 +1179,12 @@ void State_Init_Begin()
 		VDP_SetPalette((u8*)g_MSX2Palette);
 	#endif
 
+	// Initialize frequency
 	if(g_BASRVN[0] & 0x80)
 		g_FreqDetected = FREQ_50HZ;
 	else
 		g_FreqDetected = FREQ_60HZ;
 	g_Freq = g_FreqDetected;
-
-	// Initialize VDP
-	VDP_SetMode(VDP_MODE_GRAPHIC2);
-	VDP_ClearVRAM();
 
 	// Set VBlank hook
 	VDP_EnableVBlank(TRUE);
@@ -1202,16 +1225,9 @@ void State_Init_Update()
 void State_Logo_Begin()
 {
 	// Initialize VDP
-	VDP_ClearVRAM();
+	VDP_EnableDisplay(FALSE);
 	VDP_SetColor(COLOR_BLACK);
-
-	// Load tiles data
-	VDP_LoadPattern_GM2(g_DataLogoTile_Patterns, sizeof(g_DataLogoTile_Patterns) / 8, 0);
-	VDP_LoadColor_GM2(g_DataLogoTile_Colors, sizeof(g_DataLogoTile_Colors) / 8, 0);
-	// Draw tiles data
-	VDP_FillScreen_GM2(0x00);
-	VDP_WriteLayout_GM2(g_DataLogoTileL0_Names, 12, 12, 6, 2);
-	VDP_WriteLayout_GM2(g_DataLogoTileL1_Names, 14, 10, 2, 2);
+	VDP_ClearVRAM();
 
 	// Load sprites data
 	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_16);
@@ -1228,7 +1244,17 @@ void State_Logo_Begin()
 	VDP_SetSpriteSM1(7, 112, 79, 12, COLOR_LIGHT_RED);
 	VDP_DisableSpritesFrom(8);
 
+	// Load tiles data
+	VDP_LoadPattern_GM2(g_DataLogoTile_Patterns, sizeof(g_DataLogoTile_Patterns) / 8, 0);
+	VDP_LoadColor_GM2(g_DataLogoTile_Colors, sizeof(g_DataLogoTile_Colors) / 8, 0);
+	// Draw tiles data
+	VDP_FillScreen_GM2(0x00);
+	VDP_WriteLayout_GM2(g_DataLogoTileL0_Names, 12, 12, 6, 2);
+	VDP_WriteLayout_GM2(g_DataLogoTileL1_Names, 14, 10, 2, 2);
+
 	*g_ScreenBuffer = 0;
+
+	VDP_EnableDisplay(TRUE);
 }
 
 //-----------------------------------------------------------------------------
@@ -1261,9 +1287,10 @@ void State_Logo_Update()
 //
 void State_Title_Begin()
 {
+	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
-	VDP_ClearVRAM();
 	VDP_SetColor(COLOR_LIGHT_YELLOW);
+	VDP_ClearVRAM();
 
 	// Initialize sprites data
 	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
@@ -1344,6 +1371,9 @@ void State_Menu_Update()
 //
 void State_Select_Begin()
 {
+	// Initialize VDP
+	VDP_EnableDisplay(FALSE);
+
 	// Sprite
 	VDP_DisableSpritesFrom(4);
 
@@ -1368,7 +1398,6 @@ void State_Select_Begin()
 	dst += 0x800;
 	VDP_WriteVRAM(g_DataFace2_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace2_Colors));
 
-
 	//........................................
 	// Draw page
 
@@ -1391,6 +1420,8 @@ void State_Select_Begin()
 	g_SelectEdit = FALSE;
 	g_PrevRow8 = 0;
 	MoveCursor(8);
+
+	VDP_EnableDisplay(TRUE);
 }
 
 //-----------------------------------------------------------------------------
@@ -1500,6 +1531,8 @@ void State_Select_Update()
 //
 void State_Game_Begin()
 {
+	VDP_EnableDisplay(FALSE);
+
 	// Initialize tiles data
 	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
 	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
@@ -1575,13 +1608,15 @@ void State_Game_Begin()
 
 	// Spawn players
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
-		SpawnPlayer(&g_Players[i]);
+		ResetPlayer(&g_Players[i]);
 
 	g_CurrentPlayer = 0;
 	g_PrevRow3 = 0;
 	g_PrevRow8 = 0;
 
 	g_DoSynch = (GetHumanCount() > 0);
+
+	VDP_EnableDisplay(TRUE);
 }
 
 //-----------------------------------------------------------------------------
