@@ -31,9 +31,6 @@
 
 #define MSXGL						"[\\]^"
 
-// Configuration
-#define MSX2_ENHANCE				1
-
 // Prototypes
 void State_Init_Begin();
 void State_Init_Update();
@@ -58,6 +55,8 @@ const c8* MenuAction_Mode(u8 op, i8 value);
 const c8* MenuAction_Freq(u8 op, i8 value);
 const c8* MenuAction_Palette(u8 op, i8 value);
 const c8* MenuAction_Port(u8 op, i8 value);
+const c8* MenuAction_MSX(u8 op, i8 value);
+const c8* MenuAction_VDP(u8 op, i8 value);
 const c8* MenuAction_Exit(u8 op, i8 value);
 
 void InitPlayer(Player* ply, u8 id);
@@ -134,7 +133,6 @@ const Start g_Starts[PLAYER_MAX] =
 	{  9, 16, DIR_RIGHT },
 };
 
-#if (MSX2_ENHANCE)
 // Alternative
 const u16 g_MSX2Palette[15] = {
 	RGB16(0, 0, 0), // black				RGB16(0, 0, 0),
@@ -153,7 +151,6 @@ const u16 g_MSX2Palette[15] = {
 	RGB16(5, 5, 5), // gray					RGB16(5, 5, 5),
 	RGB16(7, 7, 7)  // white				RGB16(7, 7, 7) 
 };
-#endif
 
 //
 const c8 g_TitleTile[] = {
@@ -167,14 +164,16 @@ const c8 g_TitleTile[] = {
 const MenuItemMinMax g_MenuRoundsMinMax = { 1, 10, 1 };
 const MenuItemMinMax g_MenuTreesMinMax =  { 0, 50, 5 };
 
-
 //
 const MenuItem g_MenuMain[] = {
 	{ "PLAY",                MENU_ITEM_GOTO, NULL, MENU_PLAY },
 	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
+	{ "SYSTEM",              MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
 	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
+#if (TARGET_TYPE != TYPE_ROM)
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "EXIT",                MENU_ITEM_ACTION, MenuAction_Exit, 0 },
+#endif
 };
 
 //
@@ -182,7 +181,7 @@ const MenuItem g_MenuPlay[] = {
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, 0 },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
 	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
-	{ "TREES",               MENU_ITEM_INT, &g_Obstacle, (i16)&g_MenuTreesMinMax },
+	{ "TREES#",              MENU_ITEM_INT, &g_Obstacle, (i16)&g_MenuTreesMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -191,9 +190,18 @@ const MenuItem g_MenuPlay[] = {
 const MenuItem g_MenuOption[] = {
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
 	{ "PALETTE",             MENU_ITEM_ACTION, MenuAction_Palette, 0 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
+};
+
+//
+const MenuItem g_MenuSystem[] = {
+	{ "SYSTEM",              MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_MSX, 0 },
+	{ "VIDEO",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_VDP, 0 },
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
 	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
-	{ "MAXPLY",              MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
+	{ "TOTAL%",              MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_JoyNum, NULL },
+	{ "MAX$",                MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -218,6 +226,7 @@ const Menu g_Menus[MENU_MAX] =
 	{ NULL, g_MenuMain,   numberof(g_MenuMain) },
 	{ NULL, g_MenuPlay,   numberof(g_MenuPlay) },
 	{ NULL, g_MenuOption, numberof(g_MenuOption) },
+	{ NULL, g_MenuSystem, numberof(g_MenuSystem) },
 	{ NULL, g_MenuCredit, numberof(g_MenuCredit) },
 };
 
@@ -248,7 +257,7 @@ const SelectDevice g_Devices[CTRL_MAX] =
 	{ SELECT_DEV_NONE,   SELECT_DEV_NONE_S },
 };
 
-//
+// Select slots data
 const SelectSlot g_SelectSlot[] =
 {	//                             L   R   U   D
 	{ {  22,  53 }, {  58,  89 }, -1,  1,  8,  4 }, // 0 - Face 1
@@ -263,9 +272,13 @@ const SelectSlot g_SelectSlot[] =
 	{ { 198,  15 }, { 226,  22 },  8, -1, -1,  3 }, // 9 - Exit
 };
 
-// Cursor animation
+// Cursor offset animation
 const u8 g_CursorAnim[] = { 1, 1, 2, 1, 1, 0, 0, 0 };
 
+// Hole tile animation
+const u8 g_HoleAnim[] = { 0xF3, 0xF4, 0xF5, 0xE3 };
+
+// Controller binding
 const CtrlBind g_CtrlBind[] = {
 	{ KEY_DEL,	CTRL_NONE },
 	{ KEY_F1,	CTRL_AI_EASY },
@@ -293,9 +306,10 @@ u8 			g_Frame = 0;			// Frame counter
 u8			g_Freq;
 u8			g_FreqDetected;
 u8			g_FreqOpt = FREQ_AUTO;
-u8			g_PalOpt;
 u8 			g_6thFrameCount = 0;	// Frame counter
 bool		g_DoSynch;
+u8			g_PalOpt;
+u8			g_VersionVDP;
 
 // Gameplay
 u8 			g_GameMode = MODE_BATTLEROYAL;
@@ -317,10 +331,6 @@ u8			g_Input[CTRL_PLY_NUM];
 u8			g_SlotIdx;
 bool		g_SelectEdit;
 u8			g_CtrlReg[CTRL_MAX];
-
-#if (MSX2_ENHANCE)
-u8			g_VersionVDP;
-#endif
 
 //=============================================================================
 // FUNCTIONS
@@ -486,18 +496,20 @@ u8 CheckDir(u8 x, u8 y, u8 dir, u8 max)
 	return max;
 }
 
-const u8 g_DistWeight[] = {
-	10, 8, 4, 1,
-	10, 8, 4, 1,
-	10, 8, 4, 1,
-};
+const i8 g_DistWeight[] = { 10, 8, 4, 1 };
 
 //-----------------------------------------------------------------------------
 //
 void UpdateAI(Player* ply)
 {
-	u8 weight[ACTION_MAX] = { 0, 0, 0 };
-	const u8* distWeight = &g_DistWeight[(ply->Controller - CTRL_AI_EASY) * 4];
+	u8 rnd = Math_GetRandom8();
+
+	if((ply->Controller == CTRL_AI_EASY) && (rnd & 0x03 != 0)) // 3 in 4 chances to do nothing
+		return;
+	else if((ply->Controller == CTRL_AI_MED) && (rnd & 0x03 == 0)) // 1 in 4 chances to do nothing
+		return;
+
+	i8 weight[ACTION_MAX] = { 0, 0, 0 };
 
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
@@ -506,24 +518,27 @@ void UpdateAI(Player* ply)
 	u8 dist = CheckDir(x, y, ply->Dir, 3);
 	if(dist < 3)
 	{
-		weight[ACTION_LEFT] += distWeight[dist];
-		weight[ACTION_RIGHT] += distWeight[dist];
+		i8 w = g_DistWeight[dist];
+		weight[ACTION_LEFT] += w;
+		weight[ACTION_RIGHT] += w;
 	}
 
 	// Check right
 	dist = CheckDir(x, y, (ply->Dir + 1) & 0x3 /*% DIR_MAX*/, 3);
 	if(dist < 3)
 	{
-		weight[ACTION_NONE] += distWeight[dist];
-		weight[ACTION_LEFT] += distWeight[dist];
+		i8 w = g_DistWeight[dist];
+		weight[ACTION_NONE] += w;
+		weight[ACTION_LEFT] += w;
 	}
 
 	// Check left
 	dist = CheckDir(x, y, (ply->Dir + DIR_MAX - 1) & 0x3 /*% DIR_MAX*/, 3);
 	if(dist < 3)
 	{
-		weight[ACTION_NONE] += distWeight[dist];
-		weight[ACTION_RIGHT] += distWeight[dist];
+		i8 w = g_DistWeight[dist];
+		weight[ACTION_NONE] += w;
+		weight[ACTION_RIGHT] += w;
 	}
 
 	// Seek salad
@@ -559,30 +574,20 @@ void UpdateAI(Player* ply)
 	}
 
 	// Randomize
-	if(ply->Controller == CTRL_AI_EASY)
-	{
-		weight[ACTION_NONE]  += Math_GetRandom8() & 0x0F;
-	}
-	else if(ply->Controller == CTRL_AI_MED)
-	{
-		weight[ACTION_NONE]  += Math_GetRandom8() & 0x07;
-	}
-	else // if(ply->Controller == CTRL_AI_HARD)
-	{
-		u8 rnd;
-		if(g_GameMode == MODE_SIZEMATTER)
-			rnd = Math_GetRandom8() & 0x01;
-		else
-			rnd = Math_GetRandom8() & 0x07;
-		weight[ACTION_NONE] += rnd;
-	}
+	weight[ACTION_NONE] += rnd & 0x07;
 
+	// Select the choice with the biggest weight
 	u8 choice = ACTION_NONE;
 	if(weight[ACTION_NONE] < weight[ACTION_RIGHT])
 		choice = ACTION_RIGHT;
+	else if((weight[ACTION_NONE] == weight[ACTION_RIGHT]) && (rnd & 0x01))
+		choice = ACTION_RIGHT;
 	if(weight[choice] < weight[ACTION_LEFT])
 		choice = ACTION_LEFT;
+	else if((weight[choice] == weight[ACTION_LEFT]) && (rnd & 0x01))
+		choice = ACTION_LEFT;
 
+	// Apply choice
 	if(choice == ACTION_RIGHT)
 	{
 		ply->Dir++;
@@ -952,6 +957,7 @@ void UpdatePlayer(Player* ply)
 				return;
 			case MODE_DEATHMATCH:
 			case MODE_SIZEMATTER:
+			case MODE_GREEDIEST:
 				SpawnPlayer(ply);
 				return;
 			};
@@ -961,8 +967,13 @@ void UpdatePlayer(Player* ply)
 			switch(cell)
 			{
 			case TILE_SALAD:
-				ply->Expect += 5;
+				ply->Expect += SALAD_GROWTH;
 				SpawnSalad();
+				if(g_GameMode == MODE_GREEDIEST)
+				{
+					ply->Score++;
+					SetScore(ply);
+				}
 			default:
 				ply->PosX = x;
 				ply->PosY = y;
@@ -1046,9 +1057,10 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 		case MODE_BATTLEROYAL: return "BATTLE ROYAL";
 		case MODE_DEATHMATCH:  return "DEATH MATCH";
 		case MODE_SIZEMATTER:  return "SIZE MATTER";
+		case MODE_GREEDIEST:   return "GREEDIEST";
 		};
 	};
-	return "";
+	return NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -1084,8 +1096,8 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 		else
 			return "AUTO (60 HZ)";
 	}
-	
-	return "";
+
+	return NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -1093,7 +1105,7 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 const c8* MenuAction_Palette(u8 op, i8 value)
 {
 	if(g_VersionVDP == VDP_VERSION_TMS9918A)
-		return "MSX1";
+		return "(FOR MSX2)";
 
 	switch(op)
 	{
@@ -1118,6 +1130,8 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 		VDP_SetDefaultPalette();
 		return "MSX2";
 	}
+
+	return NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -1134,7 +1148,33 @@ const c8* MenuAction_Port(u8 op, i8 value)
 	case NTAP_TYPE_NONE:    return "JOYSTICK";
 	case NTAP_TYPE_NINJA:   return "NINJA TAP";
 	case NTAP_TYPE_SHINOBI: return "SHINOBI TAP";
-	case NTAP_TYPE_UNKNOW:  break;
+	}
+	return "UNKNOW";
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_MSX(u8 op, i8 value)
+{
+	switch(g_MSXVER)
+	{
+	case MSXVER_1:  return "MSX 1";
+	case MSXVER_2:  return "MSX 2";
+	case MSXVER_2P: return "MSX 2+";
+	case MSXVER_TR: return "TURBO R";
+	}
+	return "UNKNOW";
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_VDP(u8 op, i8 value)
+{
+	switch(g_VersionVDP)
+	{
+	case VDP_VERSION_TMS9918A: return "TMS9918 (MSX 1)";
+	case VDP_VERSION_V9938:    return "V9938 (MSX 2)";
+	case VDP_VERSION_V9958:    return "V9958 (2+/TR)";
 	}
 	return "UNKNOW";
 }
@@ -1161,13 +1201,12 @@ const c8* MenuAction_Exit(u8 op, i8 value)
 void State_Init_Begin()
 {
 	// Initialize VDP
-	VDP_SetMode(VDP_MODE_GRAPHIC2);
-	VDP_SetColor(COLOR_BLACK);
 	VDP_EnableDisplay(FALSE);
+	VDP_SetColor(COLOR_BLACK);
+	VDP_SetMode(VDP_MODE_GRAPHIC2);
 	VDP_ClearVRAM();
 
-	// Initialize palette
-	#if (MSX2_ENHANCE)
+	// Get VDP version
 	if(Keyboard_IsKeyPressed(KEY_1))
 		g_VersionVDP = VDP_VERSION_TMS9918A;
 	else if(Keyboard_IsKeyPressed(KEY_2))
@@ -1175,9 +1214,12 @@ void State_Init_Begin()
 	else
 		g_VersionVDP = VDP_GetVersion();
 
+	// Initialize palette
 	if(g_VersionVDP > VDP_VERSION_TMS9918A)
+	{
 		VDP_SetPalette((u8*)g_MSX2Palette);
-	#endif
+		g_PalOpt = PAL_CUSTOM;
+	}
 
 	// Initialize frequency
 	if(g_BASRVN[0] & 0x80)

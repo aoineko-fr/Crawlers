@@ -45,6 +45,8 @@
 
 #define AI_WEIGHT_SALAD				1
 
+#define SALAD_GROWTH				10
+
 // Controller types define
 enum CTRL_TYPE
 {
@@ -104,6 +106,7 @@ enum MENU_PAGE
 	MENU_MAIN = 0,
 	MENU_PLAY,
 	MENU_OPTION,
+	MENU_SYSTEM,
 	MENU_CREDIT,
 	MENU_MAX,
 };
@@ -114,6 +117,7 @@ enum GAME_MODE
 	MODE_BATTLEROYAL = 0,
 	MODE_DEATHMATCH,
 	MODE_SIZEMATTER,
+	MODE_GREEDIEST,
 	MODE_MAX,
 };
 
