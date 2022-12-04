@@ -1,9 +1,4 @@
 // ____________________________
-// ██▀▀█▀▀██▀▀▀▀▀▀▀█▀▀█        │  ▄▄ ▄ ▄▄▄  ▄▄▄ 
-// ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄▀▀ █  │  ██ █ ██ █ ██▄▀
-// █  █ █  ▀▀  ▄█  █  █ ▀▄█ █▄ │  ▀█▀  ██▄▀ ██  
-// ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀────────┘
-// ____________________________
 // ██▀▀█▀▀██▀▀▀▀▀▀▀█▀▀█        │    ▄▄                 ▄▄
 // ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄▀▀ █  │   ██ ▀ ██▄▀ ▄▀██ █ ██ ██  ▄███ ██▄▀  ██▀
 // █  █ █  ▀▀  ▄█  █  █ ▀▄█ █▄ │   ▀█▄▀ ██   ▀▄██ █▀█▀ ▀█▄ ▀█▄▄ ██   ▄██
@@ -77,6 +72,7 @@ void UpdatePlayer(Player* ply);
 // Sprites
 #include "content\sprites.h"
 #include "content\logo_sprt.h"
+#include "content\eyes.h"
 
 // Menu
 #include "content\select.h"
@@ -1337,6 +1333,7 @@ void State_Title_Begin()
 	// Initialize sprites data
 	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
 	VDP_LoadSpritePattern(g_DataSprites, 0, sizeof(g_DataSprites) / 8);
+	VDP_LoadSpritePattern(g_DataEyes, 32, sizeof(g_DataEyes) / 8);
 
 	// Initialize tiles data
 	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
@@ -1416,9 +1413,6 @@ void State_Select_Begin()
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
 
-	// Sprite
-	VDP_DisableSpritesFrom(4);
-
 	//........................................
 	// Load tiles
 
@@ -1458,6 +1452,18 @@ void State_Select_Begin()
 		u8 ctrl = g_Players[i].Controller;
 		VDP_WriteLayout_GM2(g_Devices[ctrl].Default, x, y + 6, 7, 3);
 	}
+
+	//........................................
+	// Eyes
+	VDP_SetSpriteSM1( 4,  50,  67, 32, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1( 5, 102,  64, 33, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1( 6, 158,  63, 34, COLOR_BLACK);
+	VDP_SetSpriteSM1( 7, 214,  65, 35, COLOR_BLACK);
+	VDP_SetSpriteSM1( 8, 162, 139, 32, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1( 9, 214, 136, 33, COLOR_BLACK);
+	VDP_SetSpriteSM1(10,  46, 135, 34, COLOR_BLACK);
+	VDP_SetSpriteSM1(11, 102, 137, 35, COLOR_DARK_BLUE);
+	VDP_DisableSpritesFrom(12);
 
 	g_SelectEdit = FALSE;
 	g_PrevRow8 = 0;
