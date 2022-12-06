@@ -213,6 +213,14 @@ typedef struct
 	const u8*	Edit;
 } SelectDevice;
 
+// Mode description
+typedef struct
+{
+	const c8*	Name;
+	const c8*	Desc;
+	u8			Size;
+} ModeInfo;
+
 // Slot
 typedef struct
 {

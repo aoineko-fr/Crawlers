@@ -14,6 +14,12 @@ set MSXtk=%Tools%\MSXtk\bin
 if not exist "content" ( md content )
 
 echo -----------------------------------------------------------------------------
+echo  Convert Music...
+
+%Tools%\compress\Pletter\pletter.exe datasrc\music_main.akg datasrc\music_main.pl5
+%MSXtk%\MSXbin.exe datasrc\music_main.pl5 -t g_MusicMain -ad -o content\music_main.h
+
+echo -----------------------------------------------------------------------------
 echo  Convert Font...
 
 REM %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\font.h -pos 0 0 -size 8 8 -gap 0 0 -num 16 4 -trans 0xDED087 -bpc 1 -name g_DataFont -font 8 8 0x20 _

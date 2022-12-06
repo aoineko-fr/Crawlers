@@ -12,10 +12,13 @@
 
 // MSXgl
 #include "msxgl.h"
+#include "memory.h"
 #include "string.h"
 #include "fsm.h"
 #include "game_menu.h"
-#include "device\ninjatap.h"
+#include "device/ninjatap.h"
+#include "arkos/akg_player.h"
+#include "compress/pletter.h"
 
 // Crawlers
 #include "crawlers.h"
@@ -45,6 +48,7 @@ void State_Game_Update();
 
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
+const c8* MenuAction_Info(u8 op, i8 value);
 const c8* MenuAction_Freq(u8 op, i8 value);
 const c8* MenuAction_Palette(u8 op, i8 value);
 const c8* MenuAction_Bonus(u8 op, i8 value);
@@ -66,18 +70,21 @@ void UpdatePlayer(Player* ply);
 //=============================================================================
 
 // Tiles
-#include "content\tiles.h"
-#include "content\logo_tile.h"
+#include "content/tiles.h"
+#include "content/logo_tile.h"
 
 // Sprites
-#include "content\sprites.h"
-#include "content\logo_sprt.h"
-#include "content\eyes.h"
+#include "content/sprites.h"
+#include "content/logo_sprt.h"
+#include "content/eyes.h"
 
 // Menu
-#include "content\select.h"
-#include "content\face1.h"
-#include "content\face2.h"
+#include "content/select.h"
+#include "content/face1.h"
+#include "content/face2.h"
+
+// Music
+#include "content/music_main.h"
 
 //
 const Shapes g_Body[] =
@@ -161,7 +168,8 @@ const MenuItemMinMax g_MenuRoundsMinMax = { 1, 10, 1 };
 const MenuItemMinMax g_MenuTreesMinMax =  { 0, 50, 5 };
 
 //
-const MenuItem g_MenuMain[] = {
+const MenuItem g_MenuMain[] =
+{
 #if (EXT_VERSION)
 	{ "SOLO MODE",           MENU_ITEM_GOTO, NULL, MENU_SOLO },
 #endif
@@ -177,23 +185,30 @@ const MenuItem g_MenuMain[] = {
 
 #if (EXT_VERSION)
 //
-const MenuItem g_MenuSolo[] = {
+const MenuItem g_MenuSolo[] =
+{
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
 #endif
 
 //
-const MenuItem g_MenuMulti[] = {
+const MenuItem g_MenuMulti[] =
+{
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, 0 },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
 	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
 	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ NULL,                  MENU_ITEM_UPDATE, MenuAction_Info, 0 },
 };
 
 //
-const MenuItem g_MenuOption[] = {
+const MenuItem g_MenuOption[] =
+{
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
 	{ "PALETTE",             MENU_ITEM_ACTION, MenuAction_Palette, 0 },
 	{ "BONUS",               MENU_ITEM_ACTION, MenuAction_Bonus, 0 },
@@ -203,7 +218,8 @@ const MenuItem g_MenuOption[] = {
 };
 
 //
-const MenuItem g_MenuSystem[] = {
+const MenuItem g_MenuSystem[] =
+{
 	{ "SYSTEM",              MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_MSX, 0 },
 	{ "VIDEO",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_VDP, 0 },
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
@@ -215,7 +231,8 @@ const MenuItem g_MenuSystem[] = {
 };
 
 //
-const MenuItem g_MenuCredit[] = {
+const MenuItem g_MenuCredit[] =
+{
 	{ "PIXEL PHENIX 2023",   MENU_ITEM_TEXT, NULL, 1 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "POWERED BY " MSXGL,   MENU_ITEM_TEXT, NULL, 2 },
@@ -290,7 +307,8 @@ const u8 g_CursorAnim[] = { 1, 1, 2, 1, 1, 0, 0, 0 };
 const u8 g_HoleAnim[] = { 0xF3, 0xF4, 0xF5, 0xE3 };
 
 // Controller binding
-const CtrlBind g_CtrlBind[] = {
+const CtrlBind g_CtrlBind[] =
+{
 	{ KEY_DEL,	CTRL_NONE },
 	{ KEY_F1,	CTRL_AI_EASY },
 	{ KEY_F2,	CTRL_AI_MED },
@@ -307,9 +325,21 @@ const CtrlBind g_CtrlBind[] = {
 	{ KEY_8,	CTRL_JOY_8 },
 };
 
-const u8 g_BonusData[] = { 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 };
-const u8 g_WallData[] = { 0xE1, 0xE2, 0xE3, 0 };
+const u8 g_BonusData[8+1] = { 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 };
+const u8 g_WallData[4+1] = { 0xE1, 0xE2, 0xE3, 0xE8, 0 };
 
+const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED.";
+const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH.";
+const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN TIME (ROUNDS = MINUTES), THE ONE WHO HAS REACHED THE LARGEST SIZE WINS THE MATCH.";
+const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GETS THE MOST BONUSES AT THE END OF THE SET TIME (ROUNDS = MINUTES) WINS THE GAME.";
+
+const ModeInfo g_ModeInfo[] =
+{
+	{ "BATTLE ROYAL", g_DescBattleRoyal, sizeof(g_DescBattleRoyal) },
+	{ "DEATH MATCH",  g_DescDeathMatch,  sizeof(g_DescDeathMatch) },
+	{ "SIZE MATTER",  g_DescSizeMatter,  sizeof(g_DescSizeMatter) },
+	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest) },
+};
 
 //=============================================================================
 // MEMORY DATA
@@ -325,6 +355,8 @@ u8 			g_6thFrameCount = 0;	// Frame counter
 bool		g_DoSynch;
 u8			g_PalOpt;
 u8			g_VersionVDP;
+bool		g_PlayingMusic = FALSE;
+u8			g_Scroll;
 
 // Gameplay
 u8 			g_GameMode = MODE_BATTLEROYAL;
@@ -492,7 +524,7 @@ void SpawnBonus()
 	g_BonusPos.Y = y;
 	g_BonusTile = g_BonusData[g_BonusOpt];
 	if(g_BonusTile == 0)
-		g_BonusTile = g_BonusData[Math_GetRandom8() % sizeof(g_BonusData)];
+		g_BonusTile = g_BonusData[Math_GetRandom8() & 0x07];
 	VDP_Poke_GM2(x, y, g_BonusTile);
 }
 
@@ -1022,6 +1054,12 @@ void UpdatePlayer(Player* ply)
 void VBlankHook()
 {
 	g_VBlank = 1;
+
+	if(g_PlayingMusic)
+	{
+		if((g_Freq == FREQ_50HZ) || (g_6thFrameCount))
+			AKG_Decode();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1070,6 +1108,7 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 			g_GameMode++;
 		else
 			g_GameMode = 0;
+		g_Scroll = 0;
 		break;
 
 	case MENU_ACTION_DEC:
@@ -1077,18 +1116,43 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 			g_GameMode--;
 		else
 			g_GameMode = MODE_MAX-1;
+		g_Scroll = 0;
 		break;
 
 	case MENU_ACTION_GET:
-		switch(g_GameMode)
-		{
-		case MODE_BATTLEROYAL: return "BATTLE ROYAL";
-		case MODE_DEATHMATCH:  return "DEATH MATCH";
-		case MODE_SIZEMATTER:  return "SIZE MATTER";
-		case MODE_GREEDIEST:   return "GREEDIEST";
-		};
+		return g_ModeInfo[g_GameMode].Name;
 	};
 	return NULL;
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Info(u8 op, i8 value)
+{
+	if(g_Frame & 0x7)
+		return NULL;
+
+	if(g_MenuItem != 1)
+		return "";
+
+	const ModeInfo* info = &g_ModeInfo[g_GameMode];
+	u8 size = info->Size - 1;
+
+	u8 j = g_Scroll;
+	while(j >= size)
+		j -= size;
+
+	for(u8 i = 0; i < 20; ++i)
+	{
+		g_StrBuffer[i] = info->Desc[j];
+		if(++j >= size)
+			j -= size;
+	}
+	g_StrBuffer[20] = 0;
+
+	g_Scroll++;
+
+	return g_StrBuffer;
 }
 
 //-----------------------------------------------------------------------------
@@ -1415,6 +1479,15 @@ void State_Logo_Update()
 //
 void State_Title_Begin()
 {
+	// Initialize music
+	if(!g_PlayingMusic)
+	{
+		Pletter_UnpackToRAM(g_MusicMain, (void*)0xD000);
+		AKG_Stop();
+		AKG_Init((const void*)0xD000, 0);
+		g_PlayingMusic = TRUE;
+	}
+
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
 	VDP_SetColor(COLOR_LIGHT_YELLOW);
@@ -1431,23 +1504,14 @@ void State_Title_Begin()
 	VDP_WriteLayout_GM2(g_TitleTile, 4, 3, 24, 5);
 
 	// Draw field
-	PrintChr(0,  0, 0xE8);
-	PrintChr(31, 0, 0xEA);
-	PrintChrX(1, 0, 0xE9, 30);
-	PrintChrY(0, 1, 0xEB, 22);
-	PrintChrY(31,1, 0xEC, 22);
-	PrintChr(0, 23, 0xED);
-	PrintChr(31, 23, 0xEF);
-	PrintChrX(1, 23, 0xEE, 30);
-	// PrintChr(0,  0, TILE_TREE);
-	// PrintChr(31, 0, TILE_TREE);
-	// PrintChrX(1, 0, TILE_TREE, 30);
-	// PrintChrY(0, 1, TILE_TREE, 22);
-	// PrintChrY(31,1, TILE_TREE, 22);
-	// PrintChr(0, 23, TILE_TREE);
-	// PrintChr(31, 23, TILE_TREE);
-	// PrintChrX(1, 23, TILE_TREE, 30);
-
+	PrintChr(0,  0, TILE_TREE);
+	PrintChr(31, 0, TILE_TREE);
+	PrintChrX(1, 0, TILE_TREE, 30);
+	PrintChrY(0, 1, TILE_TREE, 22);
+	PrintChrY(31,1, TILE_TREE, 22);
+	PrintChr(0, 23, TILE_TREE);
+	PrintChr(31, 23, TILE_TREE);
+	PrintChrX(1, 23, TILE_TREE, 30);
 
 	// Initialize font
 	g_PrintData.ScreenWidth = 32;
@@ -1693,17 +1757,15 @@ void State_Game_Begin()
 
 	// Draw game field
 	Mem_Set(TILE_EMPTY, g_ScreenBuffer, 32*24);
-	// Up
-	DrawTile(0,  1, 0xE8);
+	DrawTile(0,  1, 0xE9);
 	DrawTile(31, 1, 0xEA);
-	DrawTileX(1,  1, 0xE9, 30);
-	// Sides
+	DrawTileX(1,  1, 0xE8, 30);
 	DrawTileY(0,  2, 0xEB, 21);
 	DrawTileY(31, 2, 0xEC, 21);
-	// Down
 	DrawTile(0, 23, 0xED);
-	DrawTile(31, 23, 0xEF);
-	DrawTileX(1, 23, 0xEE, 30);
+	DrawTile(31, 23, 0xEE);
+	DrawTileX(1, 23, 0xE8, 30);
+
 	// Draw score board
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 	{
@@ -1722,7 +1784,7 @@ void State_Game_Begin()
 	// Initialize obstacles
 	u8 wallTile = g_WallData[g_WallOpt];
 	if(wallTile == 0)
-		wallTile = g_WallData[Math_GetRandom8() % sizeof(g_WallData)];
+		wallTile = g_WallData[Math_GetRandom8() & 0x03];
 	for(u8 i = 0; i < g_WallNum; ++i)
 	{
 		u8 x = 0, y = 0;
@@ -1829,6 +1891,9 @@ void State_Game_Update()
 // Program entry point
 void main()
 {
+	AKG_Stop();
+	g_PlayingMusic = FALSE;
+
 	// Start the Final State Machine
 	FSM_SetState(&State_Init);
 	while(1)
