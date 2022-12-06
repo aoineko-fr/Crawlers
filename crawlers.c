@@ -24,8 +24,6 @@
 // DEFINES
 //=============================================================================
 
-#define MSXGL						"[\\]^"
-
 // Prototypes
 void State_Init_Begin();
 void State_Init_Update();
@@ -49,6 +47,8 @@ const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
 const c8* MenuAction_Freq(u8 op, i8 value);
 const c8* MenuAction_Palette(u8 op, i8 value);
+const c8* MenuAction_Bonus(u8 op, i8 value);
+const c8* MenuAction_Wall(u8 op, i8 value);
 const c8* MenuAction_Port(u8 op, i8 value);
 const c8* MenuAction_MSX(u8 op, i8 value);
 const c8* MenuAction_VDP(u8 op, i8 value);
@@ -162,9 +162,12 @@ const MenuItemMinMax g_MenuTreesMinMax =  { 0, 50, 5 };
 
 //
 const MenuItem g_MenuMain[] = {
-	{ "PLAY",                MENU_ITEM_GOTO, NULL, MENU_PLAY },
+#if (EXT_VERSION)
+	{ "SOLO MODE",           MENU_ITEM_GOTO, NULL, MENU_SOLO },
+#endif
+	{ "BATTLE MODE",         MENU_ITEM_GOTO, NULL, MENU_MULTI },
 	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
-	{ "SYSTEM",              MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
+	{ "SYSTEM INFO",         MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
 	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
 #if (TARGET_TYPE != TYPE_ROM)
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -172,12 +175,19 @@ const MenuItem g_MenuMain[] = {
 #endif
 };
 
+#if (EXT_VERSION)
 //
-const MenuItem g_MenuPlay[] = {
+const MenuItem g_MenuSolo[] = {
+	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
+};
+#endif
+
+//
+const MenuItem g_MenuMulti[] = {
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, 0 },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
 	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
-	{ "TREES#",              MENU_ITEM_INT, &g_Obstacle, (i16)&g_MenuTreesMinMax },
+	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -186,6 +196,8 @@ const MenuItem g_MenuPlay[] = {
 const MenuItem g_MenuOption[] = {
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
 	{ "PALETTE",             MENU_ITEM_ACTION, MenuAction_Palette, 0 },
+	{ "BONUS",               MENU_ITEM_ACTION, MenuAction_Bonus, 0 },
+	{ "WALL",                MENU_ITEM_ACTION, MenuAction_Wall, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -220,7 +232,10 @@ const MenuItem g_MenuCredit[] = {
 const Menu g_Menus[MENU_MAX] =
 {
 	{ NULL, g_MenuMain,   numberof(g_MenuMain) },
-	{ NULL, g_MenuPlay,   numberof(g_MenuPlay) },
+#if (EXT_VERSION)
+	{ NULL, g_MenuSolo,   numberof(g_MenuSolo) },
+#endif
+	{ NULL, g_MenuMulti,  numberof(g_MenuMulti) },
 	{ NULL, g_MenuOption, numberof(g_MenuOption) },
 	{ NULL, g_MenuSystem, numberof(g_MenuSystem) },
 	{ NULL, g_MenuCredit, numberof(g_MenuCredit) },
@@ -292,6 +307,10 @@ const CtrlBind g_CtrlBind[] = {
 	{ KEY_8,	CTRL_JOY_8 },
 };
 
+const u8 g_BonusData[] = { 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 };
+const u8 g_WallData[] = { 0xE1, 0xE2, 0xE3, 0 };
+
+
 //=============================================================================
 // MEMORY DATA
 //=============================================================================
@@ -312,11 +331,14 @@ u8 			g_GameMode = MODE_BATTLEROYAL;
 u8 			g_GameCount = 3;
 Player		g_Players[PLAYER_MAX];	// Players information
 u8			g_PlayerMax;
-Vector		g_Salad;				// Salad information
+Vector		g_BonusPos;				// Bonus information
+u8			g_BonusTile;
+u8			g_BonusOpt = 4;
 c8			g_StrBuffer[32];		// String temporary buffer
 u8			g_ScreenBuffer[32*24];
 u8			g_CurrentPlayer;
-u8			g_Obstacle = 0;
+u8			g_WallNum = 0;
+u8			g_WallOpt = 0;
 
 // Input
 u8			g_JoyInfo;
@@ -459,16 +481,19 @@ void CheckBattleRoyal()
 
 //-----------------------------------------------------------------------------
 // 
-void SpawnSalad()
+void SpawnBonus()
 {
 	u8 rnd = Math_GetRandom8();
 	u8 x = 8 + rnd % 16;
 	u8 y = 8 + (rnd >> 4) % 8;
 	while(VDP_Peek_GM2(x, y) != TILE_EMPTY)
 		x++;
-	g_Salad.X = x;
-	g_Salad.Y = y;
-	VDP_Poke_GM2(x, y, TILE_SALAD);
+	g_BonusPos.X = x;
+	g_BonusPos.Y = y;
+	g_BonusTile = g_BonusData[g_BonusOpt];
+	if(g_BonusTile == 0)
+		g_BonusTile = g_BonusData[Math_GetRandom8() % sizeof(g_BonusData)];
+	VDP_Poke_GM2(x, y, g_BonusTile);
 }
 
 //-----------------------------------------------------------------------------
@@ -537,35 +562,35 @@ void UpdateAI(Player* ply)
 		weight[ACTION_RIGHT] += w;
 	}
 
-	// Seek salad
+	// Seek Bonus
 	switch(ply->Dir)
 	{
 	case DIR_UP:
-		if(g_Salad.X > ply->PosX)
-			weight[ACTION_RIGHT] += AI_WEIGHT_SALAD;
-		else if(g_Salad.X < ply->PosX)
-			weight[ACTION_LEFT] += AI_WEIGHT_SALAD;
+		if(g_BonusPos.X > ply->PosX)
+			weight[ACTION_RIGHT] += AI_WEIGHT_BONUS;
+		else if(g_BonusPos.X < ply->PosX)
+			weight[ACTION_LEFT] += AI_WEIGHT_BONUS;
 		break;
 
 	case DIR_DOWN:
-		if(g_Salad.X < ply->PosX)
-			weight[ACTION_RIGHT] += AI_WEIGHT_SALAD;
-		else if(g_Salad.X > ply->PosX)
-			weight[ACTION_LEFT] += AI_WEIGHT_SALAD;
+		if(g_BonusPos.X < ply->PosX)
+			weight[ACTION_RIGHT] += AI_WEIGHT_BONUS;
+		else if(g_BonusPos.X > ply->PosX)
+			weight[ACTION_LEFT] += AI_WEIGHT_BONUS;
 		break;
 
 	case DIR_RIGHT:
-		if(g_Salad.Y > ply->PosY)
-			weight[ACTION_RIGHT] += AI_WEIGHT_SALAD;
-		else if(g_Salad.Y < ply->PosY)
-			weight[ACTION_LEFT] += AI_WEIGHT_SALAD;
+		if(g_BonusPos.Y > ply->PosY)
+			weight[ACTION_RIGHT] += AI_WEIGHT_BONUS;
+		else if(g_BonusPos.Y < ply->PosY)
+			weight[ACTION_LEFT] += AI_WEIGHT_BONUS;
 		break;
 
 	case DIR_LEFT:
-		if(g_Salad.Y < ply->PosY)
-			weight[ACTION_RIGHT] += AI_WEIGHT_SALAD;
-		else if(g_Salad.Y > ply->PosY)
-			weight[ACTION_LEFT] += AI_WEIGHT_SALAD;
+		if(g_BonusPos.Y < ply->PosY)
+			weight[ACTION_RIGHT] += AI_WEIGHT_BONUS;
+		else if(g_BonusPos.Y > ply->PosY)
+			weight[ACTION_LEFT] += AI_WEIGHT_BONUS;
 		break;
 	}
 
@@ -962,9 +987,16 @@ void UpdatePlayer(Player* ply)
 		{
 			switch(cell)
 			{
-			case TILE_SALAD:
-				ply->Expect += SALAD_GROWTH;
-				SpawnSalad();
+			case TILE_BONUS:
+			case TILE_BONUS+1:
+			case TILE_BONUS+2:
+			case TILE_BONUS+3:
+			case TILE_BONUS+4:
+			case TILE_BONUS+5:
+			case TILE_BONUS+6:
+			case TILE_BONUS+7:
+				ply->Expect += BONUS_GROWTH;
+				SpawnBonus();
 				if(g_GameMode == MODE_GREEDIEST)
 				{
 					ply->Score++;
@@ -1132,6 +1164,62 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 
 //-----------------------------------------------------------------------------
 //
+const c8* MenuAction_Bonus(u8 op, i8 value)
+{
+	switch(op)
+	{
+	case MENU_ACTION_SET:
+	case MENU_ACTION_INC:
+		g_BonusOpt++;
+		if(g_BonusOpt >= sizeof(g_BonusData))
+			g_BonusOpt = 0;
+		break;
+	case MENU_ACTION_DEC:
+		g_BonusOpt--;
+		if(g_BonusOpt == 255)
+			g_BonusOpt = sizeof(g_BonusData) - 1;
+		break;
+	}
+
+	if(g_BonusData[g_BonusOpt] == 0)
+		return "RANDOM";
+
+	g_StrBuffer[0] = g_BonusData[g_BonusOpt] + 0x20;
+	g_StrBuffer[1] = 0;
+
+	return g_StrBuffer;
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Wall(u8 op, i8 value)
+{
+	switch(op)
+	{
+	case MENU_ACTION_SET:
+	case MENU_ACTION_INC:
+		g_WallOpt++;
+		if(g_WallOpt >= sizeof(g_WallData))
+			g_WallOpt = 0;
+		break;
+	case MENU_ACTION_DEC:
+		g_WallOpt--;
+		if(g_WallOpt == 255)
+			g_WallOpt = sizeof(g_WallData) - 1;
+		break;
+	}
+
+	if(g_WallData[g_WallOpt] == 0)
+		return "RANDOM";
+
+	g_StrBuffer[0] = g_WallData[g_WallOpt] + 0x20;
+	g_StrBuffer[1] = 0;
+
+	return g_StrBuffer;
+}
+
+//-----------------------------------------------------------------------------
+//
 const c8* MenuAction_Port(u8 op, i8 value)
 {
 	u8 tap = NTAP_TYPE_NONE;
@@ -1196,6 +1284,8 @@ const c8* MenuAction_Exit(u8 op, i8 value)
 //
 void State_Init_Begin()
 {
+	Bios_SetKeyClick(FALSE);
+
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
 	VDP_SetColor(COLOR_BLACK);
@@ -1349,6 +1439,15 @@ void State_Title_Begin()
 	PrintChr(0, 23, 0xED);
 	PrintChr(31, 23, 0xEF);
 	PrintChrX(1, 23, 0xEE, 30);
+	// PrintChr(0,  0, TILE_TREE);
+	// PrintChr(31, 0, TILE_TREE);
+	// PrintChrX(1, 0, TILE_TREE, 30);
+	// PrintChrY(0, 1, TILE_TREE, 22);
+	// PrintChrY(31,1, TILE_TREE, 22);
+	// PrintChr(0, 23, TILE_TREE);
+	// PrintChr(31, 23, TILE_TREE);
+	// PrintChrX(1, 23, TILE_TREE, 30);
+
 
 	// Initialize font
 	g_PrintData.ScreenWidth = 32;
@@ -1621,7 +1720,10 @@ void State_Game_Begin()
 	VDP_WriteVRAM(g_ScreenBuffer, g_ScreenLayoutLow, g_ScreenLayoutHigh, 32*24);
 
 	// Initialize obstacles
-	for(u8 i = 0; i < g_Obstacle; ++i)
+	u8 wallTile = g_WallData[g_WallOpt];
+	if(wallTile == 0)
+		wallTile = g_WallData[Math_GetRandom8() % sizeof(g_WallData)];
+	for(u8 i = 0; i < g_WallNum; ++i)
 	{
 		u8 x = 0, y = 0;
 		bool bLoop = TRUE;
@@ -1648,11 +1750,11 @@ void State_Game_Begin()
 				}
 			}
 		}
-		VDP_Poke_GM2(x, y, TILE_TREE);
+		VDP_Poke_GM2(x, y, wallTile);
 	}
 
-	// Initialize Salad
-	SpawnSalad();
+	// Initialize Bonus
+	SpawnBonus();
 
 	// Spawn players
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -1681,7 +1783,7 @@ void State_Game_Update()
 	g_CurrentPlayer++;
 	g_CurrentPlayer %= PLAYER_MAX;
 
-	VDP_Poke_GM2(g_Salad.X, g_Salad.Y, TILE_SALAD);
+	VDP_Poke_GM2(g_BonusPos.X, g_BonusPos.Y, g_BonusTile);
 
 	// Update keyboard entries
 	if(g_Input[CTRL_KEY_1] == ACTION_NONE)

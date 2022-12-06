@@ -38,7 +38,7 @@ set ProjName=crawlers
 set ProjModules=%ProjName%
 
 :: List of modules to link
-set LibModules=game_menu,device\ninjatap,fsm,system,bios,vdp,input,memory,math
+set LibModules=game_menu,device\ninjatap,fsm,system,bios,vdp,input,memory,math,print
 
 :: MSX machine version:
 :: - 1		MSX 1

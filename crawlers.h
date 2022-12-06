@@ -10,8 +10,10 @@
 // DEFINES
 //=============================================================================
 
-// Library's logo
-#define MSX_GL						"\x02\x03\x04\x05"
+#define EXT_VERSION					FALSE
+
+// Logo tiles
+#define MSXGL						"[\\]^"
 
 // 
 #define PLAYER_MAX					8
@@ -25,16 +27,14 @@
 #define LENGTH_DEFAULT				5
 
 // Collider tiles
-#define TILE_TREE					0xE0
-#define TILE_TREE2					0xE1
-#define TILE_EGG					0xE2
+#define TILE_TREE					0xE1
+#define TILE_TREE2					0xE2
 #define TILE_HOLE					0xE3
 #define TILE_INCOMING				0xE4
 // No-collider tiles
 #define TILE_EMPTY					0xF0
-#define TILE_SALAD					0xF1
-#define TILE_MUSH					0xF2
-#define TILE_PREHOLE				0xF3
+#define TILE_PREHOLE				0xF1
+#define TILE_BONUS					0xF4
 
 #define SPAWN_WAIT					20 // Spawn waiting time (N * 8 frames)
 #define COOLDOWN_WAIT				8
@@ -43,9 +43,9 @@
 #define LOGO_OFFSET					33
 #define LOGO_END					64
 
-#define AI_WEIGHT_SALAD				1
+#define AI_WEIGHT_BONUS				1
 
-#define SALAD_GROWTH				10
+#define BONUS_GROWTH				10
 
 // Controller types define
 enum CTRL_TYPE
@@ -104,7 +104,10 @@ enum PLAYER_STATE
 enum MENU_PAGE
 {
 	MENU_MAIN = 0,
-	MENU_PLAY,
+#if (EXT_VERSION)
+	MENU_SOLO,
+#endif
+	MENU_MULTI,
 	MENU_OPTION,
 	MENU_SYSTEM,
 	MENU_CREDIT,
