@@ -198,9 +198,9 @@ const MenuItem g_MenuMulti[] =
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
 	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
 	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
+	{ "TIME",                MENU_ITEM_INT, &g_TimeMax, (i16)&g_MenuRoundsMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_UPDATE, MenuAction_Info, 0 },
@@ -211,6 +211,8 @@ const MenuItem g_MenuOption[] =
 {
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
 	{ "PALETTE",             MENU_ITEM_ACTION, MenuAction_Palette, 0 },
+	{ "MUSIC",               MENU_ITEM_BOOL, &g_OptMusic, 0 },
+	{ "SFX",                 MENU_ITEM_BOOL, &g_OptSFX, 0 },
 	{ "BONUS",               MENU_ITEM_ACTION, MenuAction_Bonus, 0 },
 	{ "WALL",                MENU_ITEM_ACTION, MenuAction_Wall, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -357,6 +359,8 @@ u8			g_PalOpt;
 u8			g_VersionVDP;
 bool		g_PlayingMusic = FALSE;
 u8			g_Scroll;
+bool		g_OptMusic = TRUE;
+bool		g_OptSFX = TRUE;
 
 // Gameplay
 u8 			g_GameMode = MODE_BATTLEROYAL;
@@ -371,6 +375,7 @@ u8			g_ScreenBuffer[32*24];
 u8			g_CurrentPlayer;
 u8			g_WallNum = 0;
 u8			g_WallOpt = 0;
+u8			g_TimeMax = 5;
 
 // Input
 u8			g_JoyInfo;
