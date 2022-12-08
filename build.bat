@@ -38,7 +38,7 @@ set ProjName=crawlers
 set ProjModules=%ProjName%
 
 :: List of modules to link
-set LibModules=compress\pletter,arkos\akg_player,game_menu,device\ninjatap,fsm,bios,vdp,input,memory,math,print
+set LibModules=compress\pletter,arkos\akg_player,game_menu,device\ninjatap,fsm,vdp,input,memory,math,print
 
 :: MSX machine version:
 :: - 1		MSX 1

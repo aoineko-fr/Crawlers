@@ -197,8 +197,8 @@ const MenuItem g_MenuMulti[] =
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, 0 },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
 	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
-	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
 	{ "TIME",                MENU_ITEM_INT, &g_TimeMax, (i16)&g_MenuRoundsMinMax },
+	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -330,10 +330,10 @@ const CtrlBind g_CtrlBind[] =
 const u8 g_BonusData[8+1] = { 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 };
 const u8 g_WallData[4+1] = { 0xE1, 0xE2, 0xE3, 0xE8, 0 };
 
-const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED.";
-const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH.";
-const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN TIME (ROUNDS = MINUTES), THE ONE WHO HAS REACHED THE LARGEST SIZE WINS THE MATCH.";
-const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GETS THE MOST BONUSES AT THE END OF THE SET TIME (ROUNDS = MINUTES) WINS THE GAME.";
+const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLAPSE AFTER TIMER END.";
+const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH. FIELD COLAPSE AFTER TIMER END.";
+const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN TIME, THE ONE WHO HAS REACHED THE LARGEST SIZE WINS THE MATCH.";
+const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GETS THE MOST BONUSES AT THE END OF THE SET TIME WINS THE GAME.";
 
 const ModeInfo g_ModeInfo[] =
 {
@@ -390,6 +390,56 @@ u8			g_CtrlReg[CTRL_MAX];
 //=============================================================================
 // FUNCTIONS
 //=============================================================================
+
+void Bios_Exit(u8 ret) __FASTCALL
+{
+#if (TARGET_TYPE == TYPE_DOS)
+
+	__asm
+	#if BIOS_USE_VDP
+		push	ix
+		push	hl
+		// Set Screen mode to 5...
+		ld		a, #5
+		ld		ix, #R_CHGMOD
+		ld		iy, (M_EXPTBL-1)
+		call	R_CALSLT
+		// ... to be able to call TOTEXT routine
+		ld		ix, #R_TOTEXT
+		ld		iy, (M_EXPTBL-1)
+		call	R_CALSLT
+		ei
+		// Set return value to L
+		pop		hl
+		pop		ix
+	#endif
+	__endasm;
+
+#elif (TARGET_TYPE == TYPE_BIN)
+	
+	__asm
+		push	ix
+	#if BIOS_USE_VDP
+		// Set Screen mode to 5...
+		ld		a, #5
+		call	R_CHGMOD
+		// ... to be able to call TOTEXT routine
+		call	R_TOTEXT
+	#endif
+		// 
+		ld		ix, #0x409B
+		call	R_CALBAS
+		pop		ix
+	__endasm;
+
+#else // if (TARGET_TYPE == TYPE_ROM)
+
+	__asm
+		rst		#0
+	__endasm;
+
+#endif
+}
 
 //-----------------------------------------------------------------------------
 // 
@@ -1385,7 +1435,7 @@ void State_Init_Begin()
 
 	// Set VBlank hook
 	VDP_EnableVBlank(TRUE);
-	Bios_SetHookCallback(H_TIMI, VBlankHook);
+	Bios_SetHookDirectCallback(H_TIMI, VBlankHook);
 
 	// Initialize Joystick and/or Ninja Tap
 	NTap_Check();
