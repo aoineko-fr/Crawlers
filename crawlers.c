@@ -43,8 +43,14 @@ void State_Menu_Update();
 void State_Select_Begin();
 void State_Select_Update();
 
+void State_Start_Begin();
+void State_Start_Update();
+
 void State_Game_Begin();
 void State_Game_Update();
+
+void State_Victory_Begin();
+void State_Victory_Update();
 
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
@@ -173,9 +179,9 @@ const MenuItem g_MenuMain[] =
 #if (EXT_VERSION)
 	{ "SOLO MODE",           MENU_ITEM_GOTO, NULL, MENU_SOLO },
 #endif
-	{ "BATTLE MODE",         MENU_ITEM_GOTO, NULL, MENU_MULTI },
+	{ "BATTLE",              MENU_ITEM_GOTO, NULL, MENU_MULTI },
 	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
-	{ "SYSTEM INFO",         MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
+	{ "INFORMATION",         MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
 	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
 #if (TARGET_TYPE != TYPE_ROM)
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -226,7 +232,7 @@ const MenuItem g_MenuSystem[] =
 	{ "VIDEO",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_VDP, 0 },
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
 	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
-	{ "TOTAL%",              MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_JoyNum, NULL },
+	{ "TOTAL\x1C",           MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_JoyNum, NULL },
 	{ "MAX$",                MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
@@ -240,8 +246,8 @@ const MenuItem g_MenuCredit[] =
 	{ "POWERED BY " MSXGL,   MENU_ITEM_TEXT, NULL, 2 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "CODE:  AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
-	{ "GFX:   AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
-	{ "MUSIC: ???",          MENU_ITEM_TEXT, NULL, 0 },
+	{ "GRAPH: AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
+	{ "MUSIC: TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
 	{ "SFX:   AYFX SAMPLE",  MENU_ITEM_TEXT, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
@@ -266,7 +272,9 @@ const FSM_State State_Logo =	{ 0, State_Logo_Begin,		State_Logo_Update,		NULL };
 const FSM_State State_Title =	{ 0, State_Title_Begin,		State_Title_Update,		NULL };
 const FSM_State State_Menu =	{ 0, State_Menu_Begin,		State_Menu_Update,		NULL };
 const FSM_State State_Select =	{ 0, State_Select_Begin,	State_Select_Update,	NULL };
+const FSM_State State_Start =	{ 0, State_Start_Begin,		State_Start_Update,		NULL };
 const FSM_State State_Game =	{ 0, State_Game_Begin,		State_Game_Update,		NULL };
+const FSM_State State_Victory =	{ 0, State_Victory_Begin,	State_Victory_Update,	NULL };
 
 // 
 const SelectDevice g_Devices[CTRL_MAX] =
@@ -328,7 +336,7 @@ const CtrlBind g_CtrlBind[] =
 };
 
 const u8 g_BonusData[8+1] = { 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 };
-const u8 g_WallData[4+1] = { 0xE1, 0xE2, 0xE3, 0xE8, 0 };
+const u8 g_WallData[5+1] = { 0xE1, 0xE2, 0xE3, 0xE8, 0xEF, 0 };
 
 const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLAPSE AFTER TIMER END.";
 const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH. FIELD COLAPSE AFTER TIMER END.";
@@ -391,16 +399,42 @@ u8			g_CtrlReg[CTRL_MAX];
 // FUNCTIONS
 //=============================================================================
 
-void Bios_Exit(u8 ret) __FASTCALL
+//-----------------------------------------------------------------------------
+// Load patterns in all 3 screen sections
+void VDP_LoadPattern_GM2_Pletter(const u8* src, u8 offset)
 {
+	u16 dst = g_ScreenPatternLow + (offset * 8);
+	Pletter_UnpackToVRAM(src, dst);
+	dst += 0x800;
+	Pletter_UnpackToVRAM(src, dst);
+	dst += 0x800;
+	Pletter_UnpackToVRAM(src, dst);
+}
+
+//-----------------------------------------------------------------------------
+// Load colors in all 3 screen sections
+void VDP_LoadColor_GM2_Pletter(const u8* src, u8 offset)
+{
+	u16 dst = g_ScreenColorLow + (offset * 8);
+	Pletter_UnpackToVRAM(src, dst);
+	dst += 0x800;
+	Pletter_UnpackToVRAM(src, dst);
+	dst += 0x800;
+	Pletter_UnpackToVRAM(src, dst);
+}
+
+//-----------------------------------------------------------------------------
+// 
+void Bios_Exit(u8 ret)
+{
+	ret;	// A
 #if (TARGET_TYPE == TYPE_DOS)
 
 	__asm
 	#if BIOS_USE_VDP
-		push	ix
-		push	hl
-		// Set Screen mode to 5...
-		ld		a, #5
+		push	af
+		// Set Screen mode to 2...
+		ld		a, #2
 		ld		ix, #R_CHGMOD
 		ld		iy, (M_EXPTBL-1)
 		call	R_CALSLT
@@ -408,34 +442,35 @@ void Bios_Exit(u8 ret) __FASTCALL
 		ld		ix, #R_TOTEXT
 		ld		iy, (M_EXPTBL-1)
 		call	R_CALSLT
-		ei
-		// Set return value to L
-		pop		hl
-		pop		ix
+		pop		af
 	#endif
+		ld		b, a
+		ld		c, #DOS_FUNC_TERM
+		call	BDOS
+		ld		c, #DOS_FUNC_TERM0
+		jp		BDOS
 	__endasm;
 
 #elif (TARGET_TYPE == TYPE_BIN)
 	
 	__asm
-		push	ix
 	#if BIOS_USE_VDP
-		// Set Screen mode to 5...
-		ld		a, #5
+		// Set Screen mode to 2...
+		ld		a, #2
 		call	R_CHGMOD
 		// ... to be able to call TOTEXT routine
 		call	R_TOTEXT
 	#endif
 		// 
-		ld		ix, #0x409B
+		ld		ix, #0x409B // address of "warm boot" BASIC interpreter
+		// this routine is called to reset the stack if basic is externally stopped and then restarted.
 		call	R_CALBAS
-		pop		ix
 	__endasm;
 
 #else // if (TARGET_TYPE == TYPE_ROM)
 
 	__asm
-		rst		#0
+		call	0x0000				// Soft reset
 	__endasm;
 
 #endif
@@ -1106,7 +1141,7 @@ void UpdatePlayer(Player* ply)
 
 //-----------------------------------------------------------------------------
 // VBlank interrupt
-void VBlankHook()
+void VDP_InterruptHandler()
 {
 	g_VBlank = 1;
 
@@ -1146,6 +1181,7 @@ void WaitVBlank()
 //
 const c8* MenuAction_Start(u8 op, i8 value)
 {
+	value;
 	if(op == MENU_ACTION_SET)
 		FSM_SetState(&State_Select);
 	return NULL;
@@ -1155,6 +1191,7 @@ const c8* MenuAction_Start(u8 op, i8 value)
 //
 const c8* MenuAction_Mode(u8 op, i8 value)
 {
+	value;
 	switch(op)
 	{
 	case MENU_ACTION_SET:
@@ -1184,6 +1221,8 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 //
 const c8* MenuAction_Info(u8 op, i8 value)
 {
+	op;
+	value;
 	if(g_Frame & 0x7)
 		return NULL;
 
@@ -1214,6 +1253,7 @@ const c8* MenuAction_Info(u8 op, i8 value)
 //
 const c8* MenuAction_Freq(u8 op, i8 value)
 {
+	value;
 	switch(op)
 	{
 	case MENU_ACTION_SET:
@@ -1251,6 +1291,7 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 //
 const c8* MenuAction_Palette(u8 op, i8 value)
 {
+	value;
 	if(g_VersionVDP == VDP_VERSION_TMS9918A)
 		return "(FOR MSX2)";
 
@@ -1285,6 +1326,7 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 //
 const c8* MenuAction_Bonus(u8 op, i8 value)
 {
+	value;
 	switch(op)
 	{
 	case MENU_ACTION_SET:
@@ -1313,6 +1355,7 @@ const c8* MenuAction_Bonus(u8 op, i8 value)
 //
 const c8* MenuAction_Wall(u8 op, i8 value)
 {
+	value;
 	switch(op)
 	{
 	case MENU_ACTION_SET:
@@ -1341,6 +1384,7 @@ const c8* MenuAction_Wall(u8 op, i8 value)
 //
 const c8* MenuAction_Port(u8 op, i8 value)
 {
+	op;
 	u8 tap = NTAP_TYPE_NONE;
 	if(value == 0) // port 1
 		tap = (g_JoyInfo >> 4) & 0x03;
@@ -1359,6 +1403,8 @@ const c8* MenuAction_Port(u8 op, i8 value)
 //
 const c8* MenuAction_MSX(u8 op, i8 value)
 {
+	op;
+	value;
 	switch(g_MSXVER)
 	{
 	case MSXVER_1:  return "MSX 1";
@@ -1373,11 +1419,13 @@ const c8* MenuAction_MSX(u8 op, i8 value)
 //
 const c8* MenuAction_VDP(u8 op, i8 value)
 {
+	op;
+	value;
 	switch(g_VersionVDP)
 	{
-	case VDP_VERSION_TMS9918A: return "TMS9918 (MSX 1)";
-	case VDP_VERSION_V9938:    return "V9938 (MSX 2)";
-	case VDP_VERSION_V9958:    return "V9958 (2+/TR)";
+	case VDP_VERSION_TMS9918A: return "TMS9918";
+	case VDP_VERSION_V9938:    return "V9938";
+	case VDP_VERSION_V9958:    return "V9958";
 	}
 	return "UNKNOW";
 }
@@ -1386,6 +1434,7 @@ const c8* MenuAction_VDP(u8 op, i8 value)
 //
 const c8* MenuAction_Exit(u8 op, i8 value)
 {
+	value;
 	if(op == MENU_ACTION_SET)
 		Bios_Exit(0);
 	return NULL;
@@ -1435,7 +1484,7 @@ void State_Init_Begin()
 
 	// Set VBlank hook
 	VDP_EnableVBlank(TRUE);
-	Bios_SetHookDirectCallback(H_TIMI, VBlankHook);
+	Bios_SetHookDirectCallback(H_TIMI, VDP_InterruptHandler);
 
 	// Initialize Joystick and/or Ninja Tap
 	NTap_Check();
@@ -1478,18 +1527,28 @@ void State_Logo_Begin()
 
 	// Load sprites data
 	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_16);
-	VDP_LoadSpritePattern(g_DataLogoSprt, 0, sizeof(g_DataSprites) / 8);
-	VDP_FillVRAM_16K(0xFF, g_SpritePatternLow + (16 * 8), 4 * 8);
-	// Set sprites data
-	VDP_SetSpriteSM1(0, 112, 79, 16, COLOR_BLACK);
-	VDP_SetSpriteSM1(1,  96, 95, 16, COLOR_BLACK);
-	VDP_SetSpriteSM1(2, 112, 95, 16, COLOR_BLACK);
-	VDP_SetSpriteSM1(3, 128, 95, 16, COLOR_BLACK);
-	VDP_SetSpriteSM1(4, 112, 79,  0, COLOR_LIGHT_YELLOW);
-	VDP_SetSpriteSM1(5, 112, 79,  4, COLOR_DARK_YELLOW);
-	VDP_SetSpriteSM1(6, 112, 79,  8, COLOR_MEDIUM_RED);
-	VDP_SetSpriteSM1(7, 112, 79, 12, COLOR_LIGHT_RED);
-	VDP_DisableSpritesFrom(8);
+	VDP_LoadSpritePattern(g_DataLogoSprt, 4, sizeof(g_DataLogoSprt) / 8);
+	VDP_FillVRAM_16K(0xFF, g_SpritePatternLow, 4 * 8);
+	// Set sprites data - Mask
+	VDP_SetSpriteSM1(0,  96, 95, 0, COLOR_BLACK);
+	VDP_SetSpriteSM1(1, 112, 95, 0, COLOR_BLACK);
+	VDP_SetSpriteSM1(2, 128, 95, 0, COLOR_BLACK);
+	VDP_SetSpriteSM1(3, 104, 79, 0, COLOR_BLACK);
+	VDP_SetSpriteSM1(4, 120, 79, 0, COLOR_BLACK);
+	VDP_SetSpriteSM1(5, 104, 63, 0, COLOR_BLACK);
+	VDP_SetSpriteSM1(6, 120, 63, 0, COLOR_BLACK);
+	// Logo
+	VDP_SetSpriteSM1( 7, 104, 63,  4, COLOR_LIGHT_RED);
+	VDP_SetSpriteSM1( 8, 120, 63,  8, COLOR_LIGHT_RED);
+	VDP_SetSpriteSM1( 9, 104, 79, 12, COLOR_LIGHT_RED);
+	VDP_SetSpriteSM1(10, 120, 79, 16, COLOR_LIGHT_RED);
+	VDP_SetSpriteSM1(11, 104, 55, 20, COLOR_DARK_RED);
+	VDP_SetSpriteSM1(12, 120, 55, 24, COLOR_DARK_RED);
+	VDP_SetSpriteSM1(13, 104, 71, 28, COLOR_WHITE);
+	VDP_SetSpriteSM1(14, 120, 71, 32, COLOR_WHITE);
+	VDP_SetSpriteSM1(15, 104, 87, 36, COLOR_LIGHT_YELLOW);
+	VDP_SetSpriteSM1(16, 120, 87, 40, COLOR_LIGHT_YELLOW);
+	VDP_DisableSpritesFrom(17);
 
 	// Load tiles data
 	VDP_LoadPattern_GM2(g_DataLogoTile_Patterns, sizeof(g_DataLogoTile_Patterns) / 8, 0);
@@ -1497,7 +1556,7 @@ void State_Logo_Begin()
 	// Draw tiles data
 	VDP_FillScreen_GM2(0x00);
 	VDP_WriteLayout_GM2(g_DataLogoTileL0_Names, 12, 12, 6, 2);
-	VDP_WriteLayout_GM2(g_DataLogoTileL1_Names, 14, 10, 2, 2);
+	VDP_WriteLayout_GM2(g_DataLogoTileL1_Names, 13, 8, 4, 4);
 
 	*g_ScreenBuffer = 0;
 
@@ -1516,10 +1575,15 @@ void State_Logo_Update()
 
 	if(((*g_ScreenBuffer) >= LOGO_START) && ((*g_ScreenBuffer) < LOGO_START + LOGO_OFFSET))
 	{
-		VDP_SetSpritePositionY(0, 79 + LOGO_START - *g_ScreenBuffer);
+		VDP_SetSpritePositionY(0, 95 + LOGO_START - *g_ScreenBuffer);
 		VDP_SetSpritePositionY(1, 95 + LOGO_START - *g_ScreenBuffer);
 		VDP_SetSpritePositionY(2, 95 + LOGO_START - *g_ScreenBuffer);
-		VDP_SetSpritePositionY(3, 95 + LOGO_START - *g_ScreenBuffer);
+
+		VDP_SetSpritePositionY(3, 79 + LOGO_START - *g_ScreenBuffer);
+		VDP_SetSpritePositionY(4, 79 + LOGO_START - *g_ScreenBuffer);
+
+		VDP_SetSpritePositionY(5, 63 + LOGO_START - *g_ScreenBuffer);
+		VDP_SetSpritePositionY(6, 63 + LOGO_START - *g_ScreenBuffer);
 	}
 
 	if(((*g_ScreenBuffer) == LOGO_END) || Keyboard_IsKeyPressed(KEY_SPACE))
@@ -1535,13 +1599,13 @@ void State_Logo_Update()
 void State_Title_Begin()
 {
 	// Initialize music
-	if(!g_PlayingMusic)
+	/*if(!g_PlayingMusic)
 	{
 		Pletter_UnpackToRAM(g_MusicMain, (void*)0xD000);
 		AKG_Stop();
 		AKG_Init((const void*)0xD000, 0);
 		g_PlayingMusic = TRUE;
-	}
+	}*/
 
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
@@ -1554,8 +1618,8 @@ void State_Title_Begin()
 	VDP_LoadSpritePattern(g_DataEyes, 32, sizeof(g_DataEyes) / 8);
 
 	// Initialize tiles data
-	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
-	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
+	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
+	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
 	VDP_WriteLayout_GM2(g_TitleTile, 4, 3, 24, 5);
 
 	// Draw field
@@ -1635,22 +1699,22 @@ void State_Select_Begin()
 	// Load tiles
 
 	// Initialize tiles data
-	VDP_LoadPattern_GM2(g_DataSelect_Patterns, sizeof(g_DataSelect_Patterns) / 8, 0);
-	VDP_LoadColor_GM2(g_DataSelect_Colors, sizeof(g_DataSelect_Colors) / 8, 0);
+	VDP_LoadPattern_GM2_Pletter(g_DataSelect_Patterns, 0);
+	VDP_LoadColor_GM2_Pletter(g_DataSelect_Colors, 0);
 	// Portaits tiles
 	u16 dst = g_ScreenPatternLow + (128 * 8);
-	VDP_WriteVRAM(g_DataFace1_Patterns, dst, g_ScreenPatternHigh, sizeof(g_DataFace1_Patterns));
+	Pletter_UnpackToVRAM(g_DataFace1_Patterns, dst);
 	dst += 0x800;
-	VDP_WriteVRAM(g_DataFace1_Patterns, dst, g_ScreenPatternHigh, sizeof(g_DataFace1_Patterns));
+	Pletter_UnpackToVRAM(g_DataFace1_Patterns, dst);
 	dst += 0x800;
-	VDP_WriteVRAM(g_DataFace2_Patterns, dst, g_ScreenPatternHigh, sizeof(g_DataFace2_Patterns));
+	Pletter_UnpackToVRAM(g_DataFace2_Patterns, dst);
 	// Portaits colors
 	dst = g_ScreenColorLow + (128 * 8);
-	VDP_WriteVRAM(g_DataFace1_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace1_Colors));
+	Pletter_UnpackToVRAM(g_DataFace1_Colors, dst);
 	dst += 0x800;
-	VDP_WriteVRAM(g_DataFace1_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace1_Colors));
+	Pletter_UnpackToVRAM(g_DataFace1_Colors, dst);
 	dst += 0x800;
-	VDP_WriteVRAM(g_DataFace2_Colors, dst, g_ScreenColorHigh, sizeof(g_DataFace2_Colors));
+	Pletter_UnpackToVRAM(g_DataFace2_Colors, dst);
 
 	//........................................
 	// Draw page
@@ -1790,6 +1854,24 @@ void State_Select_Update()
 }
 
 //.............................................................................
+// START STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_Start_Begin()
+{
+	
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Start_Update()
+{
+	
+}
+
+//.............................................................................
 // GAME STATE
 //.............................................................................
 
@@ -1800,8 +1882,8 @@ void State_Game_Begin()
 	VDP_EnableDisplay(FALSE);
 
 	// Initialize tiles data
-	VDP_LoadPattern_GM2(g_DataTiles_Patterns, 255, 0);
-	VDP_LoadColor_GM2(g_DataTiles_Colors, 255, 0);
+	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
+	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
 
 	// Initialize sprites data
 	VDP_HideSprite(0);
@@ -1936,6 +2018,24 @@ void State_Game_Update()
 
 	if(Keyboard_IsKeyPressed(KEY_ESC))
 		FSM_SetState(&State_Menu);
+}
+
+//.............................................................................
+// VICTORY STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_Victory_Begin()
+{
+	
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Victory_Update()
+{
+	
 }
 
 //=============================================================================

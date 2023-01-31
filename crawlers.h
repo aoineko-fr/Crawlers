@@ -40,8 +40,8 @@
 #define COOLDOWN_WAIT				8
 
 #define LOGO_START					8
-#define LOGO_OFFSET					33
-#define LOGO_END					64
+#define LOGO_OFFSET					33+16
+#define LOGO_END					64+16
 
 #define AI_WEIGHT_BONUS				1
 

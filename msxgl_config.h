@@ -117,7 +117,6 @@
 #define INPUT_USE_MOUSE				FALSE	// Add support for Mouse handling functions
 #define INPUT_USE_DETECT			FALSE	// Add feature to detect device plugged in General purpose ports
 #define INPUT_USE_ISR_PROTECTION	TRUE	// Disable interruptions while access PSG registers (needed if you use BIOS or access PSG in your own ISR)
-#define INPUT_USE_MANAGER			FALSE	// Add input manager (IPM) with advanced input features
 #define INPUT_JOY_UPDATE			FALSE	// Add function to update all joystick states at once
 // Key update handler
 #define INPUT_KB_UPDATE				FALSE	// Add function to update all keyboard rows at once
@@ -132,6 +131,15 @@
 #define MEM_USE_FASTCOPY			FALSE	// Add support for fast-copy function (using unrolled-LDI loop)
 #define MEM_USE_FASTSET				FALSE	// Add support for fast-set function (using unrolled-LDI loop)
 #define MEM_USE_DYNAMIC				FALSE	// Add support for malloc style dynamic allocator
+
+//-----------------------------------------------------------------------------
+// MSX-DOS MODULE
+//-----------------------------------------------------------------------------
+
+#define DOS_USE_FCB					TRUE	// Add support for file managment features through FCB structure
+#define DOS_USE_HANDLE				TRUE	// Add support for file managment features through file handle
+#define DOS_USE_UTILITIES			TRUE	// Add support for file managment features through filename
+#define DOS_USE_VALIDATOR			TRUE	// Add support for last error backup and return value validation
 
 //-----------------------------------------------------------------------------
 // DRAW MODULE
@@ -236,6 +244,7 @@
 #define MENU_ITEM_ALIGN				MENU_ITEM_ALIGN_LEFT // Item label alignment
 #define MENU_ITEM_ALIGN_GOTO		MENU_ITEM_ALIGN_LEFT // Goto type item label alignment
 #define MENU_VALUE_X				14		// Item value X position
+#define MENU_USE_DYNAMIC_STATE		FALSE	//
 
 //-----------------------------------------------------------------------------
 // STRING MODULE
@@ -346,7 +355,7 @@
 // - RANDOM_16_LINEAR ............. Linear congruential
 // - RANDOM_16_XORSHIFT ........... XOR Shift
 // - RANDOM_16_LFSR_LCG ........... Combined LFSR/LCG
-#define RANDOM_16_METHOD			RANDOM_16_XORSHIFT
+#define RANDOM_16_METHOD			RANDOM_16_NONE
 
 //-----------------------------------------------------------------------------
 // COMPRESS 
