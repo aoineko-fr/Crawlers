@@ -171,7 +171,7 @@ const c8 g_TitleTile[] = {
 };
 
 const MenuItemMinMax g_MenuRoundsMinMax = { 1, 10, 1 };
-const MenuItemMinMax g_MenuTreesMinMax =  { 0, 50, 5 };
+const MenuItemMinMax g_MenuTreesMinMax =  { 0, 100, 10 };
 
 //
 const MenuItem g_MenuMain[] =
@@ -351,6 +351,22 @@ const ModeInfo g_ModeInfo[] =
 	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest) },
 };
 
+// 14 13 12  |  OOO  O    OO   OO    O    OO   O
+// 11 10 09  |  O    O      O    O  OO   O    O O
+// 08 07 06  |  OO   OOO  OO    O    O   O    O O
+// 05 04 03  |    O   O     O  O     O   O O  O O
+// 02 01 00  |  OO    O   OO   OOO  OOO   OO   O
+const u16 g_TimerLayout[7] =
+{
+	0b111100110001110, // 5
+	0b100100111010010, // 4
+	0b110001110001110, // 3
+	0b110001010100111, // 2
+	0b010110010010111, // 1
+	0b011100100101011, // G
+	0b010101101101010, // O
+};
+
 //=============================================================================
 // MEMORY DATA
 //=============================================================================
@@ -384,6 +400,7 @@ u8			g_CurrentPlayer;
 u8			g_WallNum = 0;
 u8			g_WallOpt = 0;
 u8			g_TimeMax = 5;
+u8			g_Counter;
 
 // Input
 u8			g_JoyInfo;
@@ -478,14 +495,14 @@ void Bios_Exit(u8 ret)
 
 //-----------------------------------------------------------------------------
 // 
-void PrintChr(u8 x, u8 y, c8 chr)
+inline void PrintChr(u8 x, u8 y, c8 chr)
 {
 	VDP_Poke_GM2(x++, y, chr);
 }
 
 //-----------------------------------------------------------------------------
 // 
-void PrintChrX(u8 x, u8 y, c8 chr, u8 len)
+inline void PrintChrX(u8 x, u8 y, c8 chr, u8 len)
 {
 	VDP_FillLayout_GM2(chr, x, y, len, 1);
 }
@@ -500,7 +517,28 @@ void PrintChrY(u8 x, u8 y, c8 chr, u8 len)
 
 //-----------------------------------------------------------------------------
 // 
-void DrawTile(u8 x, u8 y, c8 chr)
+inline void ClearLevel()
+{
+	Mem_Set(TILE_EMPTY, g_ScreenBuffer, 32*24);
+}
+
+//-----------------------------------------------------------------------------
+// 
+inline void DrawLevel()
+{
+	VDP_WriteVRAM(g_ScreenBuffer, g_ScreenLayoutLow, g_ScreenLayoutHigh, 32*24);
+}
+
+//-----------------------------------------------------------------------------
+// 
+inline u8 GetTile(u8 x, u8 y)
+{
+	return g_ScreenBuffer[x + (y * 32)];
+}
+
+//-----------------------------------------------------------------------------
+// 
+inline void DrawTile(u8 x, u8 y, c8 chr)
 {
 	g_ScreenBuffer[x + (y * 32)] = chr;
 }
@@ -523,9 +561,31 @@ void DrawTileY(u8 x, u8 y, c8 chr, u8 len)
 
 //-----------------------------------------------------------------------------
 //
-void SetScore(Player* ply)
+inline void SetScore(Player* ply)
 {
 	Print_DrawIntAt(ply->ID * 4 + 1, 0, ply->Score);
+}
+
+//-----------------------------------------------------------------------------
+//
+void DrawCounter(u8 x, u8 y, u8 step)
+{
+	u8 x0 = x;
+	u16 bit = 0b0100000000000000;
+	for(u8 i = 15; i > 0; --i)
+	{
+		if(g_TimerLayout[step] & bit)
+			PrintChr(x, y, 0xE0);
+		else
+			PrintChr(x, y, TILE_EMPTY);
+		x++;
+		if(x > x0 + 2)
+		{
+			x -= 3;
+			y++;
+		}
+		bit >>= 1;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1557,7 +1617,7 @@ void State_Logo_Begin()
 	VDP_WriteLayout_GM2(g_DataLogoTileL0_Names, 12, 12, 6, 2);
 	VDP_WriteLayout_GM2(g_DataLogoTileL1_Names, 13, 8, 4, 4);
 
-	*g_ScreenBuffer = 0;
+	g_Counter = 0;
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -1572,11 +1632,10 @@ void State_Logo_Update()
 	if((g_Frame & 0x03) != 0)
 		return;
 
-	u8 count = (*g_ScreenBuffer)++;
-
-	if((count >= LOGO_START) && (count < LOGO_START + LOGO_OFFSET))
+	g_Counter++;
+	if((g_Counter >= LOGO_START) && (g_Counter < LOGO_START + LOGO_OFFSET))
 	{
-		u8 offset = (95 + LOGO_START) - count;
+		u8 offset = (95 + LOGO_START) - g_Counter;
 
 		VDP_SetSpritePositionY(0, offset);
 		VDP_SetSpritePositionY(1, offset);
@@ -1589,7 +1648,7 @@ void State_Logo_Update()
 		VDP_SetSpritePositionY(6, offset);
 	}
 
-	if((count == LOGO_END) || Keyboard_IsKeyPressed(KEY_SPACE))
+	if((g_Counter == LOGO_END) || Keyboard_IsKeyPressed(KEY_SPACE))
 		FSM_SetState(&State_Title);
 }
 
@@ -1874,7 +1933,7 @@ void State_Start_Begin()
 	VDP_DisableSpritesFrom(0);
 
 	// Draw game field
-	Mem_Set(TILE_EMPTY, g_ScreenBuffer, 32*24);
+	ClearLevel();
 	DrawTile(0,  1, 0xE9);
 	DrawTile(31, 1, 0xEA);
 	DrawTileX(1,  1, 0xE8, 30);
@@ -1896,9 +1955,6 @@ void State_Start_Begin()
 		DrawTile(start->X, start->Y, TILE_PREHOLE);
 	}
 
-	// Copy screen buffer to VRAM
-	VDP_WriteVRAM(g_ScreenBuffer, g_ScreenLayoutLow, g_ScreenLayoutHigh, 32*24);
-
 	// Initialize obstacles
 	u8 wallTile = g_WallData[g_WallOpt];
 	for(u8 i = 0; i < g_WallNum; ++i)
@@ -1911,7 +1967,7 @@ void State_Start_Begin()
 			x = Math_GetRandom8() % 32;
 			y = 2 + (Math_GetRandom8() % 21);
 			// No obstacle on non-empty tile
-			if(VDP_Peek_GM2(x, y) != TILE_EMPTY)
+			if(GetTile(x, y) != TILE_EMPTY)
 				bLoop = TRUE;
 			// No obstacle in hole lines
 			for(u8 j = 0; j < PLAYER_MAX; ++j)
@@ -1931,8 +1987,11 @@ void State_Start_Begin()
 		u8 wall = wallTile;
 		if(wall == 0)
 			wall = g_WallData[Math_GetRandom8() & 0x03];
-		VDP_Poke_GM2(x, y, wall);
+		DrawTile(x, y, wall);
 	}
+
+	// Copy screen buffer to VRAM
+	DrawLevel();
 
 	// Spawn players
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -1944,7 +2003,7 @@ void State_Start_Begin()
 
 	g_DoSynch = (GetHumanCount() > 0);
 
-	*g_ScreenBuffer = 0;
+	g_Counter = 0;
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -1956,12 +2015,19 @@ void State_Start_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
+	// Skip start sequence
+	if(Keyboard_IsKeyPressed(KEY_SPACE))
+	{
+		FSM_SetState(&State_Game);
+		return;
+	}
+
 	if((g_Frame & 0x0F) != 0)
 		return;
 
-	u8 count = (*g_ScreenBuffer)++;
-
-	if(count & 1)
+	// Display character and control
+	g_Counter++;
+	if(g_Counter & 1)
 	{
 		for(u8 i = 0; i < PLAYER_MAX; ++i)
 		{
@@ -1971,7 +2037,7 @@ void State_Start_Update()
 				u8 x = ply->PosX;
 				u8 y = ply->PosY;
 				PrintChr(x, y, 0x42 + g_CharaInfo[i].TileBase);
-				PrintChr(++x, y, 0);
+				PrintChr(++x, y, TILE_EMPTY);
 			}
 		}
 	}
@@ -2019,8 +2085,26 @@ void State_Start_Update()
 		}
 	}
 
-	if(Keyboard_IsKeyPressed(KEY_SPACE))
+	// Time counter
+	u8 step = g_Counter >> 2;
+	switch(step)
+	{
+	case 0: // 5
+	case 1: // 4
+	case 2: // 3
+	case 3: // 2
+	case 4: // 1
+		DrawCounter(14, 10, step);
+		break;
+	case 5: // GO
+		PrintChrY(15, 10, TILE_EMPTY, 5);
+		DrawCounter(12, 10, 5);
+		DrawCounter(16, 10, 6);
+		break;
+	case 6:
 		FSM_SetState(&State_Game);
+		return;
+	}
 }
 
 //.............................................................................
@@ -2037,6 +2121,9 @@ void State_Game_Begin()
 	VDP_HideSprite(2);
 	VDP_HideSprite(3);
 	VDP_DisableSpritesFrom(4);
+
+	// Copy screen buffer to VRAM
+	DrawLevel();
 
 	// Draw pre-hole
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
