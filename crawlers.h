@@ -35,6 +35,10 @@
 #define TILE_EMPTY					0xF0
 #define TILE_PREHOLE				0xF1
 #define TILE_BONUS					0xF4
+#define TILE_JOY					0xFC // Joystick
+#define TILE_KB1					0xFD // Keyboard config 1
+#define TILE_KB2					0xFE // Keyboard config 2
+#define TILE_AI						0xFF // AI
 
 #define SPAWN_WAIT					20 // Spawn waiting time (N * 8 frames)
 #define COOLDOWN_WAIT				8

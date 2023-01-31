@@ -336,7 +336,7 @@ const CtrlBind g_CtrlBind[] =
 };
 
 const u8 g_BonusData[8+1] = { 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 };
-const u8 g_WallData[5+1] = { 0xE1, 0xE2, 0xE3, 0xE8, 0xEF, 0 };
+const u8 g_WallData[4+1] = { 0xE1, 0xE2, 0xE8, 0xEF, 0 };
 
 const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLAPSE AFTER TIMER END.";
 const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH. FIELD COLAPSE AFTER TIMER END.";
@@ -356,12 +356,12 @@ const ModeInfo g_ModeInfo[] =
 //=============================================================================
 
 // System
-u8 			g_VBlank = 0;			// Vertical-synchronization flag
-u8 			g_Frame = 0;			// Frame counter
+bool		g_VBlank = FALSE;		// Vertical-synchronization flag
+u8			g_Frame = 0;			// Frame counter
+u8			g_6thFrameCount = 0;	// Frame counter
 u8			g_Freq;
 u8			g_FreqDetected;
 u8			g_FreqOpt = FREQ_AUTO;
-u8 			g_6thFrameCount = 0;	// Frame counter
 bool		g_DoSynch;
 u8			g_PalOpt;
 u8			g_VersionVDP;
@@ -371,8 +371,8 @@ bool		g_OptMusic = TRUE;
 bool		g_OptSFX = TRUE;
 
 // Gameplay
-u8 			g_GameMode = MODE_BATTLEROYAL;
-u8 			g_GameCount = 3;
+u8			g_GameMode = MODE_BATTLEROYAL;
+u8			g_GameCount = 3;
 Player		g_Players[PLAYER_MAX];	// Players information
 u8			g_PlayerMax;
 Vector		g_BonusPos;				// Bonus information
@@ -1143,7 +1143,11 @@ void UpdatePlayer(Player* ply)
 // VBlank interrupt
 void VDP_InterruptHandler()
 {
-	g_VBlank = 1;
+	g_VBlank = TRUE;
+
+	g_6thFrameCount++;
+	if(g_6thFrameCount == 5)
+		g_6thFrameCount = 0;
 
 	if(g_PlayingMusic)
 	{
@@ -1156,20 +1160,15 @@ void VDP_InterruptHandler()
 // Wait for V-Blank period
 void WaitVBlank()
 {
-	while(g_VBlank == 0) {}
-	g_VBlank = 0;
-	g_Frame++;
+wait_loop:
+	while(!g_VBlank) {} // Wait for VDP interruption
+	g_VBlank = FALSE;
 
-	// Remove the 6th frame on 60 Hz VDP
-	if(g_Freq == FREQ_60HZ)
-	{
-		if(g_6thFrameCount == 5)
-		{
-			g_6thFrameCount = 0;
-			WaitVBlank();
-		}
-		g_6thFrameCount++;
-	}
+	// Skip the 6th frame on 60 Hz VDP
+	if((g_Freq == FREQ_60HZ) || (!g_6thFrameCount))
+		goto wait_loop; // Wait 1 more frame
+
+	g_Frame++;
 }
 
 //=============================================================================
@@ -1570,23 +1569,27 @@ void State_Logo_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
-	if((g_Frame & 0x03) == 0)
-		(*g_ScreenBuffer)++;
+	if((g_Frame & 0x03) != 0)
+		return;
 
-	if(((*g_ScreenBuffer) >= LOGO_START) && ((*g_ScreenBuffer) < LOGO_START + LOGO_OFFSET))
+	u8 count = (*g_ScreenBuffer)++;
+
+	if((count >= LOGO_START) && (count < LOGO_START + LOGO_OFFSET))
 	{
-		VDP_SetSpritePositionY(0, 95 + LOGO_START - *g_ScreenBuffer);
-		VDP_SetSpritePositionY(1, 95 + LOGO_START - *g_ScreenBuffer);
-		VDP_SetSpritePositionY(2, 95 + LOGO_START - *g_ScreenBuffer);
+		u8 offset = (95 + LOGO_START) - count;
 
-		VDP_SetSpritePositionY(3, 79 + LOGO_START - *g_ScreenBuffer);
-		VDP_SetSpritePositionY(4, 79 + LOGO_START - *g_ScreenBuffer);
-
-		VDP_SetSpritePositionY(5, 63 + LOGO_START - *g_ScreenBuffer);
-		VDP_SetSpritePositionY(6, 63 + LOGO_START - *g_ScreenBuffer);
+		VDP_SetSpritePositionY(0, offset);
+		VDP_SetSpritePositionY(1, offset);
+		VDP_SetSpritePositionY(2, offset);
+		offset -= 16;
+		VDP_SetSpritePositionY(3, offset);
+		VDP_SetSpritePositionY(4, offset);
+		offset -= 16;
+		VDP_SetSpritePositionY(5, offset);
+		VDP_SetSpritePositionY(6, offset);
 	}
 
-	if(((*g_ScreenBuffer) == LOGO_END) || Keyboard_IsKeyPressed(KEY_SPACE))
+	if((count == LOGO_END) || Keyboard_IsKeyPressed(KEY_SPACE))
 		FSM_SetState(&State_Title);
 }
 
@@ -1818,7 +1821,7 @@ void State_Select_Update()
 				EditPlayer(g_SlotIdx, TRUE);
 				break;
 			case 8:
-				FSM_SetState(&State_Game);
+				FSM_SetState(&State_Start);
 				break;
 			case 9:
 				FSM_SetState(&State_Menu);
@@ -1827,7 +1830,7 @@ void State_Select_Update()
 		}
 
 		if(Keyboard_IsKeyPressed(KEY_RET))
-			FSM_SetState(&State_Game);
+			FSM_SetState(&State_Start);
 		if(Keyboard_IsKeyPressed(KEY_ESC))
 			FSM_SetState(&State_Menu);
 
@@ -1861,24 +1864,6 @@ void State_Select_Update()
 //
 void State_Start_Begin()
 {
-	
-}
-
-//-----------------------------------------------------------------------------
-//
-void State_Start_Update()
-{
-	
-}
-
-//.............................................................................
-// GAME STATE
-//.............................................................................
-
-//-----------------------------------------------------------------------------
-//
-void State_Game_Begin()
-{
 	VDP_EnableDisplay(FALSE);
 
 	// Initialize tiles data
@@ -1886,11 +1871,7 @@ void State_Game_Begin()
 	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
 
 	// Initialize sprites data
-	VDP_HideSprite(0);
-	VDP_HideSprite(1);
-	VDP_HideSprite(2);
-	VDP_HideSprite(3);
-	VDP_DisableSpritesFrom(4);
+	VDP_DisableSpritesFrom(0);
 
 	// Draw game field
 	Mem_Set(TILE_EMPTY, g_ScreenBuffer, 32*24);
@@ -1920,8 +1901,6 @@ void State_Game_Begin()
 
 	// Initialize obstacles
 	u8 wallTile = g_WallData[g_WallOpt];
-	if(wallTile == 0)
-		wallTile = g_WallData[Math_GetRandom8() & 0x03];
 	for(u8 i = 0; i < g_WallNum; ++i)
 	{
 		u8 x = 0, y = 0;
@@ -1949,11 +1928,11 @@ void State_Game_Begin()
 				}
 			}
 		}
-		VDP_Poke_GM2(x, y, wallTile);
+		u8 wall = wallTile;
+		if(wall == 0)
+			wall = g_WallData[Math_GetRandom8() & 0x03];
+		VDP_Poke_GM2(x, y, wall);
 	}
-
-	// Initialize Bonus
-	SpawnBonus();
 
 	// Spawn players
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -1965,7 +1944,109 @@ void State_Game_Begin()
 
 	g_DoSynch = (GetHumanCount() > 0);
 
+	*g_ScreenBuffer = 0;
+
 	VDP_EnableDisplay(TRUE);
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Start_Update()
+{
+	// Wait V-Synch
+	WaitVBlank();
+
+	if((g_Frame & 0x0F) != 0)
+		return;
+
+	u8 count = (*g_ScreenBuffer)++;
+
+	if(count & 1)
+	{
+		for(u8 i = 0; i < PLAYER_MAX; ++i)
+		{
+			const Player* ply = &g_Players[i];
+			if(ply->Controller != CTRL_NONE)
+			{
+				u8 x = ply->PosX;
+				u8 y = ply->PosY;
+				PrintChr(x, y, 0x42 + g_CharaInfo[i].TileBase);
+				PrintChr(++x, y, 0);
+			}
+		}
+	}
+	else
+	{
+		for(u8 i = 0; i < PLAYER_MAX; ++i)
+		{
+			const Player* ply = &g_Players[i];
+
+			u8 num = 0xFF;
+			u8 tile = TILE_BONUS;
+			switch(ply->Controller)
+			{
+			case CTRL_JOY_1:
+			case CTRL_JOY_2:
+			case CTRL_JOY_3:
+			case CTRL_JOY_4:
+			case CTRL_JOY_5:
+			case CTRL_JOY_6:
+			case CTRL_JOY_7:
+			case CTRL_JOY_8:
+				num = 17 + ply->Controller;
+				tile = TILE_JOY;
+				break;
+			case CTRL_KEY_1:
+				tile = TILE_KB1;
+				break;
+			case CTRL_KEY_2:
+				tile = TILE_KB2;
+				break;
+			case CTRL_AI_EASY:
+			case CTRL_AI_MED:
+			case CTRL_AI_HARD:
+				tile = TILE_AI;
+				break;
+			case CTRL_NONE:
+				continue;
+			}
+
+			u8 x = ply->PosX;
+			u8 y = ply->PosY;
+			PrintChr(x, y, tile);
+			if(num != 0xFF)
+				PrintChr(++x, y, num);
+		}
+	}
+
+	if(Keyboard_IsKeyPressed(KEY_SPACE))
+		FSM_SetState(&State_Game);
+}
+
+//.............................................................................
+// GAME STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_Game_Begin()
+{
+	// Initialize sprites data
+	VDP_HideSprite(0);
+	VDP_HideSprite(1);
+	VDP_HideSprite(2);
+	VDP_HideSprite(3);
+	VDP_DisableSpritesFrom(4);
+
+	// Draw pre-hole
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	{
+		const Start* start = &g_Starts[i];
+		PrintChr(start->X, start->Y, TILE_PREHOLE);
+	}
+
+	// Initialize Bonus
+	SpawnBonus();
 }
 
 //-----------------------------------------------------------------------------
