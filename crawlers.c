@@ -19,6 +19,7 @@
 #include "device/ninjatap.h"
 #include "arkos/akg_player.h"
 #include "compress/pletter.h"
+#include "dos.h"
 
 // Crawlers
 #include "crawlers.h"
@@ -143,7 +144,8 @@ const Start g_Starts[PLAYER_MAX] =
 };
 
 // Alternative
-const u16 g_MSX2Palette[15] = {
+const u16 g_MSX2Palette[15] =
+{
 	RGB16(0, 0, 0), // black				RGB16(0, 0, 0),
 	RGB16(1, 5, 1), // medium green			RGB16(1, 5, 1),
 	RGB16(3, 6, 3), // light green			RGB16(3, 6, 3),
@@ -162,7 +164,8 @@ const u16 g_MSX2Palette[15] = {
 };
 
 //
-const c8 g_TitleTile[] = {
+const c8 g_TitleTile[] =
+{
 	0xC0, 0xBD, 0xC1, 0x84, 0x80, 0x85, 0x48, 0x45, 0x49, 0xB5, 0x00, 0xA4, 0xDD, 0x00, 0x00, 0x5C, 0x59, 0x66, 0x98, 0x94, 0x99, 0x70, 0x6C, 0x69,
 	0xBF, 0x00, 0xBA, 0x82, 0x7F, 0x87, 0x47, 0x00, 0x42, 0xAB, 0x00, 0xAB, 0xD3, 0x00, 0x00, 0x56, 0x00, 0x00, 0x96, 0x93, 0x9B, 0x6E, 0x00, 0x00,
 	0xBE, 0x00, 0x00, 0x83, 0x7F, 0x85, 0x46, 0x43, 0x49, 0xAA, 0x00, 0xAA, 0xD2, 0x00, 0x00, 0x5C, 0x55, 0x00, 0x97, 0x93, 0x99, 0x72, 0x6D, 0x71,
@@ -957,6 +960,7 @@ void DrawPlayer(Player* ply)
 	bool bGrow = FALSE;
 	bool bReduce = FALSE;
 
+	// Grow crawler length
 	if((ply->Length < ply->Expect) && (ply->Length < LENGTH_MAX))
 	{
 		ply->Length++;
@@ -967,12 +971,14 @@ void DrawPlayer(Player* ply)
 		}
 		bGrow = TRUE;
 	}
+	// Reduce crawler length
 	else if((ply->Length > ply->Expect) && (ply->Length > LENGTH_MIN))
 	{
 		ply->Length--;
 		bReduce = TRUE;
 	}
 
+	// Draw crawler
 	for(u8 i = 0; i < ply->Length + 1; ++i)
 	{
 		// Head
@@ -1225,7 +1231,7 @@ wait_loop:
 	g_VBlank = FALSE;
 
 	// Skip the 6th frame on 60 Hz VDP
-	if((g_Freq == FREQ_60HZ) || (!g_6thFrameCount))
+	if((g_Freq == FREQ_60HZ) && (!g_6thFrameCount))
 		goto wait_loop; // Wait 1 more frame
 
 	g_Frame++;
@@ -1323,7 +1329,7 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 		g_FreqOpt = (g_FreqOpt + (FREQ_MAX - 1)) % FREQ_MAX;
 		break;
 	}
-	
+
 	if(g_FreqOpt == FREQ_60HZ) 
 	{
 		g_Freq = FREQ_60HZ;
