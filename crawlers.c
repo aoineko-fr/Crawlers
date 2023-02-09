@@ -58,6 +58,7 @@ const c8* MenuAction_Mode(u8 op, i8 value);
 const c8* MenuAction_Info(u8 op, i8 value);
 const c8* MenuAction_Freq(u8 op, i8 value);
 const c8* MenuAction_Palette(u8 op, i8 value);
+const c8* MenuAction_Music(u8 op, i8 value);
 const c8* MenuAction_Bonus(u8 op, i8 value);
 const c8* MenuAction_Wall(u8 op, i8 value);
 const c8* MenuAction_Port(u8 op, i8 value);
@@ -220,7 +221,7 @@ const MenuItem g_MenuOption[] =
 {
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
 	{ "PALETTE",             MENU_ITEM_ACTION, MenuAction_Palette, 0 },
-	{ "MUSIC",               MENU_ITEM_BOOL, &g_OptMusic, 0 },
+	{ "MUSIC",               MENU_ITEM_ACTION, MenuAction_Music, 0 },
 	{ "SFX",                 MENU_ITEM_BOOL, &g_OptSFX, 0 },
 	{ "BONUS",               MENU_ITEM_ACTION, MenuAction_Bonus, 0 },
 	{ "WALL",                MENU_ITEM_ACTION, MenuAction_Wall, 0 },
@@ -384,7 +385,6 @@ u8			g_FreqOpt = FREQ_AUTO;
 bool		g_DoSynch;
 u8			g_PalOpt;
 u8			g_VersionVDP;
-bool		g_PlayingMusic = FALSE;
 u8			g_Scroll;
 bool		g_OptMusic = TRUE;
 bool		g_OptSFX = TRUE;
@@ -1215,11 +1215,8 @@ void VDP_InterruptHandler()
 	if(g_6thFrameCount == 5)
 		g_6thFrameCount = 0;
 
-	if(g_PlayingMusic)
-	{
-		if((g_Freq == FREQ_50HZ) || (g_6thFrameCount))
-			AKG_Decode();
-	}
+	if((g_Freq == FREQ_50HZ) || (g_6thFrameCount))
+		AKG_Decode();
 }
 
 //-----------------------------------------------------------------------------
@@ -1385,6 +1382,26 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 	}
 
 	return NULL;
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Music(u8 op, i8 value)
+{
+	value;
+	switch(op)
+	{
+	case MENU_ACTION_SET:
+	case MENU_ACTION_INC:
+	case MENU_ACTION_DEC:
+		TOGGLE(g_OptMusic);
+		if(g_OptMusic)
+			AKG_Init((const void*)0xD000, 0);
+		else if(!g_OptMusic)
+			AKG_Stop();
+		break;
+	}
+	return g_OptMusic ? "#" : "&";
 }
 
 //-----------------------------------------------------------------------------
@@ -1567,6 +1584,8 @@ void State_Init_Begin()
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		InitPlayer(&g_Players[i], i);
 
+	// Load music
+	Pletter_UnpackToRAM(g_MusicMain, (void*)0xD000);
 }
 
 //-----------------------------------------------------------------------------
@@ -1667,13 +1686,8 @@ void State_Logo_Update()
 void State_Title_Begin()
 {
 	// Initialize music
-	/*if(!g_PlayingMusic)
-	{
-		Pletter_UnpackToRAM(g_MusicMain, (void*)0xD000);
-		AKG_Stop();
+	if(g_OptMusic)
 		AKG_Init((const void*)0xD000, 0);
-		g_PlayingMusic = TRUE;
-	}*/
 
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
@@ -2022,17 +2036,12 @@ void State_Start_Update()
 	WaitVBlank();
 
 	// Skip start sequence
-	if(Keyboard_IsKeyPressed(KEY_SPACE))
-	{
-		FSM_SetState(&State_Game);
-		return;
-	}
-
 	if((g_Frame & 0x0F) != 0)
 		return;
 
 	// Display character and control
 	g_Counter++;
+
 	if(g_Counter & 1)
 	{
 		for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -2042,8 +2051,8 @@ void State_Start_Update()
 			{
 				u8 x = ply->PosX;
 				u8 y = ply->PosY;
-				PrintChr(x, y, 0x42 + g_CharaInfo[i].TileBase);
-				PrintChr(++x, y, TILE_EMPTY);
+				PrintChr(x, y, TILE_PREHOLE);
+				PrintChrX(++x, y, TILE_EMPTY, 2);
 			}
 		}
 	}
@@ -2085,7 +2094,8 @@ void State_Start_Update()
 
 			u8 x = ply->PosX;
 			u8 y = ply->PosY;
-			PrintChr(x, y, tile);
+			PrintChr(x, y, 0x42 + g_CharaInfo[i].TileBase);
+			PrintChr(++x, y, tile);
 			if(num != 0xFF)
 				PrintChr(++x, y, num);
 		}
@@ -2111,6 +2121,12 @@ void State_Start_Update()
 		FSM_SetState(&State_Game);
 		return;
 	}
+
+	// Check input
+	if(Keyboard_IsKeyPressed(KEY_SPACE))
+		FSM_SetState(&State_Game);
+	if(Keyboard_IsKeyPressed(KEY_ESC))
+		FSM_SetState(&State_Menu);
 }
 
 //.............................................................................
@@ -2140,6 +2156,8 @@ void State_Game_Begin()
 
 	// Initialize Bonus
 	SpawnBonus();
+
+	// AKG_Stop();
 }
 
 //-----------------------------------------------------------------------------
@@ -2220,9 +2238,6 @@ void State_Victory_Update()
 // Program entry point
 void main()
 {
-	AKG_Stop();
-	g_PlayingMusic = FALSE;
-
 	// Start the Final State Machine
 	FSM_SetState(&State_Init);
 	while(1)

@@ -98,7 +98,7 @@ AppID = "CR";
 //*******************************************************************************
 
 //-- Use static MSXgl library (true or false)
-BuildLibrary = false;
+BuildLibrary = true;
 
 //-- Debug flag (true or false)
 Debug = false;
