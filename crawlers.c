@@ -415,6 +415,10 @@ u8			g_SlotIdx;
 bool		g_SelectEdit;
 u8			g_CtrlReg[CTRL_MAX];
 
+// Misc
+u8			g_SubSong = 0;
+
+
 //=============================================================================
 // FUNCTIONS
 //=============================================================================
@@ -1206,6 +1210,18 @@ void UpdatePlayer(Player* ply)
 }
 
 //-----------------------------------------------------------------------------
+//
+inline void PlayNext()
+{
+	AKG_Init((const void*)0xD000, g_SubSong++);
+	if(g_SubSong == 14)
+		g_SubSong = 0;
+	else if(g_SubSong == 27)
+		g_SubSong = 16;
+}
+
+
+//-----------------------------------------------------------------------------
 // VBlank interrupt
 void VDP_InterruptHandler()
 {
@@ -1216,7 +1232,11 @@ void VDP_InterruptHandler()
 		g_6thFrameCount = 0;
 
 	if((g_Freq == FREQ_50HZ) || (g_6thFrameCount))
-		AKG_Decode();
+	{
+		bool bEnd = AKG_Decode();
+		if(bEnd)
+			PlayNext();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1396,7 +1416,7 @@ const c8* MenuAction_Music(u8 op, i8 value)
 	case MENU_ACTION_DEC:
 		TOGGLE(g_OptMusic);
 		if(g_OptMusic)
-			AKG_Init((const void*)0xD000, 0);
+			AKG_Init((const void*)0xD000, g_SubSong);
 		else if(!g_OptMusic)
 			AKG_Stop();
 		break;
@@ -1686,8 +1706,9 @@ void State_Logo_Update()
 void State_Title_Begin()
 {
 	// Initialize music
-	if(g_OptMusic)
-		AKG_Init((const void*)0xD000, 0);
+	g_SubSong = 0;
+	if(g_OptMusic && !AKG_IsPlaying())
+		PlayNext();
 
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
@@ -2024,6 +2045,7 @@ void State_Start_Begin()
 	g_DoSynch = (GetHumanCount() > 0);
 
 	g_Counter = 0;
+	g_SubSong = 14;
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -2074,8 +2096,8 @@ void State_Start_Update()
 			case CTRL_JOY_6:
 			case CTRL_JOY_7:
 			case CTRL_JOY_8:
-				num = 17 + ply->Controller;
-				tile = TILE_JOY;
+				// num = 17 + ply->Controller;
+				// tile = TILE_JOY;
 				break;
 			case CTRL_KEY_1:
 				tile = TILE_KB1;
@@ -2086,7 +2108,7 @@ void State_Start_Update()
 			case CTRL_AI_EASY:
 			case CTRL_AI_MED:
 			case CTRL_AI_HARD:
-				tile = TILE_AI;
+				tile = 0;//TILE_AI;
 				break;
 			case CTRL_NONE:
 				continue;
@@ -2095,7 +2117,8 @@ void State_Start_Update()
 			u8 x = ply->PosX;
 			u8 y = ply->PosY;
 			PrintChr(x, y, 0x42 + g_CharaInfo[i].TileBase);
-			PrintChr(++x, y, tile);
+			if(tile)
+				PrintChr(++x, y, tile);
 			if(num != 0xFF)
 				PrintChr(++x, y, num);
 		}
