@@ -1,21 +1,30 @@
+== Battle Royal ==
+THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLAPSE AFTER TIMER END.
 
-
-
-Battle Royal
-	Point:		Last standing (1 point)
+	Time over:	Collapse
+	Round:		Last standing (1 point)
 	Victory:	First at X points
+	Revive:		At round start
 
-Death Match
+
+== Death Match ==
+THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH. FIELD COLAPSE AFTER TIMER END.
+
+	Time over:	Collapse
 	Point:		1 point for each defeated opponent and -1 point for a single loss
 	Victory:	First at X points
+	Revive:		Anytime
 
-Length matters
+== Size matters ==
+AT THE END OF THE CHOSEN TIME, THE ONE WHO HAS REACHED THE LARGEST SIZE WINS THE MATCH.
+
 	Point:		Points is equal to the maximum length of the character
 	Victory:	Highest score after X minutes
+	Revive:		Anytime
 
+== Greediest ==
+THE ONE WHO GETS THE MOST BONUSES AT THE END OF THE SET TIME WINS THE GAME.
 
-
-
-
-
-
+	Point:		
+	Victory:	
+	Revive:		Anytime

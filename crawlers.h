@@ -202,7 +202,6 @@ typedef struct PlayerTag
 // Character data structure
 typedef struct
 {
-	const c8* Name;
 	u8        TileBase;
 	u8        Sprite;
 	u8        FrameX;

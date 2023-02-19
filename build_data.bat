@@ -17,7 +17,11 @@ echo ---------------------------------------------------------------------------
 echo  Convert Music...
 
 %Tools%\compress\Pletter\pletter.exe datasrc\music_main.akg datasrc\music_main.pl5
-%MSXtk%\MSXbin.exe datasrc\music_main.pl5 -t g_MusicMain -ad -o content\music_main.h
+%MSXtk%\MSXbin.exe datasrc\music_main.pl5 -t g_MusicMain -ad -o content\music_main.h -at 0x0200
+set ADDR=%errorlevel%
+
+%Tools%\compress\Pletter\pletter.exe datasrc\sfx.akx datasrc\sfx.pl5
+%MSXtk%\MSXbin.exe datasrc\sfx.pl5 -t g_DataSFX -ad -o content\sfx.h -at %ADDR%
 
 echo -----------------------------------------------------------------------------
 echo  Convert Font...
@@ -27,19 +31,19 @@ REM %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\font.h -pos 0 0 -size 8
 echo -----------------------------------------------------------------------------
 echo  Convert SC2 Images...
 
-%MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\tiles.h -mode gm2 --gm2unique -compress pletter -name g_DataTiles -pos 0 0 -size 128 128
+%MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\tiles.h -mode gm2 --gm2unique -compress pletter -name g_DataTiles -pos 0 0 -size 128 128 -at %errorlevel%
 
-%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face1.h -mode gm2 -compress pletter -name g_DataFace1 -pos 0 216 -size 40 40 -offset 128 ^
+%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face1.h -mode gm2 -compress pletter -name g_DataFace1 -pos 0 216 -size 40 40 -offset 128 -at %errorlevel% ^
 	-l gm2 40  216 40 40 ^
 	-l gm2 80  216 40 40 ^
 	-l gm2 120 216 40 40
 
-%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face2.h -mode gm2 -compress pletter -name g_DataFace2 -pos 0 256 -size 40 40 -offset 128 ^
+%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face2.h -mode gm2 -compress pletter -name g_DataFace2 -pos 0 256 -size 40 40 -offset 128 -at %errorlevel% ^
 	-l gm2 40  256 40 40 ^
 	-l gm2 80  256 40 40 ^
 	-l gm2 120 256 40 40
 
-%MSXtk%\MSXimg.exe datasrc\menu.png -out content\select.h -mode gm2 -compress pletter -name g_DataSelect -pos 0 0 -size 56 24 ^
+%MSXtk%\MSXimg.exe datasrc\menu.png -out content\select.h -mode gm2 -compress pletter -name g_DataSelect -pos 0 0 -size 56 24 -at %errorlevel% ^
 	-l gm2 56  0 56 24 ^
 	-l gm2 112 0 56 24 ^
 	-l gm2 168 0 56 24 ^
@@ -71,18 +75,16 @@ echo  Convert SC2 Images...
 	-l gm2 168 144 56 16 ^
 	-l gm2 168 160 48 16
 
-%MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_tile.h -mode gm2 -name g_DataLogoTile -pos 0 0 -size 48 16 ^
+%MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_tile.h -mode gm2 -compress pletter -name g_DataLogoTile -pos 0 0 -size 48 16 -at %errorlevel% ^
 	-l gm2 0 16 32 32
 
 echo -----------------------------------------------------------------------------
 echo  Convert sprite...
 
-%MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\sprites.h -pos 128 0 -size 8 8 -num 4 5 -name g_DataSprites -trans 0xDED087 -bpc 1
+%MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\sprites.h -mode sprt -compress pletter -name g_DataSprites -pos 128 0 -size 8 8 -num 8 4 -trans 0xDED087 -at %errorlevel%
 
-%MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_sprt.h -mode sprt -name g_DataLogoSprt -pos 0 48 -size 32 48 -num 1 1 ^
+%MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_sprt.h -mode sprt -compress pletter -name g_DataLogoSprt -pos 0 48 -size 32 48 -num 1 1 -at %errorlevel% ^
 	-l i16 0  8 2 2 0xFF897D ^
 	-l i16 0  0 2 1 0xB95E51 ^
 	-l i16 0 16 2 1 0xFFFFFF ^
 	-l i16 0 32 2 1 0xDED087
-
-%MSXtk%\MSXimg.exe datasrc\menu.png -out content\eyes.h -pos 160 216 -size 8 8 -num 4 1 -name g_DataEyes -trans 0xDED087 -bpc 1

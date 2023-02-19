@@ -2,57 +2,23 @@
 // ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄  ▄█▄█ ▄▀██
 // █  █ █  ▀▀  ▄█  █  █ ██ ██ █  ▀██
 // ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀          ▀▀
-// Data generated using MSXimg 1.16.1 on Tue Feb 14 01:20:11 2023
+// Data generated using MSXimg 1.16.2 on Sun Feb 19 14:46:05 2023
 // by Guillaume "Aoineko" Blanchard (2022) under CC BY-SA free license
 // ─────────────────────────────────────────────────────────────────────────────
 // Generation parameters:
 //  - Input file:     datasrc\menu.png
-//  - Mode:           Bitmap
+//  - Mode:           Sprite
 //  - Start position: 160, 216
 //  - Sprite size:    8, 8 (gap: 0, 0)
 //  - Sprite count:   4, 1
-//  - Color count:    2 (Transparent: #DED087)
-//  - Compressor:     None
+//  - Color count:    256 (Transparent: #DED087)
+//  - Compressor:     Pletter v0.5c1 by XL2S Entertainment
 //  - Skip empty:     FALSE
 
-// Data table
+// Sprites table
 const unsigned char g_DataEyes[] =
 {
-// Sprite[0] (offset:0)
-	0x88, /* #...#... */ 
-	0x88, /* #...#... */ 
-	0x88, /* #...#... */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-// Sprite[1] (offset:8)
-	0x81, /* #......# */ 
-	0x81, /* #......# */ 
-	0x81, /* #......# */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-// Sprite[2] (offset:16)
-	0x81, /* #......# */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
-// Sprite[3] (offset:24)
-	0x82, /* #.....#. */ 
-	0x82, /* #.....#. */ 
-	0x82, /* #.....#. */ 
-	0x82, /* #.....#. */ 
-	0x82, /* #.....#. */ 
-	0x82, /* #.....#. */ 
-	0x00, /* ........ */ 
-	0x00, /* ........ */ 
+	0x13, 0x88, 0x00, 0x00, 0x96, 0x00, 0x81, 0x00, 0xCD, 0x07, 0x00, 0x9A, 0x00, 0x82, 0x5F, 0x00, 
+	0x07, 0xFF, 0xFF, 0xFF, 0xF8, 
 };
-// Total size :  32 bytes
+// Patterns size: 21 Bytes

@@ -84,7 +84,6 @@ void UpdatePlayer(Player* ply);
 // Sprites
 #include "content/sprites.h"
 #include "content/logo_sprt.h"
-#include "content/eyes.h"
 
 // Menu
 #include "content/select.h"
@@ -93,6 +92,7 @@ void UpdatePlayer(Player* ply);
 
 // Music
 #include "content/music_main.h"
+#include "content/sfx.h"
 
 //
 const Shapes g_Body[] =
@@ -121,27 +121,27 @@ const Shapes g_Body[] =
 //
 const Character g_CharaInfo[PLAYER_MAX] =
 {
-	{ "Chara 01", 0*20, 0   , 2,    6,  SELECT_FACE_1 },
-	{ "Chara 02", 2*20, 1   , 2+7,  6,  SELECT_FACE_2 },
-	{ "Chara 03", 6*20, 0xFF, 2+14, 6,  SELECT_FACE_3 },
-	{ "Chara 04", 5*20, 0xFF, 2+21, 6,  SELECT_FACE_4 },
-	{ "Chara 05", 7*20, 0xFF, 2,    15, SELECT_FACE_5 },
-	{ "Chara 06", 4*20, 0xFF, 2+7,  15, SELECT_FACE_6 },
-	{ "Chara 07", 1*20, 2   , 2+14, 15, SELECT_FACE_7 },
-	{ "Chara 08", 3*20, 3   , 2+21, 15, SELECT_FACE_8 },
+	{ 0*20, 0   , 2,    6,  SELECT_FACE_1 },
+	{ 2*20, 1   , 2+7,  6,  SELECT_FACE_2 },
+	{ 6*20, 0xFF, 2+14, 6,  SELECT_FACE_3 },
+	{ 5*20, 0xFF, 2+21, 6,  SELECT_FACE_4 },
+	{ 7*20, 0xFF, 2,    15, SELECT_FACE_5 },
+	{ 4*20, 0xFF, 2+7,  15, SELECT_FACE_6 },
+	{ 1*20, 2   , 2+14, 15, SELECT_FACE_7 },
+	{ 3*20, 3   , 2+21, 15, SELECT_FACE_8 },
 };
 
 //
 const Start g_Starts[PLAYER_MAX] =
 {
 	{  5,  6, DIR_RIGHT },
-	{ 26,  6, DIR_DOWN  },
 	{ 26, 18, DIR_LEFT  },
+	{ 26,  6, DIR_DOWN  },
 	{  5, 18, DIR_UP    },
 	{  9, 10, DIR_DOWN  },
-	{ 22, 10, DIR_LEFT  },
 	{ 22, 16, DIR_UP    },
 	{  9, 16, DIR_RIGHT },
+	{ 22, 10, DIR_LEFT  },
 };
 
 // Alternative
@@ -185,7 +185,7 @@ const MenuItem g_MenuMain[] =
 #endif
 	{ "BATTLE",              MENU_ITEM_GOTO, NULL, MENU_MULTI },
 	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
-	{ "INFORMATION",         MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
+	{ "SYSTEM",              MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
 	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
 #if (TARGET_TYPE != TYPE_ROM)
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -388,6 +388,7 @@ u8			g_VersionVDP;
 u8			g_Scroll;
 bool		g_OptMusic = TRUE;
 bool		g_OptSFX = TRUE;
+bool		g_Initialized = FALSE;
 
 // Gameplay
 u8			g_GameMode = MODE_BATTLEROYAL;
@@ -402,8 +403,21 @@ u8			g_ScreenBuffer[32*24];
 u8			g_CurrentPlayer;
 u8			g_WallNum = 0;
 u8			g_WallOpt = 0;
-u8			g_TimeMax = 5;
+u8			g_CollapseTimer;
+u8			g_CollapsePhase;
+u8			g_CollapseX0;
+u8			g_CollapseY0;
+u8			g_CollapseX1;
+u8			g_CollapseY1;
+
+// Timers
 u8			g_Counter;
+u8			g_TimeMax = 5;
+u8			g_TimeFrame;
+u8			g_TimeMinHigh;
+u8			g_TimeMinLow;
+u8			g_TimeSecHigh;
+u8			g_TimeSecLow;
 
 // Input
 u8			g_JoyInfo;
@@ -414,9 +428,6 @@ u8			g_Input[CTRL_PLY_NUM];
 u8			g_SlotIdx;
 bool		g_SelectEdit;
 u8			g_CtrlReg[CTRL_MAX];
-
-// Misc
-u8			g_SubSong = 0;
 
 
 //=============================================================================
@@ -455,7 +466,6 @@ void Bios_Exit(u8 ret)
 #if (TARGET_TYPE == TYPE_DOS)
 
 	__asm
-	#if BIOS_USE_VDP
 		push	af
 		// Set Screen mode to 2...
 		ld		a, #2
@@ -467,7 +477,7 @@ void Bios_Exit(u8 ret)
 		ld		iy, (M_EXPTBL-1)
 		call	R_CALSLT
 		pop		af
-	#endif
+
 		ld		b, a
 		ld		c, #DOS_FUNC_TERM
 		call	BDOS
@@ -478,13 +488,12 @@ void Bios_Exit(u8 ret)
 #elif (TARGET_TYPE == TYPE_BIN)
 	
 	__asm
-	#if BIOS_USE_VDP
 		// Set Screen mode to 2...
 		ld		a, #2
 		call	R_CHGMOD
 		// ... to be able to call TOTEXT routine
 		call	R_TOTEXT
-	#endif
+
 		// 
 		ld		ix, #0x409B // address of "warm boot" BASIC interpreter
 		// this routine is called to reset the stack if basic is externally stopped and then restarted.
@@ -597,15 +606,79 @@ void DrawCounter(u8 x, u8 y, u8 step)
 
 //-----------------------------------------------------------------------------
 //
+void SetTimer(u8 min)
+{
+	g_TimeFrame = 0;
+	g_TimeMinHigh = Math_Div10(min);
+	g_TimeMinLow = Math_Mod10(min);
+	g_TimeSecHigh = 0;
+	g_TimeSecLow = 0;
+	g_CollapseTimer = 0;
+	g_CollapsePhase = 0xFF;
+
+	VDP_SetSpritePattern(4, 16 + g_TimeMinHigh);
+	VDP_SetSpritePattern(5, 16 + g_TimeMinLow);
+	VDP_SetSpritePattern(6, 16 + g_TimeSecHigh);
+	VDP_SetSpritePattern(7, 16 + g_TimeSecLow);
+}
+
+//-----------------------------------------------------------------------------
+//
+bool UpdateTimer()
+{
+	// Blink the timer when less than 30 seconds remains
+	if(((g_TimeMinHigh | g_TimeMinLow) == 0) && (g_TimeSecHigh < 3))
+	{
+		u8 col = ((g_Frame >> 4) & 0x1) ? COLOR_WHITE : COLOR_LIGHT_RED;
+		VDP_SetSpriteColorSM1(4, col);
+		VDP_SetSpriteColorSM1(5, col);
+		VDP_SetSpriteColorSM1(6, col);
+		VDP_SetSpriteColorSM1(7, col);
+	}
+
+	g_TimeFrame--;
+	if(g_TimeFrame == 255)
+	{
+		g_TimeFrame = 50;
+		g_TimeSecLow--;
+		if(g_TimeSecLow == 255)
+		{
+			g_TimeSecLow = 9;
+			g_TimeSecHigh--;
+			if(g_TimeSecHigh == 255)
+			{
+				g_TimeSecHigh = 5;
+				g_TimeMinLow--;
+				if(g_TimeMinLow == 255)
+				{
+					g_TimeMinLow = 9;
+					g_TimeMinHigh--;
+					if(g_TimeMinHigh == 255)
+						g_TimeMinHigh = 5;
+				}
+			}
+		}
+
+		VDP_SetSpritePattern(4, 16 + g_TimeMinHigh);
+		VDP_SetSpritePattern(5, 16 + g_TimeMinLow);
+		VDP_SetSpritePattern(6, 16 + g_TimeSecHigh);
+		VDP_SetSpritePattern(7, 16 + g_TimeSecLow);
+	}
+
+	return g_TimeMinHigh | g_TimeMinLow | g_TimeSecHigh | g_TimeSecLow;
+}
+
+//-----------------------------------------------------------------------------
+//
 void MoveCursor(i8 idx)
 {
 	idx %= numberof(g_SelectSlot);
 	g_SlotIdx = idx;
 
-	VDP_SetSpriteSM1(0, 0, 0, 16, COLOR_DARK_BLUE);
-	VDP_SetSpriteSM1(1, 0, 0, 17, COLOR_DARK_BLUE);
-	VDP_SetSpriteSM1(2, 0, 0, 18, COLOR_DARK_BLUE);
-	VDP_SetSpriteSM1(3, 0, 0, 19, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(0, 0, 0, 8, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(1, 0, 0, 9, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(2, 0, 0, 10, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1(3, 0, 0, 11, COLOR_DARK_BLUE);
 }
 
 //-----------------------------------------------------------------------------
@@ -1040,7 +1113,8 @@ void DrawPlayer(Player* ply)
 		// Clear
 		else if((!bGrow) && (i == ply->Length))
 		{
-			VDP_Poke_GM2(x, y, g_ScreenBuffer[x + (y * 32)]);
+			if(VDP_Peek_GM2(x, y) != TILE_HOLE)
+				VDP_Poke_GM2(x, y, g_ScreenBuffer[x + (y * 32)]);
 		}
 
 		switch(ply->Path[idx])
@@ -1067,7 +1141,8 @@ void ClearPlayer(Player* ply)
 	// Clear tiles
 	for(u8 i = 0; i < ply->Length; ++i)
 	{
-		VDP_Poke_GM2(x, y, g_ScreenBuffer[x + (y * 32)]);
+		if(VDP_Peek_GM2(x, y) != TILE_HOLE)
+			VDP_Poke_GM2(x, y, g_ScreenBuffer[x + (y * 32)]);
 
 		switch(ply->Path[idx])
 		{
@@ -1210,18 +1285,6 @@ void UpdatePlayer(Player* ply)
 }
 
 //-----------------------------------------------------------------------------
-//
-inline void PlayNext()
-{
-	AKG_Init((const void*)0xD000, g_SubSong++);
-	if(g_SubSong == 14)
-		g_SubSong = 0;
-	else if(g_SubSong == 27)
-		g_SubSong = 16;
-}
-
-
-//-----------------------------------------------------------------------------
 // VBlank interrupt
 void VDP_InterruptHandler()
 {
@@ -1233,9 +1296,7 @@ void VDP_InterruptHandler()
 
 	if((g_Freq == FREQ_50HZ) || (g_6thFrameCount))
 	{
-		bool bEnd = AKG_Decode();
-		if(bEnd)
-			PlayNext();
+		AKG_Decode();
 	}
 }
 
@@ -1257,7 +1318,6 @@ wait_loop:
 //=============================================================================
 // MENU
 //=============================================================================
-
 
 //-----------------------------------------------------------------------------
 //
@@ -1416,7 +1476,7 @@ const c8* MenuAction_Music(u8 op, i8 value)
 	case MENU_ACTION_DEC:
 		TOGGLE(g_OptMusic);
 		if(g_OptMusic)
-			AKG_Init((const void*)0xD000, g_SubSong);
+			AKG_Init((const void*)0xD000, 0);
 		else if(!g_OptMusic)
 			AKG_Stop();
 		break;
@@ -1606,6 +1666,7 @@ void State_Init_Begin()
 
 	// Load music
 	Pletter_UnpackToRAM(g_MusicMain, (void*)0xD000);
+	Pletter_UnpackToRAM(g_DataSFX, (void*)0xF000);
 }
 
 //-----------------------------------------------------------------------------
@@ -1631,7 +1692,7 @@ void State_Logo_Begin()
 
 	// Load sprites data
 	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_16);
-	VDP_LoadSpritePattern(g_DataLogoSprt, 4, sizeof(g_DataLogoSprt) / 8);
+	Pletter_UnpackToVRAM(g_DataLogoSprt, g_SpritePatternLow + 4 * 8);
 	VDP_FillVRAM_16K(0xFF, g_SpritePatternLow, 4 * 8);
 	// Set sprites data - Mask
 	VDP_SetSpriteSM1(0,  96, 95, 0, COLOR_BLACK);
@@ -1655,8 +1716,8 @@ void State_Logo_Begin()
 	VDP_DisableSpritesFrom(17);
 
 	// Load tiles data
-	VDP_LoadPattern_GM2(g_DataLogoTile_Patterns, sizeof(g_DataLogoTile_Patterns) / 8, 0);
-	VDP_LoadColor_GM2(g_DataLogoTile_Colors, sizeof(g_DataLogoTile_Colors) / 8, 0);
+	VDP_LoadPattern_GM2_Pletter(g_DataLogoTile_Patterns, 0);
+	VDP_LoadColor_GM2_Pletter(g_DataLogoTile_Colors, 0);
 	// Draw tiles data
 	VDP_FillScreen_GM2(0x00);
 	VDP_WriteLayout_GM2(g_DataLogoTileL0_Names, 12, 12, 6, 2);
@@ -1706,24 +1767,23 @@ void State_Logo_Update()
 void State_Title_Begin()
 {
 	// Initialize music
-	g_SubSong = 0;
-	if(g_OptMusic && !AKG_IsPlaying())
-		PlayNext();
+	if(g_OptMusic)
+		AKG_Init((const void*)0xD000, 0);
 
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
-	VDP_SetColor(COLOR_LIGHT_YELLOW);
 	VDP_ClearVRAM();
 
 	// Initialize sprites data
 	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
-	VDP_LoadSpritePattern(g_DataSprites, 0, sizeof(g_DataSprites) / 8);
-	VDP_LoadSpritePattern(g_DataEyes, 32, sizeof(g_DataEyes) / 8);
+	Pletter_UnpackToVRAM(g_DataSprites, g_SpritePatternLow);
 
 	// Initialize tiles data
 	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
 	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
 	VDP_WriteLayout_GM2(g_TitleTile, 4, 3, 24, 5);
+
+	VDP_SetColor(COLOR_LIGHT_YELLOW);
 
 	// Draw field
 	PrintChr(0,  0, TILE_TREE);
@@ -1745,6 +1805,11 @@ void State_Title_Begin()
 	VDP_DisableSpritesFrom(0);
 
 	VDP_EnableDisplay(TRUE);
+
+	if(g_Initialized)
+		FSM_SetState(&State_Menu);
+
+	g_Initialized = true;
 }
 
 
@@ -1769,8 +1834,6 @@ void State_Title_Update()
 //
 void State_Menu_Begin()
 {
-	State_Title_Begin();
-
 	// Initialize menu
 	Menu_Initialize(g_Menus);
 	Menu_DrawPage(MENU_MAIN);
@@ -1840,14 +1903,14 @@ void State_Select_Begin()
 
 	//........................................
 	// Eyes
-	VDP_SetSpriteSM1( 4,  50,  67, 32, COLOR_DARK_BLUE);
-	VDP_SetSpriteSM1( 5, 102,  64, 33, COLOR_DARK_BLUE);
-	VDP_SetSpriteSM1( 6, 158,  63, 34, COLOR_BLACK);
-	VDP_SetSpriteSM1( 7, 214,  65, 35, COLOR_BLACK);
-	VDP_SetSpriteSM1( 8, 162, 139, 32, COLOR_DARK_BLUE);
-	VDP_SetSpriteSM1( 9, 214, 136, 33, COLOR_BLACK);
-	VDP_SetSpriteSM1(10,  46, 135, 34, COLOR_BLACK);
-	VDP_SetSpriteSM1(11, 102, 137, 35, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1( 4,  50,  67, 12, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1( 5, 102,  64, 13, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1( 6, 158,  63, 14, COLOR_BLACK);
+	VDP_SetSpriteSM1( 7, 214,  65, 15, COLOR_BLACK);
+	VDP_SetSpriteSM1( 8, 162, 139, 12, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1( 9, 214, 136, 13, COLOR_BLACK);
+	VDP_SetSpriteSM1(10,  46, 135, 14, COLOR_BLACK);
+	VDP_SetSpriteSM1(11, 102, 137, 15, COLOR_DARK_BLUE);
 	VDP_DisableSpritesFrom(12);
 
 	g_SelectEdit = FALSE;
@@ -1924,7 +1987,7 @@ void State_Select_Update()
 				FSM_SetState(&State_Start);
 				break;
 			case 9:
-				FSM_SetState(&State_Menu);
+				FSM_SetState(&State_Title);
 				break;
 			};
 		}
@@ -1932,7 +1995,7 @@ void State_Select_Update()
 		if(Keyboard_IsKeyPressed(KEY_RET))
 			FSM_SetState(&State_Start);
 		if(Keyboard_IsKeyPressed(KEY_ESC))
-			FSM_SetState(&State_Menu);
+			FSM_SetState(&State_Title);
 
 		// Handle special keys
 		if(g_SlotIdx < 8)
@@ -1970,9 +2033,6 @@ void State_Start_Begin()
 	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
 	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
 
-	// Initialize sprites data
-	VDP_DisableSpritesFrom(0);
-
 	// Draw game field
 	ClearLevel();
 	DrawTile(0,  1, 0xE9);
@@ -1983,6 +2043,12 @@ void State_Start_Begin()
 	DrawTile(0, 23, 0xED);
 	DrawTile(31, 23, 0xEE);
 	DrawTileX(1, 23, 0xE8, 30);
+
+	// Timer board
+	DrawTile(14, 23, 0x05);
+	DrawTile(15, 23, 0x0A);
+	DrawTile(16, 23, 0x0B);
+	DrawTile(17, 23, 0x0F);
 
 	// Draw score board
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -2036,7 +2102,12 @@ void State_Start_Begin()
 
 	// Spawn players
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	{
 		ResetPlayer(&g_Players[i]);
+		VDP_HideSprite(i);
+	}
+	// Initialize sprites data
+	VDP_DisableSpritesFrom(8);
 
 	g_CurrentPlayer = 0;
 	g_PrevRow3 = 0;
@@ -2045,7 +2116,9 @@ void State_Start_Begin()
 	g_DoSynch = (GetHumanCount() > 0);
 
 	g_Counter = 0;
-	g_SubSong = 14;
+
+	if(g_OptMusic)
+		AKG_Init((const void*)0xD000, 1);
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -2074,8 +2147,9 @@ void State_Start_Update()
 				u8 x = ply->PosX;
 				u8 y = ply->PosY;
 				PrintChr(x, y, TILE_PREHOLE);
-				PrintChrX(++x, y, TILE_EMPTY, 2);
+				PrintChr(++x, y, TILE_EMPTY);
 			}
+			VDP_HideSprite(i);
 		}
 	}
 	else
@@ -2096,8 +2170,8 @@ void State_Start_Update()
 			case CTRL_JOY_6:
 			case CTRL_JOY_7:
 			case CTRL_JOY_8:
-				// num = 17 + ply->Controller;
-				// tile = TILE_JOY;
+				num = 21 + ply->Controller;
+				tile = TILE_JOY;
 				break;
 			case CTRL_KEY_1:
 				tile = TILE_KB1;
@@ -2120,7 +2194,7 @@ void State_Start_Update()
 			if(tile)
 				PrintChr(++x, y, tile);
 			if(num != 0xFF)
-				PrintChr(++x, y, num);
+				VDP_SetSpriteSM1(i, x * 8 + 9, y * 8 + 1, num, COLOR_BLACK);
 		}
 	}
 
@@ -2149,7 +2223,7 @@ void State_Start_Update()
 	if(Keyboard_IsKeyPressed(KEY_SPACE))
 		FSM_SetState(&State_Game);
 	if(Keyboard_IsKeyPressed(KEY_ESC))
-		FSM_SetState(&State_Menu);
+		FSM_SetState(&State_Title);
 }
 
 //.............................................................................
@@ -2165,7 +2239,14 @@ void State_Game_Begin()
 	VDP_HideSprite(1);
 	VDP_HideSprite(2);
 	VDP_HideSprite(3);
-	VDP_DisableSpritesFrom(4);
+	VDP_SetSpriteSM1(4, 117, 185, 20, COLOR_WHITE);
+	VDP_SetSpriteSM1(5, 122, 185, 20, COLOR_WHITE);
+	VDP_SetSpriteSM1(6, 131, 185, 20, COLOR_WHITE);
+	VDP_SetSpriteSM1(7, 136, 185, 20, COLOR_WHITE);
+	VDP_DisableSpritesFrom(8);
+
+	// Initialize timer
+	SetTimer(g_TimeMax);
 
 	// Copy screen buffer to VRAM
 	DrawLevel();
@@ -2190,14 +2271,14 @@ void State_Game_Update()
 	// Wait V-Synch
 	if(g_DoSynch)
 		WaitVBlank();
+	else
+		g_Frame++;
 
 	// Update one of the players
 	Player* ply = &g_Players[g_CurrentPlayer];
 	UpdatePlayer(ply);
 	g_CurrentPlayer++;
 	g_CurrentPlayer %= PLAYER_MAX;
-
-	VDP_Poke_GM2(g_BonusPos.X, g_BonusPos.Y, g_BonusTile);
 
 	// Update keyboard entries
 	if(g_Input[CTRL_KEY_1] == ACTION_NONE)
@@ -2231,8 +2312,48 @@ void State_Game_Update()
 		}
 	}
 
+	if(g_CollapsePhase != 0xFF)
+	{
+		if((g_CollapseTimer >= 32) && (g_CollapseY0 < 12))
+		{
+			u8 phase = g_CollapsePhase & 0x3;
+			u8 tile = g_HoleAnim[phase];
+
+			PrintChrX(g_CollapseX0, g_CollapseY0, tile, g_CollapseX1 - g_CollapseX0 + 1);
+			PrintChrX(g_CollapseX0, g_CollapseY1, tile, g_CollapseX1 - g_CollapseX0 + 1);
+			PrintChrY(g_CollapseX0, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
+			PrintChrY(g_CollapseX1, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
+
+			if(phase == 3)
+			{
+				g_CollapseX0++;
+				g_CollapseY0++;
+				g_CollapseX1--;
+				g_CollapseY1--;
+			}
+
+			g_CollapseTimer = 0;
+			g_CollapsePhase++;
+		}
+		g_CollapseTimer++;
+	}
+	else
+	{
+		VDP_Poke_GM2(g_BonusPos.X, g_BonusPos.Y, g_BonusTile);
+
+		if(!UpdateTimer())
+		{
+			g_CollapsePhase = 0;
+			g_CollapseTimer = 0;
+			g_CollapseX0 = 1;
+			g_CollapseY0 = 2;
+			g_CollapseX1 = 30;
+			g_CollapseY1 = 22;
+		}
+	}
+
 	if(Keyboard_IsKeyPressed(KEY_ESC))
-		FSM_SetState(&State_Menu);
+		FSM_SetState(&State_Title);
 }
 
 //.............................................................................
