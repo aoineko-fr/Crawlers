@@ -16,12 +16,11 @@ if not exist "content" ( md content )
 echo -----------------------------------------------------------------------------
 echo  Convert Music...
 
-%Tools%\compress\Pletter\pletter.exe datasrc\music_main.akg datasrc\music_main.pl5
-%MSXtk%\MSXbin.exe datasrc\music_main.pl5 -t g_MusicMain -ad -o content\music_main.h -at 0x0200
+%MSXtk%\MSXbin.exe datasrc\sfx.akx -t g_DataSFX -ad -o content\sfx.h -at 0x0100
 set ADDR=%errorlevel%
 
-%Tools%\compress\Pletter\pletter.exe datasrc\sfx.akx datasrc\sfx.pl5
-%MSXtk%\MSXbin.exe datasrc\sfx.pl5 -t g_DataSFX -ad -o content\sfx.h -at %ADDR%
+%Tools%\compress\Pletter\pletter.exe datasrc\music_main.akg datasrc\music_main.pl5
+%MSXtk%\MSXbin.exe datasrc\music_main.pl5 -t g_MusicMain -ad -o content\music_main.h -at %ADDR%
 
 echo -----------------------------------------------------------------------------
 echo  Convert Font...

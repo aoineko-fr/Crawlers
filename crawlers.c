@@ -59,12 +59,12 @@ const c8* MenuAction_Info(u8 op, i8 value);
 const c8* MenuAction_Freq(u8 op, i8 value);
 const c8* MenuAction_Palette(u8 op, i8 value);
 const c8* MenuAction_Music(u8 op, i8 value);
+const c8* MenuAction_SFX(u8 op, i8 value);
 const c8* MenuAction_Bonus(u8 op, i8 value);
 const c8* MenuAction_Wall(u8 op, i8 value);
 const c8* MenuAction_Port(u8 op, i8 value);
 const c8* MenuAction_MSX(u8 op, i8 value);
 const c8* MenuAction_VDP(u8 op, i8 value);
-const c8* MenuAction_Exit(u8 op, i8 value);
 
 void InitPlayer(Player* ply, u8 id);
 void ResetPlayer(Player* ply);
@@ -72,6 +72,9 @@ void SpawnPlayer(Player* ply);
 void DrawPlayer(Player* ply);
 void ClearPlayer(Player* ply);
 void UpdatePlayer(Player* ply);
+
+extern u8 g_VersionROM;
+extern u8 g_VersionMSX;
 
 //=============================================================================
 // READ-ONLY DATA
@@ -187,10 +190,6 @@ const MenuItem g_MenuMain[] =
 	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
 	{ "SYSTEM",              MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
 	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
-#if (TARGET_TYPE != TYPE_ROM)
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
-	{ "EXIT",                MENU_ITEM_ACTION, MenuAction_Exit, 0 },
-#endif
 };
 
 #if (EXT_VERSION)
@@ -222,7 +221,7 @@ const MenuItem g_MenuOption[] =
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
 	{ "PALETTE",             MENU_ITEM_ACTION, MenuAction_Palette, 0 },
 	{ "MUSIC",               MENU_ITEM_ACTION, MenuAction_Music, 0 },
-	{ "SFX",                 MENU_ITEM_BOOL, &g_OptSFX, 0 },
+	{ "SFX",                 MENU_ITEM_ACTION, MenuAction_SFX, 0 },
 	{ "BONUS",               MENU_ITEM_ACTION, MenuAction_Bonus, 0 },
 	{ "WALL",                MENU_ITEM_ACTION, MenuAction_Wall, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -315,10 +314,10 @@ const SelectSlot g_SelectSlot[] =
 };
 
 // Cursor offset animation
-const u8 g_CursorAnim[] = { 1, 1, 2, 1, 1, 0, 0, 0 };
+const u8 g_CursorAnim[8] = { 1, 1, 2, 1, 1, 0, 0, 0 };
 
 // Hole tile animation
-const u8 g_HoleAnim[] = { 0xF3, 0xF4, 0xF5, 0xE3 };
+const u8 g_HoleAnim[4] = { TILE_PREHOLE, TILE_PREHOLE+1, TILE_PREHOLE+2, TILE_HOLE };
 
 // Controller binding
 const CtrlBind g_CtrlBind[] =
@@ -388,6 +387,8 @@ u8			g_VersionVDP;
 u8			g_Scroll;
 bool		g_OptMusic = TRUE;
 bool		g_OptSFX = TRUE;
+u8			g_OptSFXIdx = 0;
+u8			g_OptSFXNum;
 bool		g_Initialized = FALSE;
 
 // Gameplay
@@ -412,12 +413,13 @@ u8			g_CollapseY1;
 
 // Timers
 u8			g_Counter;
-u8			g_TimeMax = 5;
+u8			g_TimeMax = 1;
 u8			g_TimeFrame;
 u8			g_TimeMinHigh;
 u8			g_TimeMinLow;
 u8			g_TimeSecHigh;
 u8			g_TimeSecLow;
+bool		g_HurryUp = FALSE;
 
 // Input
 u8			g_JoyInfo;
@@ -456,57 +458,6 @@ void VDP_LoadColor_GM2_Pletter(const u8* src, u8 offset)
 	Pletter_UnpackToVRAM(src, dst);
 	dst += 0x800;
 	Pletter_UnpackToVRAM(src, dst);
-}
-
-//-----------------------------------------------------------------------------
-// 
-void Bios_Exit(u8 ret)
-{
-	ret;	// A
-#if (TARGET_TYPE == TYPE_DOS)
-
-	__asm
-		push	af
-		// Set Screen mode to 2...
-		ld		a, #2
-		ld		ix, #R_CHGMOD
-		ld		iy, (M_EXPTBL-1)
-		call	R_CALSLT
-		// ... to be able to call TOTEXT routine
-		ld		ix, #R_TOTEXT
-		ld		iy, (M_EXPTBL-1)
-		call	R_CALSLT
-		pop		af
-
-		ld		b, a
-		ld		c, #DOS_FUNC_TERM
-		call	BDOS
-		ld		c, #DOS_FUNC_TERM0
-		jp		BDOS
-	__endasm;
-
-#elif (TARGET_TYPE == TYPE_BIN)
-	
-	__asm
-		// Set Screen mode to 2...
-		ld		a, #2
-		call	R_CHGMOD
-		// ... to be able to call TOTEXT routine
-		call	R_TOTEXT
-
-		// 
-		ld		ix, #0x409B // address of "warm boot" BASIC interpreter
-		// this routine is called to reset the stack if basic is externally stopped and then restarted.
-		call	R_CALBAS
-	__endasm;
-
-#else // if (TARGET_TYPE == TYPE_ROM)
-
-	__asm
-		call	0x0000				// Soft reset
-	__endasm;
-
-#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -615,11 +566,16 @@ void SetTimer(u8 min)
 	g_TimeSecLow = 0;
 	g_CollapseTimer = 0;
 	g_CollapsePhase = 0xFF;
+	if(g_HurryUp)
+	{
+		AKG_Init((const void*)0xD000, 1);
+		g_HurryUp = FALSE;
+	}
 
-	VDP_SetSpritePattern(4, 16 + g_TimeMinHigh);
-	VDP_SetSpritePattern(5, 16 + g_TimeMinLow);
-	VDP_SetSpritePattern(6, 16 + g_TimeSecHigh);
-	VDP_SetSpritePattern(7, 16 + g_TimeSecLow);
+	VDP_SetSpriteSM1(4, 117, 185, 16 + g_TimeMinHigh, COLOR_WHITE);
+	VDP_SetSpriteSM1(5, 122, 185, 16 + g_TimeMinLow,  COLOR_WHITE);
+	VDP_SetSpriteSM1(6, 131, 185, 16 + g_TimeSecHigh, COLOR_WHITE);
+	VDP_SetSpriteSM1(7, 136, 185, 16 + g_TimeSecLow,  COLOR_WHITE);
 }
 
 //-----------------------------------------------------------------------------
@@ -634,6 +590,12 @@ bool UpdateTimer()
 		VDP_SetSpriteColorSM1(5, col);
 		VDP_SetSpriteColorSM1(6, col);
 		VDP_SetSpriteColorSM1(7, col);
+		
+		if(!g_HurryUp)
+		{
+			AKG_Init((const void*)0xD000, 2);
+			g_HurryUp = TRUE;
+		}
 	}
 
 	g_TimeFrame--;
@@ -736,6 +698,8 @@ void CheckBattleRoyal()
 	/* ... */
 
 	// Clean field and start a new round
+	SetTimer(g_TimeMax);
+	DrawLevel();
 	ClearPlayer(lastPly);
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		SpawnPlayer(&g_Players[i]);
@@ -745,6 +709,9 @@ void CheckBattleRoyal()
 // 
 void SpawnBonus()
 {
+	if(g_CollapsePhase != 0xFF)
+		return;
+
 	u8 rnd = Math_GetRandom8();
 	u8 x = 8 + rnd % 16;
 	u8 y = 8 + (rnd >> 4) % 8;
@@ -1134,6 +1101,8 @@ void DrawPlayer(Player* ply)
 //
 void ClearPlayer(Player* ply)
 {
+	AKG_PlaySFX(1, 0, 0);
+
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
 	u8 idx = ply->Idx;
@@ -1262,6 +1231,7 @@ void UpdatePlayer(Player* ply)
 			case TILE_BONUS+5:
 			case TILE_BONUS+6:
 			case TILE_BONUS+7:
+				AKG_PlaySFX(0, 0, 0);
 				ply->Expect += BONUS_GROWTH;
 				SpawnBonus();
 				if(g_GameMode == MODE_GREEDIEST)
@@ -1476,12 +1446,50 @@ const c8* MenuAction_Music(u8 op, i8 value)
 	case MENU_ACTION_DEC:
 		TOGGLE(g_OptMusic);
 		if(g_OptMusic)
+		{
 			AKG_Init((const void*)0xD000, 0);
+			g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
+		}
 		else if(!g_OptMusic)
 			AKG_Stop();
 		break;
 	}
 	return g_OptMusic ? "#" : "&";
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_SFX(u8 op, i8 value)
+{
+	value;
+	switch(op)
+	{
+	case MENU_ACTION_SET:
+		TOGGLE(g_OptSFX);
+		// if(g_OptSFX)
+		// {
+			// AKG_Init((const void*)0xD000, 0);
+			// AKG_InitSFX((const void*)0x0100);
+		// }
+		// else if(!g_OptMusic)
+			// AKG_Stop();
+		break;
+	case MENU_ACTION_INC:
+		if(g_OptSFXIdx < g_OptSFXNum - 1)
+			g_OptSFXIdx++;
+		else
+			g_OptSFXIdx = 0;
+		AKG_PlaySFX(g_OptSFXIdx, 0, 0);
+		break;
+	case MENU_ACTION_DEC:
+		if(g_OptSFXIdx > 0)
+			g_OptSFXIdx--;
+		else
+			g_OptSFXIdx = g_OptSFXNum - 1;
+		AKG_PlaySFX(g_OptSFXIdx, 0, 0);
+		break;
+	}
+	return g_OptSFX ? "#" : "&";
 }
 
 //-----------------------------------------------------------------------------
@@ -1567,7 +1575,7 @@ const c8* MenuAction_MSX(u8 op, i8 value)
 {
 	op;
 	value;
-	switch(g_MSXVER)
+	switch(g_VersionMSX)
 	{
 	case MSXVER_1:  return "MSX 1";
 	case MSXVER_2:  return "MSX 2";
@@ -1590,16 +1598,6 @@ const c8* MenuAction_VDP(u8 op, i8 value)
 	case VDP_VERSION_V9958:    return "V9958";
 	}
 	return "UNKNOW";
-}
-
-//-----------------------------------------------------------------------------
-//
-const c8* MenuAction_Exit(u8 op, i8 value)
-{
-	value;
-	if(op == MENU_ACTION_SET)
-		Bios_Exit(0);
-	return NULL;
 }
 
 //=============================================================================
@@ -1638,7 +1636,7 @@ void State_Init_Begin()
 	}
 
 	// Initialize frequency
-	if(g_BASRVN[0] & 0x80)
+	if(g_VersionROM & 0x80)
 		g_FreqDetected = FREQ_50HZ;
 	else
 		g_FreqDetected = FREQ_60HZ;
@@ -1666,7 +1664,6 @@ void State_Init_Begin()
 
 	// Load music
 	Pletter_UnpackToRAM(g_MusicMain, (void*)0xD000);
-	Pletter_UnpackToRAM(g_DataSFX, (void*)0xF000);
 }
 
 //-----------------------------------------------------------------------------
@@ -1768,7 +1765,10 @@ void State_Title_Begin()
 {
 	// Initialize music
 	if(g_OptMusic)
+	{
 		AKG_Init((const void*)0xD000, 0);
+		g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
+	}
 
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
@@ -2118,7 +2118,10 @@ void State_Start_Begin()
 	g_Counter = 0;
 
 	if(g_OptMusic)
+	{
 		AKG_Init((const void*)0xD000, 1);
+		g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
+	}
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -2239,10 +2242,6 @@ void State_Game_Begin()
 	VDP_HideSprite(1);
 	VDP_HideSprite(2);
 	VDP_HideSprite(3);
-	VDP_SetSpriteSM1(4, 117, 185, 20, COLOR_WHITE);
-	VDP_SetSpriteSM1(5, 122, 185, 20, COLOR_WHITE);
-	VDP_SetSpriteSM1(6, 131, 185, 20, COLOR_WHITE);
-	VDP_SetSpriteSM1(7, 136, 185, 20, COLOR_WHITE);
 	VDP_DisableSpritesFrom(8);
 
 	// Initialize timer
@@ -2260,8 +2259,6 @@ void State_Game_Begin()
 
 	// Initialize Bonus
 	SpawnBonus();
-
-	// AKG_Stop();
 }
 
 //-----------------------------------------------------------------------------
