@@ -69,6 +69,7 @@ enum CTRL_TYPE
 	CTRL_AI_MED,
 	CTRL_AI_HARD,
 	CTRL_NONE,						// 14
+//-----------------------------
 	CTRL_MAX,
 };
 #define CTRL_FREE					0xFF
@@ -81,6 +82,7 @@ enum DIRECTION
 	DIR_RIGHT,  // 01
 	DIR_DOWN,   // 10
 	DIR_LEFT,   // 11
+//-----------------------------
 	DIR_MAX,
 };
 
@@ -90,6 +92,7 @@ enum ACTION_TYPE
 	ACTION_NONE = 0,
 	ACTION_RIGHT,
 	ACTION_LEFT,
+//-----------------------------
 	ACTION_MAX,
 };
 
@@ -102,6 +105,8 @@ enum PLAYER_STATE
 	STATE_WAITING,					// Waiting for spawn point to be available
 	STATE_SPAWNING,
 	STATE_PLAYING,
+//-----------------------------
+	STATE_MAX,
 };
 
 // Menu pages enumeration
@@ -115,6 +120,7 @@ enum MENU_PAGE
 	MENU_OPTION,
 	MENU_SYSTEM,
 	MENU_CREDIT,
+//-----------------------------
 	MENU_MAX,
 };
 
@@ -125,6 +131,7 @@ enum GAME_MODE
 	MODE_DEATHMATCH,
 	MODE_SIZEMATTER,
 	MODE_GREEDIEST,
+//-----------------------------
 	MODE_MAX,
 };
 
@@ -134,6 +141,7 @@ enum FREQ_MODE
 	FREQ_AUTO,							// Use auto-detection
 	FREQ_60HZ,							// Force 60 Hz
 	FREQ_50HZ,							// Force 50 Hz
+//-----------------------------
 	FREQ_MAX,
 };
 
@@ -143,7 +151,19 @@ enum PAL_ID
 	PAL_CUSTOM = 0,
 	PAL_MSX1,
 	PAL_MSX2,
+//-----------------------------
 	PAL_MAX,
+};
+
+// Music enumaration
+enum MUSIC_ID
+{
+	MUSIC_EMPTY = 0,
+	MUSIC_MENU,
+	MUSIC_BATTLE,
+	MUSIC_HURRYUP,
+//-----------------------------
+	MUSIC_MAX,
 };
 
 // Start position structure
@@ -219,9 +239,11 @@ typedef struct
 // Mode description
 typedef struct
 {
-	const c8*	Name;
-	const c8*	Desc;
-	u8			Size;
+	const c8*	Name;				// Mode's name
+	const c8*	Desc;				// Description
+	u8			Length;				// Description length
+	u8			Rounds;				// Default round number
+	u8			Time;				// Default time
 } ModeInfo;
 
 // Slot
@@ -234,6 +256,13 @@ typedef struct
 	i8			Up;
 	i8			Down;
 } SelectSlot;
+
+// Slot
+typedef struct
+{
+	const void*	Data;
+	u8			Song;
+} MusicInfo;
 
 // Select menu
 #define SELECT_DEV_NONE_S		g_DataSelectL0_Names	// 7x3

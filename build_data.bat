@@ -21,6 +21,10 @@ set ADDR=%errorlevel%
 
 %Tools%\compress\Pletter\pletter.exe datasrc\music_main.akg datasrc\music_main.pl5
 %MSXtk%\MSXbin.exe datasrc\music_main.pl5 -t g_MusicMain -ad -o content\music_main.h -at %ADDR%
+set ADDR=%errorlevel%
+
+%Tools%\compress\Pletter\pletter.exe datasrc\music_empty.akg datasrc\music_empty.pl5
+%MSXtk%\MSXbin.exe datasrc\music_empty.pl5 -t g_MusicEmpty -ad -o content\music_empty.h -at %ADDR%
 
 echo -----------------------------------------------------------------------------
 echo  Convert Font...

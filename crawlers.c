@@ -94,6 +94,7 @@ extern u8 g_VersionMSX;
 #include "content/face2.h"
 
 // Music
+#include "content/music_empty.h"
 #include "content/music_main.h"
 #include "content/sfx.h"
 
@@ -250,8 +251,7 @@ const MenuItem g_MenuCredit[] =
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "CODE:  AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
 	{ "GRAPH: AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
-	{ "MUSIC: TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
-	{ "SFX:   AYFX SAMPLE",  MENU_ITEM_TEXT, NULL, 0 },
+	{ "AUDIO: TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -317,7 +317,7 @@ const SelectSlot g_SelectSlot[] =
 const u8 g_CursorAnim[8] = { 1, 1, 2, 1, 1, 0, 0, 0 };
 
 // Hole tile animation
-const u8 g_HoleAnim[4] = { TILE_PREHOLE, TILE_PREHOLE+1, TILE_PREHOLE+2, TILE_HOLE };
+const u8 g_HoleAnim[4] = { TILE_PREHOLE, (u8)(TILE_PREHOLE+1), (u8)(TILE_PREHOLE+2), TILE_HOLE };
 
 // Controller binding
 const CtrlBind g_CtrlBind[] =
@@ -347,11 +347,11 @@ const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN TI
 const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GETS THE MOST BONUSES AT THE END OF THE SET TIME WINS THE GAME.";
 
 const ModeInfo g_ModeInfo[] =
-{
-	{ "BATTLE ROYAL", g_DescBattleRoyal, sizeof(g_DescBattleRoyal) },
-	{ "DEATH MATCH",  g_DescDeathMatch,  sizeof(g_DescDeathMatch) },
-	{ "SIZE MATTER",  g_DescSizeMatter,  sizeof(g_DescSizeMatter) },
-	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest) },
+{//   Name            Dec.               Length                     Rnd Time
+	{ "BATTLE ROYAL", g_DescBattleRoyal, sizeof(g_DescBattleRoyal), 5,  1 },
+	{ "DEATH MATCH",  g_DescDeathMatch,  sizeof(g_DescDeathMatch),  10, 0 },
+	{ "SIZE MATTER",  g_DescSizeMatter,  sizeof(g_DescSizeMatter),  0,  5 },
+	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   0,  5 },
 };
 
 // 14 13 12  |  OOO  O    OO   OO    O    OO   O
@@ -370,6 +370,16 @@ const u16 g_TimerLayout[7] =
 	0b010101101101010, // O
 };
 
+//
+const MusicInfo g_MusicInfo[] =
+{
+	{ g_MusicEmpty, 0 }, // MUSIC_EMPTY
+	{ g_MusicMain,  0 }, // MUSIC_MENU
+	{ g_MusicMain,  1 }, // MUSIC_BATTLE
+	{ g_MusicMain,  2 }, // MUSIC_HURRYUP
+};
+
+
 //=============================================================================
 // MEMORY DATA
 //=============================================================================
@@ -385,11 +395,14 @@ bool		g_DoSynch;
 u8			g_PalOpt;
 u8			g_VersionVDP;
 u8			g_Scroll;
+bool		g_Initialized = FALSE;
+
+// Audio
 bool		g_OptMusic = TRUE;
 bool		g_OptSFX = TRUE;
 u8			g_OptSFXIdx = 0;
 u8			g_OptSFXNum;
-bool		g_Initialized = FALSE;
+const void*	g_LastMusicData = NULL;
 
 // Gameplay
 u8			g_GameMode = MODE_BATTLEROYAL;
@@ -435,6 +448,33 @@ u8			g_CtrlReg[CTRL_MAX];
 //=============================================================================
 // FUNCTIONS
 //=============================================================================
+
+//-----------------------------------------------------------------------------
+// 
+void PlayMusic(u8 id)
+{
+	if(!g_OptMusic)
+		id = MUSIC_EMPTY;
+
+	const MusicInfo* inf = &g_MusicInfo[id];
+	if(g_LastMusicData != inf->Data)
+	{
+		g_LastMusicData = inf->Data;
+		Pletter_UnpackToRAM(g_LastMusicData, (void*)0xD000);
+	}
+	AKG_Init((const void*)0xD000, inf->Song);
+	g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
+}
+
+//-----------------------------------------------------------------------------
+// 
+void PlaySFX(u8 id)
+{
+	if(!g_OptSFX)
+		return;
+
+	AKG_PlaySFX(id, 0, 0);
+}
 
 //-----------------------------------------------------------------------------
 // Load patterns in all 3 screen sections
@@ -568,7 +608,7 @@ void SetTimer(u8 min)
 	g_CollapsePhase = 0xFF;
 	if(g_HurryUp)
 	{
-		AKG_Init((const void*)0xD000, 1);
+		PlayMusic(MUSIC_BATTLE);
 		g_HurryUp = FALSE;
 	}
 
@@ -593,7 +633,7 @@ bool UpdateTimer()
 		
 		if(!g_HurryUp)
 		{
-			AKG_Init((const void*)0xD000, 2);
+			PlayMusic(MUSIC_HURRYUP);
 			g_HurryUp = TRUE;
 		}
 	}
@@ -1101,7 +1141,7 @@ void DrawPlayer(Player* ply)
 //
 void ClearPlayer(Player* ply)
 {
-	AKG_PlaySFX(1, 0, 0);
+	PlaySFX(1);
 
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
@@ -1231,7 +1271,7 @@ void UpdatePlayer(Player* ply)
 			case TILE_BONUS+5:
 			case TILE_BONUS+6:
 			case TILE_BONUS+7:
-				AKG_PlaySFX(0, 0, 0);
+				PlaySFX(0);
 				ply->Expect += BONUS_GROWTH;
 				SpawnBonus();
 				if(g_GameMode == MODE_GREEDIEST)
@@ -1252,6 +1292,18 @@ void UpdatePlayer(Player* ply)
 		return;
 	}
 	}
+}
+
+//-----------------------------------------------------------------------------
+// 
+void SetGameMode(u8 newMode)
+{
+	g_GameMode = newMode;
+
+	const ModeInfo* info = &g_ModeInfo[g_GameMode];
+	g_GameCount = info->Rounds;
+	g_TimeMax = info->Time;
+	Menu_Update();
 }
 
 //-----------------------------------------------------------------------------
@@ -1309,17 +1361,17 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
 		if(g_GameMode < MODE_MAX-1)
-			g_GameMode++;
+			SetGameMode(g_GameMode + 1);
 		else
-			g_GameMode = 0;
+			SetGameMode(0);
 		g_Scroll = 0;
 		break;
 
 	case MENU_ACTION_DEC:
 		if(g_GameMode > 0)
-			g_GameMode--;
+			SetGameMode(g_GameMode - 1);
 		else
-			g_GameMode = MODE_MAX-1;
+			SetGameMode(MODE_MAX - 1);
 		g_Scroll = 0;
 		break;
 
@@ -1342,7 +1394,7 @@ const c8* MenuAction_Info(u8 op, i8 value)
 		return "";
 
 	const ModeInfo* info = &g_ModeInfo[g_GameMode];
-	u8 size = info->Size - 1;
+	u8 size = info->Length - 1;
 
 	u8 j = g_Scroll;
 	while(j >= size)
@@ -1445,13 +1497,7 @@ const c8* MenuAction_Music(u8 op, i8 value)
 	case MENU_ACTION_INC:
 	case MENU_ACTION_DEC:
 		TOGGLE(g_OptMusic);
-		if(g_OptMusic)
-		{
-			AKG_Init((const void*)0xD000, 0);
-			g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
-		}
-		else if(!g_OptMusic)
-			AKG_Stop();
+		PlayMusic(MUSIC_MENU);
 		break;
 	}
 	return g_OptMusic ? "#" : "&";
@@ -1466,13 +1512,6 @@ const c8* MenuAction_SFX(u8 op, i8 value)
 	{
 	case MENU_ACTION_SET:
 		TOGGLE(g_OptSFX);
-		// if(g_OptSFX)
-		// {
-			// AKG_Init((const void*)0xD000, 0);
-			// AKG_InitSFX((const void*)0x0100);
-		// }
-		// else if(!g_OptMusic)
-			// AKG_Stop();
 		break;
 	case MENU_ACTION_INC:
 		if(g_OptSFXIdx < g_OptSFXNum - 1)
@@ -1661,9 +1700,6 @@ void State_Init_Begin()
 	// Initialize players
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		InitPlayer(&g_Players[i], i);
-
-	// Load music
-	Pletter_UnpackToRAM(g_MusicMain, (void*)0xD000);
 }
 
 //-----------------------------------------------------------------------------
@@ -1763,13 +1799,6 @@ void State_Logo_Update()
 //
 void State_Title_Begin()
 {
-	// Initialize music
-	if(g_OptMusic)
-	{
-		AKG_Init((const void*)0xD000, 0);
-		g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
-	}
-
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
 	VDP_ClearVRAM();
@@ -1808,6 +1837,9 @@ void State_Title_Begin()
 
 	if(g_Initialized)
 		FSM_SetState(&State_Menu);
+
+	// Initialize music
+	PlayMusic(MUSIC_MENU);
 
 	g_Initialized = true;
 }
@@ -2117,11 +2149,7 @@ void State_Start_Begin()
 
 	g_Counter = 0;
 
-	if(g_OptMusic)
-	{
-		AKG_Init((const void*)0xD000, 1);
-		g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
-	}
+	PlayMusic(MUSIC_BATTLE);
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -2379,6 +2407,8 @@ void State_Victory_Update()
 // Program entry point
 void main()
 {
+	PlayMusic(MUSIC_EMPTY);
+
 	// Start the Final State Machine
 	FSM_SetState(&State_Init);
 	while(1)
