@@ -399,6 +399,7 @@ bool		g_Initialized = FALSE;
 
 // Audio
 bool		g_OptMusic = TRUE;
+u8			g_OptMusicIdx = 0;
 bool		g_OptSFX = TRUE;
 u8			g_OptSFXIdx = 0;
 u8			g_OptSFXNum;
@@ -1491,15 +1492,31 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 const c8* MenuAction_Music(u8 op, i8 value)
 {
 	value;
+	u8 mus = 0xFF;
 	switch(op)
 	{
 	case MENU_ACTION_SET:
-	case MENU_ACTION_INC:
-	case MENU_ACTION_DEC:
 		TOGGLE(g_OptMusic);
-		PlayMusic(MUSIC_MENU);
+		mus = MUSIC_MENU;
+		break;
+	case MENU_ACTION_INC:
+		if(g_OptMusicIdx < numberof(g_MusicInfo) - 1)
+			g_OptMusicIdx++;
+		else
+			g_OptMusicIdx = 0;
+		mus = g_OptMusicIdx;
+		break;
+	case MENU_ACTION_DEC:
+		if(g_OptMusicIdx > 0)
+			g_OptMusicIdx--;
+		else
+			g_OptMusicIdx =  numberof(g_MusicInfo) - 1;
+		mus = g_OptMusicIdx;
 		break;
 	}
+
+	if(mus != 0xFF)
+		PlayMusic(mus);
 	return g_OptMusic ? "#" : "&";
 }
 
