@@ -2,7 +2,7 @@
 // ██  ▀  █▄  ▀██▄ ▀ ▄█ ▄  ▄█▄█ ▄▀██
 // █  █ █  ▀▀  ▄█  █  █ ██ ██ █  ▀██
 // ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀          ▀▀
-// Data generated using MSXimg 1.16.2 on Thu Feb 23 13:49:37 2023
+// Data generated using MSXimg 1.16.3 on Thu Mar  2 22:09:07 2023
 // by Guillaume "Aoineko" Blanchard (2022) under CC BY-SA free license
 // ─────────────────────────────────────────────────────────────────────────────
 // Generation parameters:
@@ -16,7 +16,7 @@
 //  - Skip empty:     FALSE
 
 // Sprites table
-__at(0x290A) const unsigned char g_DataLogoSprt[] =
+__at(0x27AC) const unsigned char g_DataLogoSprt[] =
 {
 	0x04, 0x00, 0x00, 0x01, 0x01, 0x03, 0x00, 0x03, 0x05, 0x0A, 0x07, 0x15, 0x0E, 0x17, 0x0B, 0x00, 
 	0x1F, 0x0B, 0x10, 0x20, 0x40, 0x80, 0x80, 0x00, 0x4A, 0x0D, 0x06, 0x98, 0x19, 0x07, 0x81, 0x0B, 

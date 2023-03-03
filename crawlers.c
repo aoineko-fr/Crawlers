@@ -237,7 +237,7 @@ const MenuItem g_MenuSystem[] =
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
 	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
 	{ "TOTAL\x1C",           MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_JoyNum, NULL },
-	{ "MAX$",                MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
+	{ "MAX\x5F",             MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -251,7 +251,8 @@ const MenuItem g_MenuCredit[] =
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "CODE:  AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
 	{ "GRAPH: AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
-	{ "AUDIO: TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
+	{ "MUSIC: TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
+	{ "SFX:   TOTTA,AOINEKO",MENU_ITEM_TEXT, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -342,7 +343,7 @@ const u8 g_BonusData[8+1] = { 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 
 const u8 g_WallData[4+1] = { 0xE1, 0xE2, 0xE8, 0xEF, 0 };
 
 const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLAPSE AFTER TIMER END.";
-const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH. FIELD COLAPSE AFTER TIMER END.";
+const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH.";
 const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN TIME, THE ONE WHO HAS REACHED THE LARGEST SIZE WINS THE MATCH.";
 const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GETS THE MOST BONUSES AT THE END OF THE SET TIME WINS THE GAME.";
 
@@ -379,6 +380,13 @@ const MusicInfo g_MusicInfo[] =
 	{ g_MusicMain,  2 }, // MUSIC_HURRYUP
 };
 
+//
+const u8 g_BallColor[][8] =
+{
+	{ 0xB5, 0xB5, 0x75, 0x55, 0x55, 0x54, 0xA5, 0xA4 }, // Blue
+	{ 0xB2, 0xB2, 0x32, 0x22, 0x22, 0x2C, 0xA2, 0xAC }, // Green
+	{ 0xB8, 0xB8, 0x98, 0x88, 0x88, 0x86, 0xA8, 0xA6 }, // Red
+};
 
 //=============================================================================
 // MEMORY DATA
@@ -398,12 +406,12 @@ u8			g_Scroll;
 bool		g_Initialized = FALSE;
 
 // Audio
-bool		g_OptMusic = TRUE;
+bool		g_OptMusic = FALSE;
 u8			g_OptMusicIdx = 0;
-bool		g_OptSFX = TRUE;
+bool		g_OptSFX = FALSE;
 u8			g_OptSFXIdx = 0;
 u8			g_OptSFXNum;
-const void*	g_LastMusicData = NULL;
+u8			g_LastMusicId = 0xFF;
 
 // Gameplay
 u8			g_GameMode = MODE_BATTLEROYAL;
@@ -424,6 +432,7 @@ u8			g_CollapseX0;
 u8			g_CollapseY0;
 u8			g_CollapseX1;
 u8			g_CollapseY1;
+u8			g_Winner;				// Winner player index
 
 // Timers
 u8			g_Counter;
@@ -458,10 +467,10 @@ void PlayMusic(u8 id)
 		id = MUSIC_EMPTY;
 
 	const MusicInfo* inf = &g_MusicInfo[id];
-	if(g_LastMusicData != inf->Data)
+	if(g_LastMusicId != id)
 	{
-		g_LastMusicData = inf->Data;
-		Pletter_UnpackToRAM(g_LastMusicData, (void*)0xD000);
+		g_LastMusicId = id;
+		Pletter_UnpackToRAM(inf->Data, (void*)0xD000);
 	}
 	AKG_Init((const void*)0xD000, inf->Song);
 	g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
@@ -474,7 +483,25 @@ void PlaySFX(u8 id)
 	if(!g_OptSFX)
 		return;
 
-	AKG_PlaySFX(id, 0, 0);
+	AKG_PlaySFX(id, ARKOS_CHANNEL_A, 0);
+}
+
+//-----------------------------------------------------------------------------
+// Callback to handle menu events
+void HandleMenuEvent(u8 event)
+{
+	switch(event)
+	{
+	case MENU_EVENT_UP:
+	case MENU_EVENT_DOWN:
+	case MENU_EVENT_INC:
+	case MENU_EVENT_DEC:
+		PlaySFX(SFX_MOVE);
+		break;
+	case MENU_EVENT_SET:
+		PlaySFX(SFX_SELECT);
+		break;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -583,7 +610,7 @@ void DrawCounter(u8 x, u8 y, u8 step)
 	for(u8 i = 15; i > 0; --i)
 	{
 		if(g_TimerLayout[step] & bit)
-			PrintChr(x, y, 0xE0);
+			PrintChr(x, y, TILE_BALL);
 		else
 			PrintChr(x, y, TILE_EMPTY);
 		x++;
@@ -594,6 +621,8 @@ void DrawCounter(u8 x, u8 y, u8 step)
 		}
 		bit >>= 1;
 	}
+	// u8 col = step > 4 ? 2 : step & 0x1;
+	// VDP_LoadColor_GM2(g_BallColor[col], 1, TILE_BALL);
 }
 
 //-----------------------------------------------------------------------------
@@ -736,7 +765,12 @@ void CheckBattleRoyal()
 	SetScore(lastPly);
 
 	// Check victory condition
-	/* ... */
+	if(lastPly->Score >= g_GameCount)
+	{
+		g_Winner = lastPly->ID;
+		FSM_SetState(&State_Victory);
+		return;
+	}
 
 	// Clean field and start a new round
 	SetTimer(g_TimeMax);
@@ -1142,7 +1176,7 @@ void DrawPlayer(Player* ply)
 //
 void ClearPlayer(Player* ply)
 {
-	PlaySFX(1);
+	PlaySFX(SFX_DIED);
 
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
@@ -1188,6 +1222,7 @@ void UpdatePlayer(Player* ply)
 	case STATE_INIT:
 		ply->Timer = COOLDOWN_WAIT;
 		ply->State = STATE_COOLDOWN;
+		PlaySFX(SFX_HOLE);
 
 	case STATE_COOLDOWN:
 		if(VDP_Peek_GM2(ply->PosX, ply->PosY) >= TILE_EMPTY)
@@ -1272,7 +1307,7 @@ void UpdatePlayer(Player* ply)
 			case TILE_BONUS+5:
 			case TILE_BONUS+6:
 			case TILE_BONUS+7:
-				PlaySFX(0);
+				PlaySFX(SFX_BONUS);
 				ply->Expect += BONUS_GROWTH;
 				SpawnBonus();
 				if(g_GameMode == MODE_GREEDIEST)
@@ -1517,7 +1552,7 @@ const c8* MenuAction_Music(u8 op, i8 value)
 
 	if(mus != 0xFF)
 		PlayMusic(mus);
-	return g_OptMusic ? "#" : "&";
+	return g_OptMusic ? "*" : "+";
 }
 
 //-----------------------------------------------------------------------------
@@ -1545,7 +1580,7 @@ const c8* MenuAction_SFX(u8 op, i8 value)
 		AKG_PlaySFX(g_OptSFXIdx, 0, 0);
 		break;
 	}
-	return g_OptSFX ? "#" : "&";
+	return g_OptSFX ? "*" : "+";
 }
 
 //-----------------------------------------------------------------------------
@@ -1884,6 +1919,7 @@ void State_Title_Update()
 void State_Menu_Begin()
 {
 	// Initialize menu
+	Menu_SetEventCallback(HandleMenuEvent);
 	Menu_Initialize(g_Menus);
 	Menu_DrawPage(MENU_MAIN);
 }
@@ -1985,15 +2021,20 @@ void State_Select_Update()
 		{
 			SetPrevPlayerController(ply);
 			EditPlayer(g_SlotIdx, TRUE);
+			PlaySFX(SFX_MOVE);
 		}
 		else if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
 		{
 			SetNextPlayerController(ply);
 			EditPlayer(g_SlotIdx, TRUE);
+			PlaySFX(SFX_MOVE);
 		}
 
 		if(IS_KEY_PRESSED(row8, KEY_SPACE) && !IS_KEY_PRESSED(g_PrevRow8, KEY_SPACE))
+		{
 			EditPlayer(g_SlotIdx, FALSE);
+			PlaySFX(SFX_SELECT);
+		}
 	}
 	else // Handle menu update
 	{
@@ -2008,7 +2049,10 @@ void State_Select_Update()
 		else if(IS_KEY_PRESSED(row8, KEY_DOWN) && !IS_KEY_PRESSED(g_PrevRow8, KEY_DOWN))
 			newSlot = g_SelectSlot[g_SlotIdx].Down;
 		if(newSlot != -1)
+		{
 			MoveCursor(newSlot);
+			PlaySFX(SFX_MOVE);
+		}
 
 		// Animate cursor
 		u8 offset = g_CursorAnim[(g_Frame >> 2) % 8];
@@ -2039,12 +2083,19 @@ void State_Select_Update()
 				FSM_SetState(&State_Title);
 				break;
 			};
+			PlaySFX(SFX_SELECT);
 		}
 
 		if(Keyboard_IsKeyPressed(KEY_RET))
+		{
 			FSM_SetState(&State_Start);
+			PlaySFX(SFX_SELECT);
+		}
 		if(Keyboard_IsKeyPressed(KEY_ESC))
+		{
 			FSM_SetState(&State_Title);
+			PlaySFX(SFX_SELECT);
+		}
 
 		// Handle special keys
 		if(g_SlotIdx < 8)
@@ -2094,10 +2145,13 @@ void State_Start_Begin()
 	DrawTileX(1, 23, 0xE8, 30);
 
 	// Timer board
-	DrawTile(14, 23, 0x05);
-	DrawTile(15, 23, 0x0A);
-	DrawTile(16, 23, 0x0B);
-	DrawTile(17, 23, 0x0F);
+	if(g_GameMode == MODE_BATTLEROYAL)
+	{
+		DrawTile(14, 23, TILE_CLOCK + 0);
+		DrawTile(15, 23, TILE_CLOCK + 1);
+		DrawTile(16, 23, TILE_CLOCK + 2);
+		DrawTile(17, 23, TILE_CLOCK + 3);
+	}
 
 	// Draw score board
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -2406,14 +2460,108 @@ void State_Game_Update()
 //
 void State_Victory_Begin()
 {
-	
+	// Initialize VDP
+	VDP_EnableDisplay(FALSE);
+
+	// Initialize tiles data
+	VDP_FillLayout_GM2(TILE_EMPTY, 0, 0, 32, 24);
+
+	// Draw field
+	PrintChr(0,  0, TILE_TREE);
+	PrintChr(31, 0, TILE_TREE);
+	PrintChrX(1, 0, TILE_TREE, 30);
+	PrintChrY(0, 1, TILE_TREE, 22);
+	PrintChrY(31,1, TILE_TREE, 22);
+	PrintChr(0, 23, TILE_TREE);
+	PrintChr(31, 23, TILE_TREE);
+	PrintChrX(1, 23, TILE_TREE, 30);
+
+	// Text W
+	PrintChrY(7, 9, TILE_BALL, 4);
+	PrintChr(8, 13, TILE_BALL);
+	PrintChr(9, 12, TILE_BALL);
+	PrintChr(10, 13, TILE_BALL);
+	PrintChrY(11, 9, TILE_BALL, 4);
+	// Text I
+	PrintChrX(13, 9, TILE_BALL, 3);
+	PrintChrY(14, 10, TILE_BALL, 3);
+	PrintChrX(13, 13, TILE_BALL, 3);
+	// Text N
+	PrintChrY(17, 9, TILE_BALL, 5);
+	PrintChr(18, 10, TILE_BALL);
+	PrintChr(19, 11, TILE_BALL);
+	PrintChr(20, 12, TILE_BALL);
+	PrintChrY(21, 9, TILE_BALL, 5);
+	// Text !
+	PrintChrY(24, 9, TILE_BALL, 3);
+	PrintChr(24, 13, TILE_BALL);
+
+	VDP_DisableSpritesFrom(0);
+
+	Player* ply = &g_Players[g_Winner];
+	ply->PosX = 7;
+	ply->PosY = 15;
+	ply->Dir = DIR_RIGHT;
+	ply->Length = 1;
+	ply->Expect = MIN(ply->Expect, 50);
+
+	VDP_EnableDisplay(TRUE);
 }
 
 //-----------------------------------------------------------------------------
 //
 void State_Victory_Update()
 {
-	
+	WaitVBlank();
+	u8 col = (g_Frame & 0x08) ? 0 : 2;
+	VDP_LoadColor_GM2(g_BallColor[col], 1, TILE_BALL);
+
+	if((g_Frame & 0x07) == 0)
+	{
+		Player* ply = &g_Players[g_Winner];
+
+		// Move
+		u8 x = ply->PosX;
+		u8 y = ply->PosY;
+		u8 nextDir = ply->Dir;
+		switch(ply->Dir)
+		{
+		case DIR_UP:
+			y--;
+			if(y <= 7)
+				nextDir = DIR_LEFT;
+			break;
+		case DIR_RIGHT:
+			x++;
+			if(x >= 26)
+				nextDir = DIR_UP;
+			break;
+		case DIR_DOWN:
+			y++;
+			if(y >= 15)
+				nextDir = DIR_RIGHT;
+			break;
+		case DIR_LEFT:
+			x--;
+			if(x <= 5)
+				nextDir = DIR_DOWN;
+			break;
+		}
+
+		// Move
+		ply->PosX = x;
+		ply->PosY = y;
+		ply->Idx--;
+		ply->Idx %= LENGTH_MAX;
+		ply->Path[ply->Idx] = ply->Dir;
+		DrawPlayer(ply);
+		// Turn if needed
+		ply->Dir = nextDir;
+	}
+
+
+	if(Keyboard_IsKeyPressed(KEY_ESC) || Keyboard_IsKeyPressed(KEY_SPACE))
+		FSM_SetState(&State_Select);
 }
 
 //=============================================================================

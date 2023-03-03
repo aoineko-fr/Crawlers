@@ -39,6 +39,19 @@
 #define TILE_KB1					0xFD // Keyboard config 1
 #define TILE_KB2					0xFE // Keyboard config 2
 #define TILE_AI						0xFF // AI
+// Menu tile
+#define TILE_CLOCK					0x03
+#define TILE_OK						0x0A
+#define TILE_NOT					0x0B
+#define TILE_PLAYER					0x3F
+#define TILE_BALL					0xE0
+
+// SFX number
+#define SFX_MOVE					12
+#define SFX_SELECT					2
+#define SFX_BONUS					0
+#define SFX_HOLE					14
+#define SFX_DIED					1
 
 #define SPAWN_WAIT					20 // Spawn waiting time (N * 8 frames)
 #define COOLDOWN_WAIT				8
