@@ -19,8 +19,16 @@ echo  Convert Music...
 %MSXtk%\MSXbin.exe datasrc\sfx.akx -t g_DataSFX -ad -o content\sfx.h -at 0x0100
 set ADDR=%errorlevel%
 
-%Tools%\compress\Pletter\pletter.exe datasrc\music_main.akg datasrc\music_main.pl5
-%MSXtk%\MSXbin.exe datasrc\music_main.pl5 -t g_MusicMain -ad -o content\music_main.h -at %ADDR%
+%Tools%\compress\Pletter\pletter.exe datasrc\music_intro.akg datasrc\music_intro.pl5
+%MSXtk%\MSXbin.exe datasrc\music_intro.pl5 -t g_MusicIntro -ad -o content\music_intro.h -at %ADDR%
+set ADDR=%errorlevel%
+
+%Tools%\compress\Pletter\pletter.exe datasrc\music_game.akg datasrc\music_game.pl5
+%MSXtk%\MSXbin.exe datasrc\music_game.pl5 -t g_MusicGame -ad -o content\music_game.h -at %ADDR%
+set ADDR=%errorlevel%
+
+%Tools%\compress\Pletter\pletter.exe datasrc\music_hurry.akg datasrc\music_hurry.pl5
+%MSXtk%\MSXbin.exe datasrc\music_hurry.pl5 -t g_MusicHurry -ad -o content\music_hurry.h -at %ADDR%
 set ADDR=%errorlevel%
 
 %Tools%\compress\Pletter\pletter.exe datasrc\music_empty.akg datasrc\music_empty.pl5
@@ -35,6 +43,8 @@ echo ---------------------------------------------------------------------------
 echo  Convert SC2 Images...
 
 %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\tiles.h -mode gm2 --gm2unique -compress pletter -name g_DataTiles -pos 0 0 -size 128 128 -at %errorlevel%
+
+REM %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\title.h -mode gm2 --gm2name 1 -name g_DataTitle -pos 0 0 -size 128 128 -l gm2 0 152 192 40
 
 %MSXtk%\MSXimg.exe datasrc\menu.png -out content\face1.h -mode gm2 -compress pletter -name g_DataFace1 -pos 0 216 -size 40 40 -offset 128 -at %errorlevel% ^
 	-l gm2 40  216 40 40 ^

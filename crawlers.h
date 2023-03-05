@@ -270,13 +270,6 @@ typedef struct
 	i8			Down;
 } SelectSlot;
 
-// Slot
-typedef struct
-{
-	const void*	Data;
-	u8			Song;
-} MusicInfo;
-
 // Select menu
 #define SELECT_DEV_NONE_S		g_DataSelectL0_Names	// 7x3
 #define SELECT_DEV_AI_1_S		g_DataSelectL1_Names	// 7x3

@@ -95,7 +95,9 @@ extern u8 g_VersionMSX;
 
 // Music
 #include "content/music_empty.h"
-#include "content/music_main.h"
+#include "content/music_intro.h"
+#include "content/music_game.h"
+#include "content/music_hurry.h"
 #include "content/sfx.h"
 
 //
@@ -126,13 +128,13 @@ const Shapes g_Body[] =
 const Character g_CharaInfo[PLAYER_MAX] =
 {
 	{ 0*20, 0   , 2,    6,  SELECT_FACE_1 },
-	{ 2*20, 1   , 2+7,  6,  SELECT_FACE_2 },
-	{ 6*20, 0xFF, 2+14, 6,  SELECT_FACE_3 },
-	{ 5*20, 0xFF, 2+21, 6,  SELECT_FACE_4 },
-	{ 7*20, 0xFF, 2,    15, SELECT_FACE_5 },
-	{ 4*20, 0xFF, 2+7,  15, SELECT_FACE_6 },
-	{ 1*20, 2   , 2+14, 15, SELECT_FACE_7 },
-	{ 3*20, 3   , 2+21, 15, SELECT_FACE_8 },
+	{ 1*20, 1   , 2+7,  6,  SELECT_FACE_2 },
+	{ 2*20, 0xFF, 2+14, 6,  SELECT_FACE_3 },
+	{ 3*20, 0xFF, 2+21, 6,  SELECT_FACE_4 },
+	{ 4*20, 0xFF, 2,    15, SELECT_FACE_5 },
+	{ 5*20, 0xFF, 2+7,  15, SELECT_FACE_6 },
+	{ 6*20, 2   , 2+14, 15, SELECT_FACE_7 },
+	{ 7*20, 3   , 2+21, 15, SELECT_FACE_8 },
 };
 
 //
@@ -171,11 +173,11 @@ const u16 g_MSX2Palette[15] =
 //
 const c8 g_TitleTile[] =
 {
-	0xC0, 0xBD, 0xC1, 0x84, 0x80, 0x85, 0x48, 0x45, 0x49, 0xB5, 0x00, 0xA4, 0xDD, 0x00, 0x00, 0x5C, 0x59, 0x66, 0x98, 0x94, 0x99, 0x70, 0x6C, 0x69,
-	0xBF, 0x00, 0xBA, 0x82, 0x7F, 0x87, 0x47, 0x00, 0x42, 0xAB, 0x00, 0xAB, 0xD3, 0x00, 0x00, 0x56, 0x00, 0x00, 0x96, 0x93, 0x9B, 0x6E, 0x00, 0x00,
-	0xBE, 0x00, 0x00, 0x83, 0x7F, 0x85, 0x46, 0x43, 0x49, 0xAA, 0x00, 0xAA, 0xD2, 0x00, 0x00, 0x5C, 0x55, 0x00, 0x97, 0x93, 0x99, 0x72, 0x6D, 0x71,
-	0xBF, 0x00, 0xC9, 0x82, 0x00, 0x83, 0x47, 0x00, 0x47, 0xAB, 0xA4, 0xAB, 0xD3, 0x00, 0x00, 0x5B, 0x00, 0x00, 0x96, 0x00, 0x96, 0x00, 0x00, 0x6F,
-	0xC2, 0xBC, 0xC3, 0x89, 0x00, 0x88, 0x4D, 0x00, 0x4C, 0xAE, 0xAF, 0xB1, 0xD6, 0xD0, 0xCD, 0x5E, 0x58, 0x67, 0x9C, 0x00, 0x9D, 0x77, 0x6C, 0x73,
+	0x70, 0x6D, 0x71, 0xD4, 0xD0, 0xD5, 0x48, 0x45, 0x49, 0x8D, 0x00, 0x7C, 0xA1, 0x00, 0x00, 0xC0, 0xBD, 0xCA, 0xAC, 0xA8, 0xAD, 0x5C, 0x58, 0x55, 
+	0x6F, 0x00, 0x6A, 0xD2, 0xCF, 0xD7, 0x47, 0x00, 0x42, 0x83, 0x00, 0x83, 0x97, 0x00, 0x00, 0xBA, 0x00, 0x00, 0xAA, 0xA7, 0xAF, 0x5A, 0x00, 0x00, 
+	0x6E, 0x00, 0x00, 0xD3, 0xCF, 0xD5, 0x46, 0x43, 0x49, 0x82, 0x00, 0x82, 0x96, 0x00, 0x00, 0xC0, 0xB9, 0x00, 0xAB, 0xA7, 0xAD, 0x5E, 0x59, 0x5D, 
+	0x6F, 0x00, 0x79, 0xD2, 0x00, 0xD3, 0x47, 0x00, 0x47, 0x83, 0x7C, 0x83, 0x97, 0x00, 0x00, 0xBF, 0x00, 0x00, 0xAA, 0x00, 0xAA, 0x00, 0x00, 0x5B, 
+	0x72, 0x6C, 0x73, 0xD9, 0x00, 0xD8, 0x4D, 0x00, 0x4C, 0x86, 0x87, 0x89, 0x9A, 0x94, 0x91, 0xC2, 0xBC, 0xCB, 0xB0, 0x00, 0xB1, 0x63, 0x58, 0x5F, 
 };
 
 const MenuItemMinMax g_MenuRoundsMinMax = { 1, 10, 1 };
@@ -372,12 +374,12 @@ const u16 g_TimerLayout[7] =
 };
 
 //
-const MusicInfo g_MusicInfo[] =
+const void* g_MusicInfo[] =
 {
-	{ g_MusicEmpty, 0 }, // MUSIC_EMPTY
-	{ g_MusicMain,  0 }, // MUSIC_MENU
-	{ g_MusicMain,  1 }, // MUSIC_BATTLE
-	{ g_MusicMain,  2 }, // MUSIC_HURRYUP
+	{ g_MusicEmpty }, // MUSIC_EMPTY
+	{ g_MusicIntro }, // MUSIC_MENU
+	{ g_MusicGame  }, // MUSIC_BATTLE
+	{ g_MusicHurry }, // MUSIC_HURRYUP
 };
 
 //
@@ -406,9 +408,9 @@ u8			g_Scroll;
 bool		g_Initialized = FALSE;
 
 // Audio
-bool		g_OptMusic = FALSE;
+bool		g_OptMusic = TRUE;
 u8			g_OptMusicIdx = 0;
-bool		g_OptSFX = FALSE;
+bool		g_OptSFX = TRUE;
 u8			g_OptSFXIdx = 0;
 u8			g_OptSFXNum;
 u8			g_LastMusicId = 0xFF;
@@ -466,13 +468,14 @@ void PlayMusic(u8 id)
 	if(!g_OptMusic)
 		id = MUSIC_EMPTY;
 
-	const MusicInfo* inf = &g_MusicInfo[id];
+	const void* mus = g_MusicInfo[id];
 	if(g_LastMusicId != id)
 	{
+		AKG_Stop();
 		g_LastMusicId = id;
-		Pletter_UnpackToRAM(inf->Data, (void*)0xD000);
+		Pletter_UnpackToRAM(mus, (void*)0xD000);
 	}
-	AKG_Init((const void*)0xD000, inf->Song);
+	AKG_Init((const void*)0xD000, 0);
 	g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
 }
 
@@ -778,6 +781,50 @@ void CheckBattleRoyal()
 	ClearPlayer(lastPly);
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		SpawnPlayer(&g_Players[i]);
+}
+
+//-----------------------------------------------------------------------------
+// 
+bool CheckDeathMatch(Player* ply, u8 cell)
+{
+	// Check opponant
+	cell -= 64;
+	u8 id = 0xFF;
+	for(u8 i = 0; i < 8; ++i)
+	{
+		if(cell < 20)
+		{
+			id = i;
+			break;
+		}
+		cell -= 20;
+	}
+
+	// Loss a point for self or background collision
+	if((id == 0xFF) || (id == ply->ID))
+	{
+		if(ply->Score > 0)
+		{
+			ply->Score--;
+			SetScore(ply);
+		}
+	}
+	else
+	{
+		Player* op = &g_Players[id];
+		op->Score++;
+		SetScore(op);
+
+		// Check victory condition
+		if(op->Score >= g_GameCount)
+		{
+			g_Winner = op->ID;
+			FSM_SetState(&State_Victory);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1289,6 +1336,8 @@ void UpdatePlayer(Player* ply)
 				g_DoSynch = (GetHumanCount() > 0);
 				return;
 			case MODE_DEATHMATCH:
+				if(!CheckDeathMatch(ply, cell))
+					return;
 			case MODE_SIZEMATTER:
 			case MODE_GREEDIEST:
 				SpawnPlayer(ply);
@@ -1904,7 +1953,7 @@ void State_Title_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
-	Print_DrawTextAt(11, 15, (g_Frame & 0x10) ? "PRESS SPACE" : "           ");
+	Print_DrawTextAt(11, 16, (g_Frame & 0x10) ? "PRESS SPACE" : "           ");
 
 	if(Keyboard_IsKeyPressed(KEY_SPACE))
 		FSM_SetState(&State_Menu);
@@ -2145,7 +2194,7 @@ void State_Start_Begin()
 	DrawTileX(1, 23, 0xE8, 30);
 
 	// Timer board
-	if(g_GameMode == MODE_BATTLEROYAL)
+	if(g_TimeMax)
 	{
 		DrawTile(14, 23, TILE_CLOCK + 0);
 		DrawTile(15, 23, TILE_CLOCK + 1);
@@ -2231,6 +2280,12 @@ void State_Start_Update()
 {
 	// Wait V-Synch
 	WaitVBlank();
+
+	// Check input
+	if(Keyboard_IsKeyPressed(KEY_SPACE))
+		FSM_SetState(&State_Game);
+	if(Keyboard_IsKeyPressed(KEY_ESC))
+		FSM_SetState(&State_Select);
 
 	// Skip start sequence
 	if((g_Frame & 0x0F) != 0)
@@ -2320,12 +2375,6 @@ void State_Start_Update()
 		FSM_SetState(&State_Game);
 		return;
 	}
-
-	// Check input
-	if(Keyboard_IsKeyPressed(KEY_SPACE))
-		FSM_SetState(&State_Game);
-	if(Keyboard_IsKeyPressed(KEY_ESC))
-		FSM_SetState(&State_Title);
 }
 
 //.............................................................................
@@ -2337,14 +2386,13 @@ void State_Start_Update()
 void State_Game_Begin()
 {
 	// Initialize sprites data
-	VDP_HideSprite(0);
-	VDP_HideSprite(1);
-	VDP_HideSprite(2);
-	VDP_HideSprite(3);
+	for(u8 i = 0; i < 8; ++i)
+		VDP_HideSprite(i);
 	VDP_DisableSpritesFrom(8);
 
 	// Initialize timer
-	SetTimer(g_TimeMax);
+	if(g_TimeMax)
+		SetTimer(g_TimeMax);
 
 	// Copy screen buffer to VRAM
 	DrawLevel();
@@ -2437,19 +2485,22 @@ void State_Game_Update()
 	{
 		VDP_Poke_GM2(g_BonusPos.X, g_BonusPos.Y, g_BonusTile);
 
-		if(!UpdateTimer())
+		if(g_TimeMax)
 		{
-			g_CollapsePhase = 0;
-			g_CollapseTimer = 0;
-			g_CollapseX0 = 1;
-			g_CollapseY0 = 2;
-			g_CollapseX1 = 30;
-			g_CollapseY1 = 22;
+			if(!UpdateTimer())
+			{
+				g_CollapsePhase = 0;
+				g_CollapseTimer = 0;
+				g_CollapseX0 = 1;
+				g_CollapseY0 = 2;
+				g_CollapseX1 = 30;
+				g_CollapseY1 = 22;
+			}
 		}
 	}
 
 	if(Keyboard_IsKeyPressed(KEY_ESC))
-		FSM_SetState(&State_Title);
+		FSM_SetState(&State_Select);
 }
 
 //.............................................................................
@@ -2496,14 +2547,21 @@ void State_Victory_Begin()
 	PrintChrY(24, 9, TILE_BALL, 3);
 	PrintChr(24, 13, TILE_BALL);
 
-	VDP_DisableSpritesFrom(0);
+	// Setup sprite
+	VDP_HideSprite(0);
+	VDP_HideSprite(1);
+	VDP_HideSprite(2);
+	VDP_HideSprite(3);
+	VDP_DisableSpritesFrom(4);
 
 	Player* ply = &g_Players[g_Winner];
 	ply->PosX = 7;
 	ply->PosY = 15;
 	ply->Dir = DIR_RIGHT;
+	ply->Expect = MIN(ply->Length, 50);
 	ply->Length = 1;
-	ply->Expect = MIN(ply->Expect, 50);
+
+	Print_DrawTextAt(11, 20, "PRESS SPACE");
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -2513,55 +2571,55 @@ void State_Victory_Begin()
 void State_Victory_Update()
 {
 	WaitVBlank();
-	u8 col = (g_Frame & 0x08) ? 0 : 2;
-	VDP_LoadColor_GM2(g_BallColor[col], 1, TILE_BALL);
-
-	if((g_Frame & 0x07) == 0)
-	{
-		Player* ply = &g_Players[g_Winner];
-
-		// Move
-		u8 x = ply->PosX;
-		u8 y = ply->PosY;
-		u8 nextDir = ply->Dir;
-		switch(ply->Dir)
-		{
-		case DIR_UP:
-			y--;
-			if(y <= 7)
-				nextDir = DIR_LEFT;
-			break;
-		case DIR_RIGHT:
-			x++;
-			if(x >= 26)
-				nextDir = DIR_UP;
-			break;
-		case DIR_DOWN:
-			y++;
-			if(y >= 15)
-				nextDir = DIR_RIGHT;
-			break;
-		case DIR_LEFT:
-			x--;
-			if(x <= 5)
-				nextDir = DIR_DOWN;
-			break;
-		}
-
-		// Move
-		ply->PosX = x;
-		ply->PosY = y;
-		ply->Idx--;
-		ply->Idx %= LENGTH_MAX;
-		ply->Path[ply->Idx] = ply->Dir;
-		DrawPlayer(ply);
-		// Turn if needed
-		ply->Dir = nextDir;
-	}
-
 
 	if(Keyboard_IsKeyPressed(KEY_ESC) || Keyboard_IsKeyPressed(KEY_SPACE))
 		FSM_SetState(&State_Select);
+
+	u8 col = (g_Frame & 0x08) ? 0 : 2;
+	VDP_LoadColor_GM2(g_BallColor[col], 1, TILE_BALL);
+
+	if((g_Frame & 0x07) != 0)
+		return;
+
+	Player* ply = &g_Players[g_Winner];
+
+	// Move
+	u8 x = ply->PosX;
+	u8 y = ply->PosY;
+	u8 nextDir = ply->Dir;
+	switch(ply->Dir)
+	{
+	case DIR_UP:
+		y--;
+		if(y <= 7)
+			nextDir = DIR_LEFT;
+		break;
+	case DIR_RIGHT:
+		x++;
+		if(x >= 26)
+			nextDir = DIR_UP;
+		break;
+	case DIR_DOWN:
+		y++;
+		if(y >= 15)
+			nextDir = DIR_RIGHT;
+		break;
+	case DIR_LEFT:
+		x--;
+		if(x <= 5)
+			nextDir = DIR_DOWN;
+		break;
+	}
+
+	// Move
+	ply->PosX = x;
+	ply->PosY = y;
+	ply->Idx--;
+	ply->Idx %= LENGTH_MAX;
+	ply->Path[ply->Idx] = ply->Dir;
+	DrawPlayer(ply);
+	// Turn if needed
+	ply->Dir = nextDir;
 }
 
 //=============================================================================
