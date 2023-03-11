@@ -341,7 +341,7 @@ const CtrlBind g_CtrlBind[] =
 	{ KEY_8,	CTRL_JOY_8 },
 };
 
-const u8 g_BonusData[8+1] = { 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 };
+const u8 g_BonusData[7+1] = { 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 };
 const u8 g_WallData[4+1] = { 0xE1, 0xE2, 0xE8, 0xEF, 0 };
 
 const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLAPSE AFTER TIMER END.";
@@ -390,6 +390,9 @@ const u8 g_BallColor[][8] =
 	{ 0xB8, 0xB8, 0x98, 0x88, 0x88, 0x86, 0xA8, 0xA6 }, // Red
 };
 
+//
+const u16 g_ClearBG[] = { ((TILE_EMPTY + 1) << 8) + TILE_EMPTY, (TILE_EMPTY << 8) + (TILE_EMPTY + 1) };
+
 //=============================================================================
 // MEMORY DATA
 //=============================================================================
@@ -422,7 +425,7 @@ Player		g_Players[PLAYER_MAX];	// Players information
 u8			g_PlayerMax;
 Vector		g_BonusPos;				// Bonus information
 u8			g_BonusTile;
-u8			g_BonusOpt = 4;
+u8			g_BonusOpt = 3;
 c8			g_StrBuffer[32];		// String temporary buffer
 u8			g_ScreenBuffer[32*24];
 u8			g_CurrentPlayer;
@@ -557,7 +560,12 @@ void PrintChrY(u8 x, u8 y, c8 chr, u8 len)
 // 
 inline void ClearLevel()
 {
-	Mem_Set(TILE_EMPTY, g_ScreenBuffer, 32*24);
+	u8* ptr = g_ScreenBuffer;
+	for(u8 i = 0; i < 24; ++i)
+	{
+		Mem_Set_16b(g_ClearBG[i & 1], ptr, 32);
+		ptr += 32;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1355,7 +1363,6 @@ void UpdatePlayer(Player* ply)
 			case TILE_BONUS+4:
 			case TILE_BONUS+5:
 			case TILE_BONUS+6:
-			case TILE_BONUS+7:
 				PlaySFX(SFX_BONUS);
 				ply->Expect += BONUS_GROWTH;
 				SpawnBonus();
@@ -1904,6 +1911,10 @@ void State_Title_Begin()
 	VDP_EnableDisplay(FALSE);
 	VDP_ClearVRAM();
 
+	// Background
+	ClearLevel();
+	DrawLevel();
+
 	// Initialize sprites data
 	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
 	Pletter_UnpackToVRAM(g_DataSprites, g_SpritePatternLow);
@@ -1932,7 +1943,14 @@ void State_Title_Begin()
 	Print_SetMode(PRINT_MODE_TEXT);
 	Print_SetTabSize(3);
 
-	VDP_DisableSpritesFrom(0);
+	VDP_SetSpriteSM1(0,  7 * 8, 4 * 8 - 1, 7, COLOR_DARK_RED);
+	VDP_SetSpriteSM1(1,  7 * 8, 5 * 8 - 1, 7, COLOR_DARK_RED);
+	VDP_SetSpriteSM1(2, 11 * 8, 4 * 8 - 1, 3, COLOR_BLACK);
+	VDP_SetSpriteSM1(3, 12 * 8, 3 * 8 - 1, 0, COLOR_BLACK);
+	VDP_SetSpriteSM1(4, 19 * 8, 3 * 8 - 1, 0, COLOR_BLACK);
+	VDP_SetSpriteSM1(5, 20 * 8, 4 * 8 - 1, 1, COLOR_BLACK);
+	VDP_SetSpriteSM1(6, 28 * 8, 3 * 8 - 1, 5, COLOR_DARK_RED);
+	VDP_DisableSpritesFrom(7);
 
 	VDP_EnableDisplay(TRUE);
 
@@ -2037,11 +2055,11 @@ void State_Select_Begin()
 
 	//........................................
 	// Eyes
-	VDP_SetSpriteSM1( 4,  50,  67, 12, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1( 4,  49,  67, 12, COLOR_DARK_BLUE);
 	VDP_SetSpriteSM1( 5, 102,  64, 13, COLOR_DARK_BLUE);
 	VDP_SetSpriteSM1( 6, 158,  63, 14, COLOR_BLACK);
 	VDP_SetSpriteSM1( 7, 214,  65, 15, COLOR_BLACK);
-	VDP_SetSpriteSM1( 8, 162, 139, 12, COLOR_DARK_BLUE);
+	VDP_SetSpriteSM1( 8, 161, 139, 12, COLOR_DARK_BLUE);
 	VDP_SetSpriteSM1( 9, 214, 136, 13, COLOR_BLACK);
 	VDP_SetSpriteSM1(10,  46, 135, 14, COLOR_BLACK);
 	VDP_SetSpriteSM1(11, 102, 137, 15, COLOR_DARK_BLUE);
@@ -2194,7 +2212,7 @@ void State_Start_Begin()
 	DrawTileX(1, 23, 0xE8, 30);
 
 	// Timer board
-	if(g_TimeMax)
+	// if(g_TimeMax)
 	{
 		DrawTile(14, 23, TILE_CLOCK + 0);
 		DrawTile(15, 23, TILE_CLOCK + 1);
@@ -2391,7 +2409,7 @@ void State_Game_Begin()
 	VDP_DisableSpritesFrom(8);
 
 	// Initialize timer
-	if(g_TimeMax)
+	// if(g_TimeMax)
 		SetTimer(g_TimeMax);
 
 	// Copy screen buffer to VRAM
@@ -2485,7 +2503,7 @@ void State_Game_Update()
 	{
 		VDP_Poke_GM2(g_BonusPos.X, g_BonusPos.Y, g_BonusTile);
 
-		if(g_TimeMax)
+		// if(g_TimeMax)
 		{
 			if(!UpdateTimer())
 			{
@@ -2515,7 +2533,9 @@ void State_Victory_Begin()
 	VDP_EnableDisplay(FALSE);
 
 	// Initialize tiles data
-	VDP_FillLayout_GM2(TILE_EMPTY, 0, 0, 32, 24);
+	// VDP_FillLayout_GM2(TILE_EMPTY, 0, 0, 32, 24);
+	ClearLevel();
+	DrawLevel();
 
 	// Draw field
 	PrintChr(0,  0, TILE_TREE);
@@ -2630,6 +2650,8 @@ void State_Victory_Update()
 // Program entry point
 void main()
 {
+	VDP_EnableDisplay(FALSE);
+	VDP_SetColor(COLOR_BLACK);
 	PlayMusic(MUSIC_EMPTY);
 
 	// Start the Final State Machine
