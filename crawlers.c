@@ -247,9 +247,9 @@ const MenuItem g_MenuSystem[] =
 //
 const MenuItem g_MenuCredit[] =
 {
-	{ "PIXEL PHENIX 2023",   MENU_ITEM_TEXT, NULL, 1 },
+	{ "PIXEL PHENIX 2023",   MENU_ITEM_TEXT, NULL, 2 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
-	{ "POWERED BY " MSXGL,   MENU_ITEM_TEXT, NULL, 2 },
+	{ "POWERED BY " MSXGL,   MENU_ITEM_TEXT, NULL, 3 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "CODE:  AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
 	{ "GRAPH: AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
@@ -851,7 +851,12 @@ void SpawnBonus()
 	g_BonusPos.Y = y;
 	g_BonusTile = g_BonusData[g_BonusOpt];
 	if(g_BonusTile == 0)
-		g_BonusTile = g_BonusData[Math_GetRandom8() & 0x07];
+	{
+		u8 rnd = Math_GetRandom8();
+		while(rnd > 7)
+			rnd -= 7;
+		g_BonusTile = g_BonusData[rnd];
+	}
 	VDP_Poke_GM2(x, y, g_BonusTile);
 }
 
@@ -1922,7 +1927,20 @@ void State_Title_Begin()
 	// Initialize tiles data
 	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
 	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
-	VDP_WriteLayout_GM2(g_TitleTile, 4, 3, 24, 5);
+	const u8* ptr = g_TitleTile;
+	u8 x = 4, y = 3;
+	for(u8 j = 0; j < 5; ++j)
+	{
+		for(u8 i = 0; i < 24; ++i)
+		{
+			if(*ptr)
+				VDP_Poke_GM2(x, y, *ptr);
+			++x;
+			++ptr;
+		}
+		++y;
+		x = 4;
+	}
 
 	VDP_SetColor(COLOR_LIGHT_YELLOW);
 
@@ -1952,7 +1970,7 @@ void State_Title_Begin()
 	VDP_SetSpriteSM1(6, 28 * 8, 3 * 8 - 1, 5, COLOR_DARK_RED);
 	VDP_DisableSpritesFrom(7);
 
-	VDP_EnableDisplay(TRUE);
+	Print_DrawTextAt(8, 11, "PIXEL PHENIX 2023");
 
 	if(g_Initialized)
 		FSM_SetState(&State_Menu);
@@ -1961,6 +1979,8 @@ void State_Title_Begin()
 	PlayMusic(MUSIC_MENU);
 
 	g_Initialized = true;
+
+	VDP_EnableDisplay(TRUE);
 }
 
 
@@ -1971,7 +1991,10 @@ void State_Title_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
-	Print_DrawTextAt(11, 16, (g_Frame & 0x10) ? "PRESS SPACE" : "           ");
+	if(g_Frame & 0x10)
+		Print_DrawTextAt(11, 20, "PRESS SPACE");
+	else
+		VDP_WriteVRAM(g_ScreenBuffer + (20 * 32) + 11, g_ScreenLayoutLow + (20 * 32) + 11, g_ScreenLayoutHigh, 11);
 
 	if(Keyboard_IsKeyPressed(KEY_SPACE))
 		FSM_SetState(&State_Menu);
@@ -2581,8 +2604,6 @@ void State_Victory_Begin()
 	ply->Expect = MIN(ply->Length, 50);
 	ply->Length = 1;
 
-	Print_DrawTextAt(11, 20, "PRESS SPACE");
-
 	VDP_EnableDisplay(TRUE);
 }
 
@@ -2597,6 +2618,11 @@ void State_Victory_Update()
 
 	u8 col = (g_Frame & 0x08) ? 0 : 2;
 	VDP_LoadColor_GM2(g_BallColor[col], 1, TILE_BALL);
+
+	if(g_Frame & 0x10)
+		Print_DrawTextAt(11, 20, "PRESS SPACE");
+	else
+		VDP_WriteVRAM(g_ScreenBuffer + (20 * 32) + 11, g_ScreenLayoutLow + (20 * 32) + 11, g_ScreenLayoutHigh, 11);
 
 	if((g_Frame & 0x07) != 0)
 		return;
