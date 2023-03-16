@@ -62,7 +62,7 @@
 
 #define AI_WEIGHT_BONUS				1
 
-#define BONUS_GROWTH				10
+#define BONUS_GROWTH				5
 
 // Controller types define
 enum CTRL_TYPE
@@ -257,6 +257,7 @@ typedef struct
 	u8			Length;				// Description length
 	u8			Rounds;				// Default round number
 	u8			Time;				// Default time
+	u8			Bonus;				// Default bonus length
 } ModeInfo;
 
 // Slot

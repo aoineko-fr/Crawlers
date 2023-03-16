@@ -56,6 +56,7 @@ void State_Victory_Update();
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
 const c8* MenuAction_Info(u8 op, i8 value);
+const c8* MenuAction_Credits(u8 op, i8 value);
 const c8* MenuAction_Freq(u8 op, i8 value);
 const c8* MenuAction_Palette(u8 op, i8 value);
 const c8* MenuAction_Music(u8 op, i8 value);
@@ -211,9 +212,9 @@ const MenuItem g_MenuMulti[] =
 	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
 	{ "TIME",                MENU_ITEM_INT, &g_TimeMax, (i16)&g_MenuRoundsMinMax },
 	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
+	{ "BONUS",               MENU_ITEM_INT, &g_BonusLen, (i16)&g_MenuRoundsMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_UPDATE, MenuAction_Info, 0 },
 };
@@ -227,6 +228,7 @@ const MenuItem g_MenuOption[] =
 	{ "SFX",                 MENU_ITEM_ACTION, MenuAction_SFX, 0 },
 	{ "BONUS",               MENU_ITEM_ACTION, MenuAction_Bonus, 0 },
 	{ "WALL",                MENU_ITEM_ACTION, MenuAction_Wall, 0 },
+	{ "SAVE",                MENU_ITEM_ACTION, MenuAction_Wall, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -247,16 +249,14 @@ const MenuItem g_MenuSystem[] =
 //
 const MenuItem g_MenuCredit[] =
 {
-	{ "PIXEL PHENIX 2023",   MENU_ITEM_TEXT, NULL, 2 },
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
-	{ "POWERED BY " MSXGL,   MENU_ITEM_TEXT, NULL, 3 },
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "CODE:  AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
-	{ "GRAPH: AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
+	{ "GRAPH: AOINEKO,GFX",  MENU_ITEM_TEXT, NULL, 0 },
 	{ "MUSIC: TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
-	{ "SFX:   TOTTA,AOINEKO",MENU_ITEM_TEXT, NULL, 0 },
+	{ "SFX:   AOINEKO,TOTTA",MENU_ITEM_TEXT, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ NULL,                  MENU_ITEM_UPDATE, MenuAction_Credits, 0 },
 };
 
 //
@@ -350,12 +350,14 @@ const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN TI
 const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GETS THE MOST BONUSES AT THE END OF THE SET TIME WINS THE GAME.";
 
 const ModeInfo g_ModeInfo[] =
-{//   Name            Dec.               Length                     Rnd Time
-	{ "BATTLE ROYAL", g_DescBattleRoyal, sizeof(g_DescBattleRoyal), 5,  1 },
-	{ "DEATH MATCH",  g_DescDeathMatch,  sizeof(g_DescDeathMatch),  10, 0 },
-	{ "SIZE MATTER",  g_DescSizeMatter,  sizeof(g_DescSizeMatter),  0,  5 },
-	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   0,  5 },
+{//   Name            Dec.               Length                     Rnd Time Length
+	{ "BATTLE ROYAL", g_DescBattleRoyal, sizeof(g_DescBattleRoyal), 5,  1,   5 },
+	{ "DEATH MATCH",  g_DescDeathMatch,  sizeof(g_DescDeathMatch),  10, 0,   5 },
+	{ "SIZE MATTER",  g_DescSizeMatter,  sizeof(g_DescSizeMatter),  0,  5,   5 },
+	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   0,  5,   5 },
 };
+
+const c8 g_TextCredits[]   = "    CRAWLERS BY PIXEL PHENIX 2023.    POWERED BY [\\]^.    CODE: GUILLAUME 'AOINEKO' BLANCHARD. MUSIC: THOMAS 'TOTTA'.    DEDICATED TO MY WONDERFUL WIFE AND SON //.    THANKS TO ALL MSX VILLAGE AND MRC MEMBERS FOR SUPPORT!    MSX'LL NEVER DIE.";
 
 // 14 13 12  |  OOO  O    OO   OO    O    OO   O
 // 11 10 09  |  O    O      O    O  OO   O    O O
@@ -431,6 +433,7 @@ u8			g_ScreenBuffer[32*24];
 u8			g_CurrentPlayer;
 u8			g_WallNum = 0;
 u8			g_WallOpt = 0;
+u8			g_BonusLen = BONUS_GROWTH;
 u8			g_CollapseTimer;
 u8			g_CollapsePhase;
 u8			g_CollapseX0;
@@ -789,6 +792,8 @@ void CheckBattleRoyal()
 	ClearPlayer(lastPly);
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		SpawnPlayer(&g_Players[i]);
+
+	g_DoSynch = (GetHumanCount() > 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -1346,7 +1351,6 @@ void UpdatePlayer(Player* ply)
 			{
 			case MODE_BATTLEROYAL:
 				CheckBattleRoyal();
-				g_DoSynch = (GetHumanCount() > 0);
 				return;
 			case MODE_DEATHMATCH:
 				if(!CheckDeathMatch(ply, cell))
@@ -1369,7 +1373,7 @@ void UpdatePlayer(Player* ply)
 			case TILE_BONUS+5:
 			case TILE_BONUS+6:
 				PlaySFX(SFX_BONUS);
-				ply->Expect += BONUS_GROWTH;
+				ply->Expect += g_BonusLen;
 				SpawnBonus();
 				if(g_GameMode == MODE_GREEDIEST)
 				{
@@ -1500,6 +1504,34 @@ const c8* MenuAction_Info(u8 op, i8 value)
 	for(u8 i = 0; i < 20; ++i)
 	{
 		g_StrBuffer[i] = info->Desc[j];
+		if(++j >= size)
+			j -= size;
+	}
+	g_StrBuffer[20] = 0;
+
+	g_Scroll++;
+
+	return g_StrBuffer;
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Credits(u8 op, i8 value)
+{
+	op;
+	value;
+	if(g_Frame & 0x7)
+		return NULL;
+
+	u8 size = sizeof(g_TextCredits) - 1;
+
+	u8 j = g_Scroll;
+	while(j >= size)
+		j -= size;
+
+	for(u8 i = 0; i < 20; ++i)
+	{
+		g_StrBuffer[i] = g_TextCredits[j];
 		if(++j >= size)
 			j -= size;
 	}
@@ -2235,7 +2267,7 @@ void State_Start_Begin()
 	DrawTileX(1, 23, 0xE8, 30);
 
 	// Timer board
-	// if(g_TimeMax)
+	if(g_TimeMax)
 	{
 		DrawTile(14, 23, TILE_CLOCK + 0);
 		DrawTile(15, 23, TILE_CLOCK + 1);
@@ -2432,7 +2464,7 @@ void State_Game_Begin()
 	VDP_DisableSpritesFrom(8);
 
 	// Initialize timer
-	// if(g_TimeMax)
+	if(g_TimeMax)
 		SetTimer(g_TimeMax);
 
 	// Copy screen buffer to VRAM
@@ -2497,7 +2529,7 @@ void State_Game_Update()
 		}
 	}
 
-	if(g_CollapsePhase != 0xFF)
+	if(g_TimeMax && (g_CollapsePhase != 0xFF)) // Field is collapsing...
 	{
 		if((g_CollapseTimer >= 32) && (g_CollapseY0 < 12))
 		{
@@ -2526,9 +2558,10 @@ void State_Game_Update()
 	{
 		VDP_Poke_GM2(g_BonusPos.X, g_BonusPos.Y, g_BonusTile);
 
-		// if(g_TimeMax)
+		if(g_TimeMax)
 		{
-			if(!UpdateTimer())
+			bool bZero = !UpdateTimer();
+			if(bZero)
 			{
 				g_CollapsePhase = 0;
 				g_CollapseTimer = 0;
