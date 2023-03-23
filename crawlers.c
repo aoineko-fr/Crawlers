@@ -53,6 +53,8 @@ void State_Game_Update();
 void State_Victory_Begin();
 void State_Victory_Update();
 
+void MenuOpen_Credit();
+
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
 const c8* MenuAction_Info(u8 op, i8 value);
@@ -66,6 +68,7 @@ const c8* MenuAction_Wall(u8 op, i8 value);
 const c8* MenuAction_Port(u8 op, i8 value);
 const c8* MenuAction_MSX(u8 op, i8 value);
 const c8* MenuAction_VDP(u8 op, i8 value);
+const c8* MenuAction_Save(u8 op, i8 value);
 
 void InitPlayer(Player* ply, u8 id);
 void ResetPlayer(Player* ply);
@@ -181,19 +184,21 @@ const c8 g_TitleTile[] =
 	0x72, 0x6C, 0x73, 0xD9, 0x00, 0xD8, 0x4D, 0x00, 0x4C, 0x86, 0x87, 0x89, 0x9A, 0x94, 0x91, 0xC2, 0xBC, 0xCB, 0xB0, 0x00, 0xB1, 0x63, 0x58, 0x5F, 
 };
 
-const MenuItemMinMax g_MenuRoundsMinMax = { 1, 10, 1 };
+const MenuItemMinMax g_MenuRoundsMinMax = { 1, 20, 1 };
 const MenuItemMinMax g_MenuTreesMinMax =  { 0, 100, 10 };
 
 //
 const MenuItem g_MenuMain[] =
 {
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 #if (EXT_VERSION)
 	{ "SOLO MODE",           MENU_ITEM_GOTO, NULL, MENU_SOLO },
 #endif
 	{ "BATTLE",              MENU_ITEM_GOTO, NULL, MENU_MULTI },
 	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
-	{ "SYSTEM",              MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
+	{ "SYSTEM INFO",         MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
 	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
+	{ "SAVE",                MENU_ITEM_ACTION, MenuAction_Save, 0 },
 };
 
 #if (EXT_VERSION)
@@ -211,24 +216,24 @@ const MenuItem g_MenuMulti[] =
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
 	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
 	{ "TIME",                MENU_ITEM_INT, &g_TimeMax, (i16)&g_MenuRoundsMinMax },
-	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
 	{ "BONUS",               MENU_ITEM_INT, &g_BonusLen, (i16)&g_MenuRoundsMinMax },
+	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
-	{ NULL,                  MENU_ITEM_UPDATE, MenuAction_Info, 0 },
+	{ NULL,                  MENU_ITEM_UPDATE, MenuAction_Info, -1 },
 };
 
 //
 const MenuItem g_MenuOption[] =
 {
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
 	{ "PALETTE",             MENU_ITEM_ACTION, MenuAction_Palette, 0 },
 	{ "MUSIC",               MENU_ITEM_ACTION, MenuAction_Music, 0 },
 	{ "SFX",                 MENU_ITEM_ACTION, MenuAction_SFX, 0 },
 	{ "BONUS",               MENU_ITEM_ACTION, MenuAction_Bonus, 0 },
 	{ "WALL",                MENU_ITEM_ACTION, MenuAction_Wall, 0 },
-	{ "SAVE",                MENU_ITEM_ACTION, MenuAction_Wall, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -236,12 +241,13 @@ const MenuItem g_MenuOption[] =
 //
 const MenuItem g_MenuSystem[] =
 {
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "SYSTEM",              MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_MSX, 0 },
 	{ "VIDEO",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_VDP, 0 },
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
 	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
-	{ "TOTAL\x1C",           MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_JoyNum, NULL },
-	{ "MAX\x5F",             MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
+	{ "MAX JOY\x1C",         MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_JoyNum, NULL },
+	{ "MAX PLY\x5F",         MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -249,27 +255,28 @@ const MenuItem g_MenuSystem[] =
 //
 const MenuItem g_MenuCredit[] =
 {
-	{ "CODE:  AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
-	{ "GRAPH: AOINEKO,GFX",  MENU_ITEM_TEXT, NULL, 0 },
-	{ "MUSIC: TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
-	{ "SFX:   AOINEKO,TOTTA",MENU_ITEM_TEXT, NULL, 0 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "CODE   AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
+	{ "MUSIC  TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
+	{ "SFX    AOINEKO,TOTTA",MENU_ITEM_TEXT, NULL, 0 },
+	{ "GRAPH  AOINEKO,GFX",  MENU_ITEM_TEXT, NULL, 0 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ NULL,                  MENU_ITEM_UPDATE, MenuAction_Credits, -1 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
-	{ NULL,                  MENU_ITEM_UPDATE, MenuAction_Credits, 0 },
 };
 
 //
 const Menu g_Menus[MENU_MAX] =
 {
-	{ NULL, g_MenuMain,   numberof(g_MenuMain) },
+	{ NULL, g_MenuMain,   numberof(g_MenuMain),   NULL },
 #if (EXT_VERSION)
-	{ NULL, g_MenuSolo,   numberof(g_MenuSolo) },
+	{ NULL, g_MenuSolo,   numberof(g_MenuSolo),   NULL },
 #endif
-	{ NULL, g_MenuMulti,  numberof(g_MenuMulti) },
-	{ NULL, g_MenuOption, numberof(g_MenuOption) },
-	{ NULL, g_MenuSystem, numberof(g_MenuSystem) },
-	{ NULL, g_MenuCredit, numberof(g_MenuCredit) },
+	{ NULL, g_MenuMulti,  numberof(g_MenuMulti),  NULL },
+	{ NULL, g_MenuOption, numberof(g_MenuOption), NULL },
+	{ NULL, g_MenuSystem, numberof(g_MenuSystem), NULL },
+	{ NULL, g_MenuCredit, numberof(g_MenuCredit), MenuOpen_Credit },
 };
 
 // 
@@ -354,10 +361,10 @@ const ModeInfo g_ModeInfo[] =
 	{ "BATTLE ROYAL", g_DescBattleRoyal, sizeof(g_DescBattleRoyal), 5,  1,   5 },
 	{ "DEATH MATCH",  g_DescDeathMatch,  sizeof(g_DescDeathMatch),  10, 0,   5 },
 	{ "SIZE MATTER",  g_DescSizeMatter,  sizeof(g_DescSizeMatter),  0,  5,   5 },
-	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   0,  5,   5 },
+	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   10, 0,   5 },
 };
 
-const c8 g_TextCredits[]   = "    CRAWLERS BY PIXEL PHENIX 2023.    POWERED BY [\\]^.    CODE: GUILLAUME 'AOINEKO' BLANCHARD. MUSIC: THOMAS 'TOTTA'.    DEDICATED TO MY WONDERFUL WIFE AND SON //.    THANKS TO ALL MSX VILLAGE AND MRC MEMBERS FOR SUPPORT!    MSX'LL NEVER DIE.";
+const c8 g_TextCredits[]   = "    CRAWLERS BY PIXEL PHENIX 2023    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY THOMAS 'TOTTA'    GFX ENHANCEMENT BY LUDO 'GFX'    THANKS TO ALL MSX VILLAGE, MRC AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!    DEDICATED TO MY WONDERFUL WIFE AND SON //";
 
 // 14 13 12  |  OOO  O    OO   OO    O    OO   O
 // 11 10 09  |  O    O      O    O  OO   O    O O
@@ -409,7 +416,7 @@ u8			g_FreqOpt = FREQ_AUTO;
 bool		g_DoSynch;
 u8			g_PalOpt;
 u8			g_VersionVDP;
-u8			g_Scroll;
+u16			g_Scroll;
 bool		g_Initialized = FALSE;
 
 // Audio
@@ -838,6 +845,34 @@ bool CheckDeathMatch(Player* ply, u8 cell)
 	}
 
 	return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+//
+void CheckSizeMatter()
+{
+	// Check the longuest crawlers
+	Player* maxPly = &g_Players[0];
+	for(u8 i = 1; i < PLAYER_MAX; ++i)
+		if(g_Players[i].Controller != CTRL_NONE)
+			if(g_Players[i].Score > maxPly->Score)
+				maxPly = &g_Players[i];
+
+	g_Winner = maxPly->ID;
+	FSM_SetState(&State_Victory);
+}
+
+//-----------------------------------------------------------------------------
+//
+bool CheckGreediest(Player* ply)
+{
+	if(ply->Score >= g_GameCount) // check victory count
+	{
+		g_Winner = ply->ID;
+		FSM_SetState(&State_Victory);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1379,6 +1414,7 @@ void UpdatePlayer(Player* ply)
 				{
 					ply->Score++;
 					SetScore(ply);
+					CheckGreediest(ply); // Check victory condition
 				}
 			default:
 				ply->PosX = x;
@@ -1395,6 +1431,8 @@ void UpdatePlayer(Player* ply)
 	}
 }
 
+void Menu_DisplayItem(u8);
+
 //-----------------------------------------------------------------------------
 // 
 void SetGameMode(u8 newMode)
@@ -1403,9 +1441,39 @@ void SetGameMode(u8 newMode)
 
 	const ModeInfo* info = &g_ModeInfo[g_GameMode];
 	g_GameCount = info->Rounds;
-	g_TimeMax = info->Time;
-	Menu_Update();
+	g_TimeMax   = info->Time;
+	g_BonusLen  = info->Bonus;
+
+	// Menu_Update();
+	// Menu_DrawPage(MENU_MULTI);
+	Menu_DisplayItem(2);
+	Menu_DisplayItem(3);
+	Menu_DisplayItem(4);
 }
+
+#define STR_SCROLL_LEN				22
+
+//-----------------------------------------------------------------------------
+//
+const c8* ScrollString(const c8* src, u16 size)
+{
+	if(g_Scroll == size)
+		g_Scroll = 0;
+
+	u16 j = g_Scroll;
+	for(u8 i = 0; i < STR_SCROLL_LEN; ++i)
+	{
+		g_StrBuffer[i] = src[j];
+		if(++j >= size)
+			j -= size;
+	}
+	g_StrBuffer[STR_SCROLL_LEN] = 0;
+
+	g_Scroll++;
+
+	return g_StrBuffer;
+}
+
 
 //-----------------------------------------------------------------------------
 // VBlank interrupt
@@ -1494,24 +1562,11 @@ const c8* MenuAction_Info(u8 op, i8 value)
 	if(g_MenuItem != 1)
 		return "";
 
+	if(g_Frame & 0x7)
+		return NULL;
+
 	const ModeInfo* info = &g_ModeInfo[g_GameMode];
-	u8 size = info->Length - 1;
-
-	u8 j = g_Scroll;
-	while(j >= size)
-		j -= size;
-
-	for(u8 i = 0; i < 20; ++i)
-	{
-		g_StrBuffer[i] = info->Desc[j];
-		if(++j >= size)
-			j -= size;
-	}
-	g_StrBuffer[20] = 0;
-
-	g_Scroll++;
-
-	return g_StrBuffer;
+	return ScrollString(info->Desc, info->Length - 1);
 }
 
 //-----------------------------------------------------------------------------
@@ -1523,23 +1578,7 @@ const c8* MenuAction_Credits(u8 op, i8 value)
 	if(g_Frame & 0x7)
 		return NULL;
 
-	u8 size = sizeof(g_TextCredits) - 1;
-
-	u8 j = g_Scroll;
-	while(j >= size)
-		j -= size;
-
-	for(u8 i = 0; i < 20; ++i)
-	{
-		g_StrBuffer[i] = g_TextCredits[j];
-		if(++j >= size)
-			j -= size;
-	}
-	g_StrBuffer[20] = 0;
-
-	g_Scroll++;
-
-	return g_StrBuffer;
+	return ScrollString(g_TextCredits, sizeof(g_TextCredits) - 1);
 }
 
 //-----------------------------------------------------------------------------
@@ -1782,6 +1821,30 @@ const c8* MenuAction_VDP(u8 op, i8 value)
 	case VDP_VERSION_V9958:    return "V9958";
 	}
 	return "UNKNOW";
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Save(u8 op, i8 value)
+{
+	op;
+	value;
+	switch(op)
+	{
+	case MENU_ACTION_SET:
+	case MENU_ACTION_INC:
+	case MENU_ACTION_DEC:
+		break;
+	}
+
+	return NULL;
+}
+
+//-----------------------------------------------------------------------------
+//
+void MenuOpen_Credit()
+{
+	g_Scroll = 0;
 }
 
 //=============================================================================
@@ -2036,15 +2099,29 @@ void State_Title_Update()
 // MAIN MENU STATE
 //.............................................................................
 
+#define MENU_POS_TOP					10
+#define MENU_POS_BOTTOM					21
+#define MENU_POS_LEFT					3
+#define MENU_POS_RIGHT					28
+
 //-----------------------------------------------------------------------------
 //
 void State_Menu_Begin()
 {
+	// Draw menu frame
+	PrintChr(MENU_POS_LEFT,    MENU_POS_TOP,    0xE9);
+	PrintChrX(MENU_POS_LEFT+1, MENU_POS_TOP,    0xE8, MENU_POS_RIGHT-MENU_POS_LEFT-1);
+	PrintChr(MENU_POS_RIGHT,   MENU_POS_TOP,    0xEA);
+	PrintChrY(MENU_POS_RIGHT,  MENU_POS_TOP+1,  0xEC, MENU_POS_BOTTOM-MENU_POS_TOP-1);
+	PrintChr(MENU_POS_RIGHT,   MENU_POS_BOTTOM, 0xEE);
+	PrintChrX(MENU_POS_LEFT+1, MENU_POS_BOTTOM, 0xE8, MENU_POS_RIGHT-MENU_POS_LEFT-1);
+	PrintChr(MENU_POS_LEFT,    MENU_POS_BOTTOM, 0xED);
+	PrintChrY(MENU_POS_LEFT,   MENU_POS_TOP+1,  0xEB, MENU_POS_BOTTOM-MENU_POS_TOP-1);
+
 	// Initialize menu
 	Menu_SetEventCallback(HandleMenuEvent);
 	Menu_Initialize(g_Menus);
-	Menu_DrawPage(MENU_MAIN);
-}
+	Menu_DrawPage(MENU_MAIN);}
 
 //-----------------------------------------------------------------------------
 //
@@ -2258,13 +2335,13 @@ void State_Start_Begin()
 	// Draw game field
 	ClearLevel();
 	DrawTile(0,  1, 0xE9);
-	DrawTile(31, 1, 0xEA);
 	DrawTileX(1,  1, 0xE8, 30);
-	DrawTileY(0,  2, 0xEB, 21);
+	DrawTile(31, 1, 0xEA);
 	DrawTileY(31, 2, 0xEC, 21);
-	DrawTile(0, 23, 0xED);
 	DrawTile(31, 23, 0xEE);
 	DrawTileX(1, 23, 0xE8, 30);
+	DrawTile(0, 23, 0xED);
+	DrawTileY(0,  2, 0xEB, 21);
 
 	// Timer board
 	if(g_TimeMax)
@@ -2466,9 +2543,15 @@ void State_Game_Begin()
 	// Initialize timer
 	if(g_TimeMax)
 		SetTimer(g_TimeMax);
+	g_CollapsePhase = 0xFF;
 
 	// Copy screen buffer to VRAM
 	DrawLevel();
+
+	// Draw score
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
+		if(g_Players[i].Controller != CTRL_NONE)
+			SetScore(&g_Players[i]);
 
 	// Draw pre-hole
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -2563,12 +2646,21 @@ void State_Game_Update()
 			bool bZero = !UpdateTimer();
 			if(bZero)
 			{
-				g_CollapsePhase = 0;
-				g_CollapseTimer = 0;
-				g_CollapseX0 = 1;
-				g_CollapseY0 = 2;
-				g_CollapseX1 = 30;
-				g_CollapseY1 = 22;
+				switch(g_GameMode)
+				{
+				case MODE_SIZEMATTER:
+					CheckSizeMatter();
+					break;
+
+				default:
+					g_CollapsePhase = 0;
+					g_CollapseTimer = 0;
+					g_CollapseX0 = 1;
+					g_CollapseY0 = 2;
+					g_CollapseX1 = 30;
+					g_CollapseY1 = 22;
+					break;
+				}
 			}
 		}
 	}
@@ -2591,17 +2683,25 @@ void State_Victory_Begin()
 	// Initialize tiles data
 	// VDP_FillLayout_GM2(TILE_EMPTY, 0, 0, 32, 24);
 	ClearLevel();
+	// Draw score board
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
+		DrawTile(i * 4, 0, 0x42 + g_CharaInfo[i].TileBase);
 	DrawLevel();
 
+	// Draw score
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
+		if(g_Players[i].Controller != CTRL_NONE)
+			SetScore(&g_Players[i]);
+
 	// Draw field
-	PrintChr(0,  0, TILE_TREE);
-	PrintChr(31, 0, TILE_TREE);
-	PrintChrX(1, 0, TILE_TREE, 30);
-	PrintChrY(0, 1, TILE_TREE, 22);
-	PrintChrY(31,1, TILE_TREE, 22);
-	PrintChr(0, 23, TILE_TREE);
+	PrintChr(0,  1, TILE_TREE);
+	PrintChrX(1, 1, TILE_TREE, 30);
+	PrintChr(31, 1, TILE_TREE);
+	PrintChrY(31,2, TILE_TREE, 22);
 	PrintChr(31, 23, TILE_TREE);
 	PrintChrX(1, 23, TILE_TREE, 30);
+	PrintChr(0, 23, TILE_TREE);
+	PrintChrY(0, 2, TILE_TREE, 22);
 
 	// Text W
 	PrintChrY(7, 9, TILE_BALL, 4);
