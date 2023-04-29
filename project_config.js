@@ -98,7 +98,7 @@ AppID = "CR";
 //*******************************************************************************
 
 //-- Use static MSXgl library (true or false)
-BuildLibrary = true;
+BuildLibrary = false;
 
 //-- Debug flag (true or false)
 Debug = false;
@@ -132,18 +132,18 @@ Verbose = true;
 //*******************************************************************************
 
 //-- Emulator options (true or false):
-EmulMachine = false;
-Emul60Hz = false;
+EmulMachine    = false;
+Emul60Hz       = false;
 EmulFullScreen = false;
-EmulMute = false;
-EmulDebug = false
+EmulMute       = false;
+EmulDebug      = false;
 
 //-- Emulator extensions (true or false):
-EmulSCC = false;
+EmulSCC      = false;
 EmulMSXMusic = false;
 EmulMSXAudio = false;
-EmulPSG2 = false;
-EmulV9990 = false;
+EmulPSG2     = false;
+EmulV9990    = false;
 
 //-- Emulator port: joystick, mouse, keyboard (fake joystick)
 EmulPortA = "";

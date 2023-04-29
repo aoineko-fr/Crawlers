@@ -174,6 +174,25 @@ const u16 g_MSX2Palette[15] =
 	RGB16(7, 7, 7)  // white				RGB16(7, 7, 7) 
 };
 
+const u16 g_GrayPalette[15] =
+{
+	RGB16(0, 0, 0), // black				RGB16(0, 0, 0),
+	RGB16(3, 3, 3), // medium green			RGB16(1, 5, 1),
+	RGB16(6, 6, 6), // light green			RGB16(3, 6, 3),
+	RGB16(3, 3, 3), // dark blue			RGB16(2, 2, 6),
+	RGB16(4, 4, 4), // light blue			RGB16(3, 3, 7),
+	RGB16(2, 2, 2), // dark red				RGB16(5, 2, 2),
+	RGB16(6, 6, 6), // *cyan				RGB16(2, 6, 7),
+	RGB16(3, 3, 3), // *medium red			RGB16(6, 2, 2),
+	RGB16(4, 4, 4), // *light red			RGB16(6, 3, 3),
+	RGB16(4, 4, 4), // *dark yellow			RGB16(5, 5, 2),
+	RGB16(5, 5, 5), // *light yellow		RGB16(6, 6, 3),
+	RGB16(2, 2, 2), // dark green			RGB16(1, 4, 1),
+	RGB16(4, 4, 4), // *magenta				RGB16(5, 2, 5),
+	RGB16(4, 4, 4), // gray					RGB16(5, 5, 5),
+	RGB16(7, 7, 7)  // white				RGB16(7, 7, 7) 
+};
+
 //
 const c8 g_TitleTile[] =
 {
@@ -188,7 +207,7 @@ const MenuItemMinMax g_MenuRoundsMinMax = { 1, 20, 1 };
 const MenuItemMinMax g_MenuTreesMinMax =  { 0, 100, 10 };
 
 //
-const MenuItem g_MenuMain[] =
+MenuItem g_MenuMain[] =
 {
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 #if (EXT_VERSION)
@@ -210,7 +229,7 @@ const MenuItem g_MenuSolo[] =
 #endif
 
 //
-const MenuItem g_MenuMulti[] =
+MenuItem g_MenuMulti[] =
 {
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, 0 },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
@@ -225,7 +244,7 @@ const MenuItem g_MenuMulti[] =
 };
 
 //
-const MenuItem g_MenuOption[] =
+MenuItem g_MenuOption[] =
 {
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
@@ -239,21 +258,21 @@ const MenuItem g_MenuOption[] =
 };
 
 //
-const MenuItem g_MenuSystem[] =
+MenuItem g_MenuSystem[] =
 {
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "SYSTEM",              MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_MSX, 0 },
 	{ "VIDEO",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_VDP, 0 },
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
 	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
-	{ "MAX JOY\x1C",         MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_JoyNum, NULL },
-	{ "MAX PLY\x5F",         MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
+	{ "MAX JOY   \x1C",      MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_JoyNum, NULL },
+	{ "MAX PLY   \x5F",      MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
 
 //
-const MenuItem g_MenuCredit[] =
+MenuItem g_MenuCredit[] =
 {
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "CODE   AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
@@ -364,7 +383,7 @@ const ModeInfo g_ModeInfo[] =
 	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   10, 0,   5 },
 };
 
-const c8 g_TextCredits[]   = "    CRAWLERS BY PIXEL PHENIX 2023    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY THOMAS 'TOTTA'    GFX ENHANCEMENT BY LUDO 'GFX'    THANKS TO ALL MSX VILLAGE, MRC AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!    DEDICATED TO MY WONDERFUL WIFE AND SON //";
+const c8 g_TextCredits[]   = "    CRAWLERS " GAME_VERSION " BY PIXEL PHENIX 2023    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY THOMAS 'TOTTA'    GFX ENHANCEMENT BY LUDO 'GFX'    THANKS TO ALL MSX VILLAGE, MRC AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!    DEDICATED TO MY WONDERFUL WIFE AND SON //";
 
 // 14 13 12  |  OOO  O    OO   OO    O    OO   O
 // 11 10 09  |  O    O      O    O  OO   O    O O
@@ -761,14 +780,15 @@ u8 GetHumanCount()
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		if((g_Players[i].Controller < CTRL_PLY_NUM) && (g_Players[i].State != STATE_NONE))
 			count++;
-
 	return count;
 }
 
 //-----------------------------------------------------------------------------
-//
+// Check Battle Royal game mode condition. Called at each player death
 void CheckBattleRoyal()
 {
+	g_DoSynch = (GetHumanCount() > 0);
+
 	// Check is there is a last standing
 	Player* lastPly = NULL;
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -799,7 +819,6 @@ void CheckBattleRoyal()
 	ClearPlayer(lastPly);
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		SpawnPlayer(&g_Players[i]);
-
 	g_DoSynch = (GetHumanCount() > 0);
 }
 
@@ -893,7 +912,7 @@ void SpawnBonus()
 	if(g_BonusTile == 0)
 	{
 		u8 rnd = Math_GetRandom8();
-		while(rnd > 7)
+		while(rnd >= 7)
 			rnd -= 7;
 		g_BonusTile = g_BonusData[rnd];
 	}
@@ -1640,7 +1659,7 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 
 	switch(g_PalOpt)
 	{
-	case PAL_CUSTOM: 
+	case PAL_CUSTOM:
 		VDP_SetPalette((u8*)g_MSX2Palette);
 		return "CUSTOM";
 	case PAL_MSX1: 
@@ -1649,6 +1668,9 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 	case PAL_MSX2: 
 		VDP_SetDefaultPalette();
 		return "MSX2";
+	case PAL_GRAY: 
+		VDP_SetPalette((u8*)g_GrayPalette);
+		return "GRAY";
 	}
 
 	return NULL;
@@ -2117,6 +2139,13 @@ void State_Menu_Begin()
 	PrintChrX(MENU_POS_LEFT+1, MENU_POS_BOTTOM, 0xE8, MENU_POS_RIGHT-MENU_POS_LEFT-1);
 	PrintChr(MENU_POS_LEFT,    MENU_POS_BOTTOM, 0xED);
 	PrintChrY(MENU_POS_LEFT,   MENU_POS_TOP+1,  0xEB, MENU_POS_BOTTOM-MENU_POS_TOP-1);
+
+	// Disable MSX2 only feature
+	if(g_VersionMSX == MSXVER_1)
+	{
+		g_MenuMain[5].Type = MENU_ITEM_EMPTY;
+		g_MenuOption[2].Type = MENU_ITEM_EMPTY;
+	}
 
 	// Initialize menu
 	Menu_SetEventCallback(HandleMenuEvent);

@@ -10,6 +10,8 @@
 // DEFINES
 //=============================================================================
 
+#define GAME_VERSION				"0.9.0"
+
 #define EXT_VERSION					FALSE
 
 // Logo tiles
@@ -164,6 +166,7 @@ enum PAL_ID
 	PAL_CUSTOM = 0,
 	PAL_MSX1,
 	PAL_MSX2,
+	PAL_GRAY,
 //-----------------------------
 	PAL_MAX,
 };
