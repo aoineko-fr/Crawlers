@@ -367,7 +367,7 @@ const CtrlBind g_CtrlBind[] =
 	{ KEY_8,	CTRL_JOY_8 },
 };
 
-const u8 g_BonusData[7+1] = { 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0 };
+const u8 g_BonusData[8+1] = { 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFF, 0 };
 const u8 g_WallData[4+1] = { 0xE1, 0xE2, 0xE8, 0xEF, 0 };
 
 const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLAPSE AFTER TIMER END.";
@@ -911,9 +911,7 @@ void SpawnBonus()
 	g_BonusTile = g_BonusData[g_BonusOpt];
 	if(g_BonusTile == 0)
 	{
-		u8 rnd = Math_GetRandom8();
-		while(rnd >= 7)
-			rnd -= 7;
+		u8 rnd = Math_GetRandom8() % 8;
 		g_BonusTile = g_BonusData[rnd];
 	}
 	VDP_Poke_GM2(x, y, g_BonusTile);
@@ -1426,6 +1424,7 @@ void UpdatePlayer(Player* ply)
 			case TILE_BONUS+4:
 			case TILE_BONUS+5:
 			case TILE_BONUS+6:
+			case TILE_HEART:
 				PlaySFX(SFX_BONUS);
 				ply->Expect += g_BonusLen;
 				SpawnBonus();
@@ -1706,7 +1705,7 @@ const c8* MenuAction_Music(u8 op, i8 value)
 
 	if(mus != 0xFF)
 		PlayMusic(mus);
-	return g_OptMusic ? "*" : "+";
+	return g_OptMusic ? "*" : "/";
 }
 
 //-----------------------------------------------------------------------------
@@ -1734,7 +1733,7 @@ const c8* MenuAction_SFX(u8 op, i8 value)
 		AKG_PlaySFX(g_OptSFXIdx, 0, 0);
 		break;
 	}
-	return g_OptSFX ? "*" : "+";
+	return g_OptSFX ? "*" : "/";
 }
 
 //-----------------------------------------------------------------------------
@@ -2518,7 +2517,7 @@ void State_Start_Update()
 			case CTRL_AI_EASY:
 			case CTRL_AI_MED:
 			case CTRL_AI_HARD:
-				tile = 0;//TILE_AI;
+				tile = 0;
 				break;
 			case CTRL_NONE:
 				continue;

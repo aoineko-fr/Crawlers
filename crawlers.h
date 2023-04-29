@@ -10,7 +10,7 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"0.9.0"
+#define GAME_VERSION				"0.9.1"
 
 #define EXT_VERSION					FALSE
 
@@ -40,11 +40,11 @@
 #define TILE_JOY					0xFC // Joystick
 #define TILE_KB1					0xFD // Keyboard config 1
 #define TILE_KB2					0xFE // Keyboard config 2
-#define TILE_AI						0xFF // AI
+#define TILE_HEART					0xFF
 // Menu tile
 #define TILE_CLOCK					0x03
 #define TILE_OK						0x0A
-#define TILE_NOT					0x0B
+#define TILE_NOT					0x0F
 #define TILE_PLAYER					0x3F
 #define TILE_BALL					0xE0
 
