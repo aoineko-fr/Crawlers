@@ -101,15 +101,15 @@ AppID = "CR";
 BuildLibrary = true;
 
 //-- Debug flag (true or false)
-Debug = false;
+Debug = true;
 
 //-- Move debug symbols do binary folder (true or false)
 DebugSymbols = true;
 
 //-- Assembler code optimizer
 // - None
-// - PeepHole	SDCC otpimizer
-// - MDL		MDL z80 otpimizer
+// - PeepHole     SDCC otpimizer
+// - MDL          MDL z80 otpimizer
 AsmOptim = "None";
 
 //-- Optim:
@@ -117,6 +117,14 @@ AsmOptim = "None";
 // - Speed
 // - Size
 Optim = "Speed";
+
+//-- Compile complexity. The higher the most optimized but the slowest to compile. Can be one of the predefine name or a integer value (string/integer)
+//   - Fast          2000
+//   - Default       3000
+//   - Optimized     50000
+//   - Ultra         200000
+//   - Insane        10000000
+CompileComplexity = "Default";
 
 //-- Additionnal compilation flag
 CompileOpt = "";
@@ -150,8 +158,8 @@ EmulPortA = "";
 EmulPortB = "";
 
 //-- Emulator extra parameters to be add to command-line (emulator sotfware specific)
-// EmulExtraParam=-command "plug joyporta ninjatap" -command "plug ninjatap_port_1 joystick1"
-EmulExtraParam = '-command "plug joyporta ninjatap"';
+// EmulExtraParam = '-command "plug joyporta ninjatap" -command "plug ninjatap_port_1 joystick1"'
+// EmulExtraParam = '-command "plug joyporta ninjatap"';
 
 //*******************************************************************************
 // BUILD STEPS

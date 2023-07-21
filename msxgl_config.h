@@ -12,27 +12,43 @@
 //-----------------------------------------------------------------------------
 
 // Target
-// - TARGET_BIN ...................	BASIC binary program
-// - TARGET_ROM16 ................. 16KB ROM in page 1
-// - TARGET_ROM16P2 ............... 16KB ROM in page 2
-// - TARGET_ROM32 ................. 32KB ROM in page 1-2
-// - TARGET_ROM32P0 ............... 32KB ROM in page 0-1
-// - TARGET_ROM48 ................. 48KB ROM in page 0-2
-// - TARGET_DOS ................... MSX-DOS program
-// - TARGET_DOSARG ................ MSX-DOS program (using command line arguments)
+// - TARGET_ROM_8K					8 KB ROM in page 1 (4000h ~ 5FFFh)
+// - TARGET_ROM_8K_P2				8 KB ROM in page 2 (8000h ~ 9FFFh)
+// - TARGET_ROM_16K					16 KB ROM in page 1 (4000h ~ 7FFFh)
+// - TARGET_ROM_16K_P2				16 KB ROM in page 2 (8000h ~ BFFFh)
+// - TARGET_ROM_32K					32 KB ROM in page 1&2 (4000h ~ BFFFh)
+// - TARGET_ROM_48K					48 KB ROM in page 0-2 (0000h ~ BFFFh)
+// - TARGET_ROM_48K_ISR				48 KB ROM in page 0-2 (0000h ~ BFFFh) with ISR replacement
+// - TARGET_ROM_64K					64 KB ROM in page 0-3 (0000h ~ FFFFh)
+// - TARGET_ROM_64K_ISR				64 KB ROM in page 0-3 (0000h ~ FFFFh) with ISR replacement
+// - TARGET_ROM_ASCII8				ASCII-8: 8KB segments for a total of 64 KB to 2 MB
+// - TARGET_ROM_ASCII16				ASCII-16: 16KB segments for a total of 64 KB to 4 MB
+// - TARGET_ROM_KONAMI				Konami MegaROM (aka Konami4): 8 KB segments for a total of 64 KB to 2 MB
+// - TARGET_ROM_KONAMI_SCC			Konami MegaROM SCC (aka Konami5): 8 KB segments for a total of 64 KB to 2 MB
+// - TARGET_DOS1					MSX-DOS 1 program (starting at 0100h)
+// - TARGET_DOS2					MSX-DOS 2 program (starting at 0100h)
+// - TARGET_DOS0					Direct program boot from disk (starting at 0100h)
+// - TARGET_BIN						BASIC binary program (starting at 8000h)
+// - TARGET_BIN_USR					BASIC USR binary driver (starting at C000h)
 // TARGET is defined by the build tool
 
 // Target type
 // - TYPE_BIN ..................... BASIC binary program
-// - TYPE_ROM ..................... ROM
 // - TYPE_DOS ..................... MSX-DOS program
+// - TYPE_ROM ..................... ROM
 // TARGET_TYPE is defined by the build tool
 
 // MSX version
-// - MSX_1 ........................ MSX
+// - MSX_1 ........................ MSX 1
 // - MSX_2 ........................ MSX 2
+// - MSX_12 ....................... MSX 1 and 2 (support each)
+// - MSX_2K ....................... Korean MSX 2 (SC9 support)
 // - MSX_2P ....................... MSX 2+
+// - MSX_22P ...................... MSX 2 and 2+ (support each)
+// - MSX_122P ..................... MSX 1, 2 and 2+ (support each)
+// - MSX_0 ........................ MSX 0 (MSX 2+)
 // - MSX_TR ....................... MSX turbo R
+// - MSX_3 ........................ MSX 3
 // MSX_VERSION is defined by the build tool
 
 //-----------------------------------------------------------------------------
@@ -76,7 +92,6 @@
 #define VDP_USE_MODE_G2				TRUE	// MSX1		Screen 2
 #define VDP_USE_MODE_T2				FALSE	// MSX2		Screen 0 Width 80
 #define VDP_USE_MODE_G3				FALSE	// MSX2		Screen 4
-#define VDP_USE_MODE_G3_MIRROR		FALSE	// MSX2		Screen 4 mirrored
 #define VDP_USE_MODE_G4				FALSE	// MSX2		Screen 5
 #define VDP_USE_MODE_G5				FALSE	// MSX2		Screen 6
 #define VDP_USE_MODE_G6				FALSE	// MSX2		Screen 7
@@ -88,7 +103,7 @@
 #define VDP_USE_CUSTOM_CMD			FALSE	// Use custom VDP commands through data buffer
 #define VDP_AUTO_INIT				TRUE	// Call VDP_Initialize() at the first call to VDP_SetMode()
 #define VDP_USE_UNDOCUMENTED		FALSE	// Allow the use of undocumented screen mode (WIP)
-#define VDP_USE_VALIDATOR			TRUE	// Let the engine fix some invalid input (highly recommended)
+#define VDP_USE_VALIDATOR			TRUE	// Handle some option specific for each VDP mode (highly recommended)
 #define VDP_USE_DEFAULT_PALETTE		TRUE	// Add data for default MSX 2 palette
 #define VDP_USE_MSX1_PALETTE		TRUE	// Add data for default MSX 1 palette
 #define VDP_USE_DEFAULT_SETTINGS	FALSE	// Auto-initialization of common VDP feature
@@ -120,7 +135,7 @@
 #define INPUT_USE_ISR_PROTECTION	TRUE	// Disable interruptions while access PSG registers (needed if you use BIOS or access PSG in your own ISR)
 #define INPUT_JOY_UPDATE			FALSE	// Add function to update all joystick states at once
 // Key update handler
-#define INPUT_KB_UPDATE				FALSE	// Add function to update all keyboard rows at once
+#define INPUT_KB_UPDATE				TRUE	// Add function to update all keyboard rows at once
 #define INPUT_KB_UPDATE_MIN			0		// First row to update
 #define INPUT_KB_UPDATE_MAX			8		// Last row to update (10 for numerical-pad, 8 otherwise)
 
@@ -217,12 +232,13 @@
 // Top/bottom border position (in pixel)
 #define GAMEPAWN_BORDER_MIN_Y		0
 #define GAMEPAWN_BORDER_MAX_Y		191
+#define GAMEPAWN_FORCE_SM1			FALSE	// Force the use sprite mode 1 
 
 //-----------------------------------------------------------------------------
 // GAME MENU MODULE
 //-----------------------------------------------------------------------------
 
-#define MENU_USE_DEFAULT_CALLBACK	TRUE	// Use default input/print callback
+#define MENU_USE_DEFAULT_CALLBACK	FALSE	// Use default input/print callback
 #define MENU_SCREEN_WIDTH			32		// Screen width
 #define MENU_CLEAR					0		// Clear character
 #define MENU_POS_X					4		// Frame position X
@@ -289,6 +305,18 @@
 #define SCROLL_MASK_ID				0		// First sprite ID to use
 #define SCROLL_MASK_COLOR			COLOR_BLACK // Must be the same than border color
 #define SCROLL_MASK_PATTERN			0		// Sprite pattern to use
+
+//-----------------------------------------------------------------------------
+// TILE 
+//-----------------------------------------------------------------------------
+
+#define TILE_WIDTH					8		// Tile width
+#define TILE_HEIGHT					8		// Tile height
+#define TILE_BPP					4		// Screen bits-per-pixel
+#define TILE_SCREEN_WIDTH			256		// Screen width
+#define TILE_SCREEN_HEIGHT			212		// Screen height
+#define TILE_USE_SKIP				TRUE	// Skip drawing of a given index
+#define TILE_SKIP_INDEX				0		// The index tile to skip
 
 //-----------------------------------------------------------------------------
 // AUDIO 
@@ -379,9 +407,11 @@
 // - PLETTER_WRITE_QUICK .......... No wait beetween write
 #define PLETTER_WRITE_MODE			PLETTER_WRITE_SAFE
 
-//-----------------------------------------------------------------------------
-// MSXi MODULE
-//-----------------------------------------------------------------------------
+// BitBuster compression
+// VRAM write timing mode
+// - BITBUSTER_WRITE_SAFE ......... Safe VRAM write speed (include nop between write)
+// - BITBUSTER_WRITE_QUICK ........ No wait beetween write
+#define BITBUSTER_WRITE_MODE		BITBUSTER_WRITE_SAFE
 
 // MSXi compressor support
 #define MSXi_USE_COMP_NONE			TRUE

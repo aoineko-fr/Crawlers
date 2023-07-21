@@ -10,15 +10,15 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"0.9.1"
+#define GAME_VERSION				"0.10.0"
 
-#define EXT_VERSION					FALSE
+// Configuration
+#define DEF_MUSIC					TRUE
+#define DEF_SFX						TRUE
+#define PLAYER_MAX					8
 
 // Logo tiles
 #define MSXGL						"[\\]^"
-
-// 
-#define PLAYER_MAX					8
 
 // 
 #define CHAR_FIRST					' '
@@ -128,9 +128,7 @@ enum PLAYER_STATE
 enum MENU_PAGE
 {
 	MENU_MAIN = 0,
-#if (EXT_VERSION)
 	MENU_SOLO,
-#endif
 	MENU_MULTI,
 	MENU_OPTION,
 	MENU_SYSTEM,
@@ -142,12 +140,25 @@ enum MENU_PAGE
 // Game mdoes enumeration
 enum GAME_MODE
 {
+//-- Battle modes
 	MODE_BATTLEROYAL = 0,
 	MODE_DEATHMATCH,
 	MODE_SIZEMATTER,
 	MODE_GREEDIEST,
+//-- Solo mode
+	MODE_TRAINNNG,
 //-----------------------------
 	MODE_MAX,
+};
+
+// Menu pages enumeration
+enum MENU_START
+{
+	START_BATTLE = 0,
+	START_SOLO_NEW,
+	START_SOLO_CONTINUE,
+//-----------------------------
+	START_MAX,
 };
 
 // Frequence enumaration
@@ -178,6 +189,7 @@ enum MUSIC_ID
 	MUSIC_MENU,
 	MUSIC_BATTLE,
 	MUSIC_HURRYUP,
+	MUSIC_VICTORY,
 //-----------------------------
 	MUSIC_MAX,
 };
@@ -219,20 +231,20 @@ typedef void (*InputCB)(struct PlayerTag* ply);
 // Player data structure
 typedef struct PlayerTag
 {
-	u8 ID;
+	u8  ID;
 	InputCB Action;
-	u8 Controller;
-	u8 PosX;
-	u8 PosY;
-	u8 Dir;
-	u8 Length;
-	u8 Expect;
-	u8 Idx;
-	u8 Path[LENGTH_MAX]; // ring buffer
-	u8 Anim;
-	u8 State;
-	u8 Timer;
-	u8 Score;
+	u8  Controller;
+	u8  PosX;
+	u8  PosY;
+	u8  Dir;
+	u8  Length;
+	u8  Expect;
+	u8  Idx;
+	u8  Path[LENGTH_MAX]; // ring buffer
+	u8  Anim;
+	u8  State;
+	u8  Timer;
+	u16 Score;
 } Player;
 
 // Character data structure
@@ -318,28 +330,84 @@ typedef struct
 #define SELECT_FACE_7			g_DataFace2L2_Names		// 5x5
 #define SELECT_FACE_8			g_DataFace2L3_Names		// 5x5
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Exteral data
+extern const unsigned char g_DataFace1L0_Names[];
+extern const unsigned char g_DataFace1L1_Names[];
+extern const unsigned char g_DataFace1L2_Names[];
+extern const unsigned char g_DataFace1L3_Names[];
+extern const unsigned char g_DataFace1_Patterns[];
+extern const unsigned char g_DataFace1_Colors[];
+extern const unsigned char g_DataFace2L0_Names[];
+extern const unsigned char g_DataFace2L1_Names[];
+extern const unsigned char g_DataFace2L2_Names[];
+extern const unsigned char g_DataFace2L3_Names[];
+extern const unsigned char g_DataFace2_Patterns[];
+extern const unsigned char g_DataFace2_Colors[];
+extern const unsigned char g_DataLogoSprt[];
+extern const unsigned char g_DataLogoTileL0_Names[];
+extern const unsigned char g_DataLogoTileL1_Names[];
+extern const unsigned char g_DataLogoTile_Patterns[];
+extern const unsigned char g_DataLogoTile_Colors[];
+extern const unsigned char g_MusicEmpty[];
+extern const unsigned char g_MusicGame[];
+extern const unsigned char g_MusicHurry[];
+extern const unsigned char g_MusicIntro[];
+extern const unsigned char g_MusicMain[];
+extern const unsigned char g_MusicVictory[];
+extern const unsigned char g_DataSelectL0_Names[];
+extern const unsigned char g_DataSelectL1_Names[];
+extern const unsigned char g_DataSelectL2_Names[];
+extern const unsigned char g_DataSelectL3_Names[];
+extern const unsigned char g_DataSelectL4_Names[];
+extern const unsigned char g_DataSelectL5_Names[];
+extern const unsigned char g_DataSelectL6_Names[];
+extern const unsigned char g_DataSelectL7_Names[];
+extern const unsigned char g_DataSelectL8_Names[];
+extern const unsigned char g_DataSelectL9_Names[];
+extern const unsigned char g_DataSelectL10_Names[];
+extern const unsigned char g_DataSelectL11_Names[];
+extern const unsigned char g_DataSelectL12_Names[];
+extern const unsigned char g_DataSelectL13_Names[];
+extern const unsigned char g_DataSelectL14_Names[];
+extern const unsigned char g_DataSelectL15_Names[];
+extern const unsigned char g_DataSelectL16_Names[];
+extern const unsigned char g_DataSelectL17_Names[];
+extern const unsigned char g_DataSelectL18_Names[];
+extern const unsigned char g_DataSelectL19_Names[];
+extern const unsigned char g_DataSelectL20_Names[];
+extern const unsigned char g_DataSelectL21_Names[];
+extern const unsigned char g_DataSelectL22_Names[];
+extern const unsigned char g_DataSelectL23_Names[];
+extern const unsigned char g_DataSelectL24_Names[];
+extern const unsigned char g_DataSelectL25_Names[];
+extern const unsigned char g_DataSelectL26_Names[];
+extern const unsigned char g_DataSelectL27_Names[];
+extern const unsigned char g_DataSelectL28_Names[];
+extern const unsigned char g_DataSelectL29_Names[];
+extern const unsigned char g_DataSelectL30_Names[];
+extern const unsigned char g_DataSelect_Patterns[];
+extern const unsigned char g_DataSelect_Colors[];
+extern const unsigned char g_DataSFX[];
+extern const unsigned char g_DataSprites[];
+extern const unsigned char g_DataTiles_Patterns[];
+extern const unsigned char g_DataTiles_Colors[];
+extern const unsigned char g_Level001[];
+extern const unsigned char g_Level002[];
+extern const unsigned char g_Level003[];
+extern const unsigned char g_Level004[];
+extern const unsigned char g_Level005[];
+extern const unsigned char g_Level006[];
+extern const unsigned char g_Level007[];
+extern const unsigned char g_Level008[];
+extern const unsigned char g_Level009[];
+extern const unsigned char g_Level010[];
+extern const unsigned char g_Level011[];
+extern const unsigned char g_Level012[];
+extern const unsigned char g_Level013[];
+extern const unsigned char g_Level014[];
+extern const unsigned char g_Level015[];
+extern const unsigned char g_Level016[];
+extern const unsigned char g_Level017[];
+extern const unsigned char g_Level018[];
+extern const unsigned char g_Level019[];
+extern const unsigned char g_Level020[];

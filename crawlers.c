@@ -53,6 +53,9 @@ void State_Game_Update();
 void State_Victory_Begin();
 void State_Victory_Update();
 
+void State_Training_Begin();
+void State_Training_Update();
+
 void MenuOpen_Credit();
 
 const c8* MenuAction_Start(u8 op, i8 value);
@@ -68,7 +71,7 @@ const c8* MenuAction_Wall(u8 op, i8 value);
 const c8* MenuAction_Port(u8 op, i8 value);
 const c8* MenuAction_MSX(u8 op, i8 value);
 const c8* MenuAction_VDP(u8 op, i8 value);
-const c8* MenuAction_Save(u8 op, i8 value);
+// const c8* MenuAction_Save(u8 op, i8 value);
 
 void InitPlayer(Player* ply, u8 id);
 void ResetPlayer(Player* ply);
@@ -77,92 +80,19 @@ void DrawPlayer(Player* ply);
 void ClearPlayer(Player* ply);
 void UpdatePlayer(Player* ply);
 
+bool IsInputUp();
+bool IsInputDown();
+bool IsInputLeft();
+bool IsInputRight();
+bool IsInputButton1();
+bool IsInputButton2();
+
 extern u8 g_VersionROM;
 extern u8 g_VersionMSX;
 
 //=============================================================================
 // READ-ONLY DATA
 //=============================================================================
-
-// // Tiles
-// #include "content/tiles.h"
-// #include "content/logo_tile.h"
-
-// // Sprites
-// #include "content/sprites.h"
-// #include "content/logo_sprt.h"
-
-// // Menu
-// #include "content/select.h"
-// #include "content/face1.h"
-// #include "content/face2.h"
-
-// // Music
-// #include "content/music_empty.h"
-// #include "content/music_intro.h"
-// #include "content/music_game.h"
-// #include "content/music_hurry.h"
-// #include "content/sfx.h"
-
-extern const unsigned char g_DataFace1L0_Names[];
-extern const unsigned char g_DataFace1L1_Names[];
-extern const unsigned char g_DataFace1L2_Names[];
-extern const unsigned char g_DataFace1L3_Names[];
-extern const unsigned char g_DataFace1_Patterns[];
-extern const unsigned char g_DataFace1_Colors[];
-extern const unsigned char g_DataFace2L0_Names[];
-extern const unsigned char g_DataFace2L1_Names[];
-extern const unsigned char g_DataFace2L2_Names[];
-extern const unsigned char g_DataFace2L3_Names[];
-extern const unsigned char g_DataFace2_Patterns[];
-extern const unsigned char g_DataFace2_Colors[];
-extern const unsigned char g_DataLogoSprt[];
-extern const unsigned char g_DataLogoTileL0_Names[];
-extern const unsigned char g_DataLogoTileL1_Names[];
-extern const unsigned char g_DataLogoTile_Patterns[];
-extern const unsigned char g_DataLogoTile_Colors[];
-extern const unsigned char g_MusicEmpty[];
-extern const unsigned char g_MusicGame[];
-extern const unsigned char g_MusicHurry[];
-extern const unsigned char g_MusicIntro[];
-extern const unsigned char g_MusicMain[];
-extern const unsigned char g_DataSelectL0_Names[];
-extern const unsigned char g_DataSelectL1_Names[];
-extern const unsigned char g_DataSelectL2_Names[];
-extern const unsigned char g_DataSelectL3_Names[];
-extern const unsigned char g_DataSelectL4_Names[];
-extern const unsigned char g_DataSelectL5_Names[];
-extern const unsigned char g_DataSelectL6_Names[];
-extern const unsigned char g_DataSelectL7_Names[];
-extern const unsigned char g_DataSelectL8_Names[];
-extern const unsigned char g_DataSelectL9_Names[];
-extern const unsigned char g_DataSelectL10_Names[];
-extern const unsigned char g_DataSelectL11_Names[];
-extern const unsigned char g_DataSelectL12_Names[];
-extern const unsigned char g_DataSelectL13_Names[];
-extern const unsigned char g_DataSelectL14_Names[];
-extern const unsigned char g_DataSelectL15_Names[];
-extern const unsigned char g_DataSelectL16_Names[];
-extern const unsigned char g_DataSelectL17_Names[];
-extern const unsigned char g_DataSelectL18_Names[];
-extern const unsigned char g_DataSelectL19_Names[];
-extern const unsigned char g_DataSelectL20_Names[];
-extern const unsigned char g_DataSelectL21_Names[];
-extern const unsigned char g_DataSelectL22_Names[];
-extern const unsigned char g_DataSelectL23_Names[];
-extern const unsigned char g_DataSelectL24_Names[];
-extern const unsigned char g_DataSelectL25_Names[];
-extern const unsigned char g_DataSelectL26_Names[];
-extern const unsigned char g_DataSelectL27_Names[];
-extern const unsigned char g_DataSelectL28_Names[];
-extern const unsigned char g_DataSelectL29_Names[];
-extern const unsigned char g_DataSelectL30_Names[];
-extern const unsigned char g_DataSelect_Patterns[];
-extern const unsigned char g_DataSelect_Colors[];
-extern const unsigned char g_DataSFX[];
-extern const unsigned char g_DataSprites[];
-extern const unsigned char g_DataTiles_Patterns[];
-extern const unsigned char g_DataTiles_Colors[];
 
 //
 const Shapes g_Body[] =
@@ -254,7 +184,7 @@ const u16 g_GrayPalette[15] =
 };
 
 //
-const c8 g_TitleTile[] =
+const u8 g_TitleTile[] =
 {
 	0x70, 0x6D, 0x71, 0xD4, 0xD0, 0xD5, 0x48, 0x45, 0x49, 0x8D, 0x00, 0x7C, 0xA1, 0x00, 0x00, 0xC0, 0xBD, 0xCA, 0xAC, 0xA8, 0xAD, 0x5C, 0x58, 0x55, 
 	0x6F, 0x00, 0x6A, 0xD2, 0xCF, 0xD7, 0x47, 0x00, 0x42, 0x83, 0x00, 0x83, 0x97, 0x00, 0x00, 0xBA, 0x00, 0x00, 0xAA, 0xA7, 0xAF, 0x5A, 0x00, 0x00, 
@@ -270,28 +200,30 @@ const MenuItemMinMax g_MenuTreesMinMax =  { 0, 100, 10 };
 MenuItem g_MenuMain[] =
 {
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
-#if (EXT_VERSION)
-	{ "SOLO MODE",           MENU_ITEM_GOTO, NULL, MENU_SOLO },
-#endif
 	{ "BATTLE",              MENU_ITEM_GOTO, NULL, MENU_MULTI },
+	{ "TRAINING",            MENU_ITEM_GOTO, NULL, MENU_SOLO },
 	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
 	{ "SYSTEM INFO",         MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
 	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
-	{ "SAVE",                MENU_ITEM_ACTION, MenuAction_Save, 0 },
+	// { "SAVE",                MENU_ITEM_ACTION, MenuAction_Save, 0 },
 };
 
-#if (EXT_VERSION)
 //
 const MenuItem g_MenuSolo[] =
 {
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "NEW GAME",            MENU_ITEM_ACTION, MenuAction_Start, START_SOLO_NEW },
+	{ "CONTINUE",            MENU_ITEM_ACTION, MenuAction_Start, START_SOLO_CONTINUE },
+	{ "LEVEL",               MENU_ITEM_INT, &g_TrainLevel, NULL },
+	{ "SCORE",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiScore, NULL },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
-#endif
 
 //
 MenuItem g_MenuMulti[] =
 {
-	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, 0 },
+	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, START_BATTLE },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
 	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
 	{ "TIME",                MENU_ITEM_INT, &g_TimeMax, (i16)&g_MenuRoundsMinMax },
@@ -349,9 +281,7 @@ MenuItem g_MenuCredit[] =
 const Menu g_Menus[MENU_MAX] =
 {
 	{ NULL, g_MenuMain,   numberof(g_MenuMain),   NULL },
-#if (EXT_VERSION)
 	{ NULL, g_MenuSolo,   numberof(g_MenuSolo),   NULL },
-#endif
 	{ NULL, g_MenuMulti,  numberof(g_MenuMulti),  NULL },
 	{ NULL, g_MenuOption, numberof(g_MenuOption), NULL },
 	{ NULL, g_MenuSystem, numberof(g_MenuSystem), NULL },
@@ -367,6 +297,7 @@ const FSM_State State_Select =	{ 0, State_Select_Begin,	State_Select_Update,	NUL
 const FSM_State State_Start =	{ 0, State_Start_Begin,		State_Start_Update,		NULL };
 const FSM_State State_Game =	{ 0, State_Game_Begin,		State_Game_Update,		NULL };
 const FSM_State State_Victory =	{ 0, State_Victory_Begin,	State_Victory_Update,	NULL };
+const FSM_State State_Training ={ 0, State_Training_Begin,	State_Training_Update,	NULL };
 
 // 
 const SelectDevice g_Devices[CTRL_MAX] =
@@ -443,7 +374,7 @@ const ModeInfo g_ModeInfo[] =
 	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   10, 0,   5 },
 };
 
-const c8 g_TextCredits[]   = "    CRAWLERS " GAME_VERSION " BY PIXEL PHENIX 2023    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY THOMAS 'TOTTA'    GFX ENHANCEMENT BY LUDO 'GFX'    THANKS TO ALL MSX VILLAGE, MRC AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!    DEDICATED TO MY WONDERFUL WIFE AND SON //";
+const c8 g_TextCredits[]   = "        CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY THOMAS 'TOTTA'    GFX ENHANCEMENT BY LUDO 'GFX'    THANKS TO ALL MSX VILLAGE, MRC AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F";
 
 // 14 13 12  |  OOO  O    OO   OO    O    OO   O
 // 11 10 09  |  O    O      O    O  OO   O    O O
@@ -462,12 +393,13 @@ const u16 g_TimerLayout[7] =
 };
 
 //
-const void* g_MusicInfo[] =
+const void* g_MusicInfo[MUSIC_MAX] =
 {
-	{ g_MusicEmpty }, // MUSIC_EMPTY
-	{ g_MusicIntro }, // MUSIC_MENU
-	{ g_MusicGame  }, // MUSIC_BATTLE
-	{ g_MusicHurry }, // MUSIC_HURRYUP
+	{ g_MusicEmpty   }, // MUSIC_EMPTY
+	{ g_MusicIntro   }, // MUSIC_MENU
+	{ g_MusicGame    }, // MUSIC_BATTLE
+	{ g_MusicHurry   }, // MUSIC_HURRYUP
+	{ g_MusicVictory }, // MUSIC_VICTORY
 };
 
 //
@@ -479,7 +411,15 @@ const u8 g_BallColor[][8] =
 };
 
 //
-const u16 g_ClearBG[] = { ((TILE_EMPTY + 1) << 8) + TILE_EMPTY, (TILE_EMPTY << 8) + (TILE_EMPTY + 1) };
+const u16 g_ClearBG[] = { (u16)(((TILE_EMPTY + 1) << 8) + TILE_EMPTY), (u16)((TILE_EMPTY << 8) + (TILE_EMPTY + 1)) };
+
+const u8* g_TrainLevelList[] =
+{ 
+	g_Level001, g_Level002, g_Level003, g_Level004, g_Level005,
+	g_Level006, g_Level007, g_Level008, g_Level009, g_Level010,
+	g_Level011, g_Level012, g_Level013, g_Level014, g_Level015,
+	g_Level016, g_Level017, g_Level018, g_Level019, g_Level020
+};
 
 //=============================================================================
 // MEMORY DATA
@@ -499,9 +439,9 @@ u16			g_Scroll;
 bool		g_Initialized = FALSE;
 
 // Audio
-bool		g_OptMusic = TRUE;
+bool		g_OptMusic = DEF_MUSIC;
 u8			g_OptMusicIdx = 0;
-bool		g_OptSFX = TRUE;
+bool		g_OptSFX = DEF_SFX;
 u8			g_OptSFXIdx = 0;
 u8			g_OptSFXNum;
 u8			g_LastMusicId = 0xFF;
@@ -528,6 +468,12 @@ u8			g_CollapseX1;
 u8			g_CollapseY1;
 u8			g_Winner;				// Winner player index
 
+// Solo mode
+u8			g_TrainLevel;			// Current training level
+u16			g_HiScore;
+Vector		g_PlayerStart;
+u8			g_BonusNum;
+
 // Timers
 u8			g_Counter;
 u8			g_TimeMax = 1;
@@ -541,17 +487,107 @@ bool		g_HurryUp = FALSE;
 // Input
 u8			g_JoyInfo;
 u8			g_JoyNum;
-u8			g_PrevRow3;
-u8			g_PrevRow8;
 u8			g_Input[CTRL_PLY_NUM];
 u8			g_SlotIdx;
 bool		g_SelectEdit;
 u8			g_CtrlReg[CTRL_MAX];
-
+u8			g_MenuInputPrev = 0xFF;
 
 //=============================================================================
 // FUNCTIONS
 //=============================================================================
+
+//.............................................................................
+// INPUT
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+// Check all connected devices
+bool IsInputUp()
+{
+	if(Keyboard_IsKeyPressed(KEY_UP))
+		return TRUE;
+
+	for(u8 i = 0; i < g_JoyNum; ++i)
+		if(NTap_IsPushed(i, NTAP_UP))
+			return TRUE;
+
+	return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+// Check all connected devices
+bool IsInputDown()
+{
+	if(Keyboard_IsKeyPressed(KEY_DOWN))
+		return TRUE;
+
+	for(u8 i = 0; i < g_JoyNum; ++i)
+		if(NTap_IsPushed(i, NTAP_DOWN))
+			return TRUE;
+
+	return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+// Check all connected devices
+bool IsInputLeft()
+{
+	if(Keyboard_IsKeyPressed(KEY_LEFT))
+		return TRUE;
+
+	for(u8 i = 0; i < g_JoyNum; ++i)
+		if(NTap_IsPushed(i, NTAP_LEFT))
+			return TRUE;
+
+	return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+// Check all connected devices
+bool IsInputRight()
+{
+	if(Keyboard_IsKeyPressed(KEY_RIGHT))
+		return TRUE;
+
+	for(u8 i = 0; i < g_JoyNum; ++i)
+		if(NTap_IsPushed(i, NTAP_RIGHT))
+			return TRUE;
+
+	return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+// Check all connected devices
+bool IsInputButton1()
+{
+	if(Keyboard_IsKeyPressed(KEY_SPACE))
+		return TRUE;
+
+	for(u8 i = 0; i < g_JoyNum; ++i)
+		if(NTap_IsPushed(i, NTAP_A))
+			return TRUE;
+
+	return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+// Check all connected devices
+bool IsInputButton2()
+{
+	if(Keyboard_IsKeyPressed(KEY_ESC))
+		return TRUE;
+
+	for(u8 i = 0; i < g_JoyNum; ++i)
+		if(NTap_IsPushed(i, NTAP_B))
+			return TRUE;
+
+	return FALSE;
+}
+
+//.............................................................................
+// AUDIO
+//.............................................................................
 
 //-----------------------------------------------------------------------------
 // 
@@ -581,23 +617,9 @@ void PlaySFX(u8 id)
 	AKG_PlaySFX(id, ARKOS_CHANNEL_A, 0);
 }
 
-//-----------------------------------------------------------------------------
-// Callback to handle menu events
-void HandleMenuEvent(u8 event)
-{
-	switch(event)
-	{
-	case MENU_EVENT_UP:
-	case MENU_EVENT_DOWN:
-	case MENU_EVENT_INC:
-	case MENU_EVENT_DEC:
-		PlaySFX(SFX_MOVE);
-		break;
-	case MENU_EVENT_SET:
-		PlaySFX(SFX_SELECT);
-		break;
-	}
-}
+//.............................................................................
+// ...
+//.............................................................................
 
 //-----------------------------------------------------------------------------
 // Load patterns in all 3 screen sections
@@ -692,6 +714,52 @@ void DrawTileY(u8 x, u8 y, c8 chr, u8 len)
 {
 	for(u8 i = 0; i < len; ++i)
 		DrawTile(x, y++, chr);
+}
+
+//-----------------------------------------------------------------------------
+// 
+void UnpackTrainField(u8 id)
+{
+	g_BonusNum = 0;
+
+	u8 x = 1;
+	u8 y = 2;
+	const u8* ptr = g_TrainLevelList[id];
+	for(u8 i = 0; i < 32 * 21 / 4; ++i)
+	{
+		u8 val = *ptr;
+		for(u8 j = 0; j < 4; ++j)
+		{
+			u8 tile = 0;
+			switch(val & 0x3)
+			{
+			case 1:
+				tile = TILE_TREE;
+				break;
+			case 2:
+				tile = TILE_HEART;
+				g_BonusNum++;
+				break;
+			case 3:
+				tile = TILE_PREHOLE;
+				g_PlayerStart.X = x;
+				g_PlayerStart.Y = y;
+				break;
+			}
+			if(tile)
+				DrawTile(x, y, tile);
+			x++;
+			val >>= 2;
+		}
+
+		if(x > 30)
+		{
+			x = 1;
+			y++;
+		}
+
+		ptr++;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1487,7 +1555,10 @@ void UpdatePlayer(Player* ply)
 			case TILE_HEART:
 				PlaySFX(SFX_BONUS);
 				ply->Expect += g_BonusLen;
-				SpawnBonus();
+				if(g_GameMode == MODE_TRAINNNG)
+					g_BonusNum--;
+				else
+					SpawnBonus();
 				if(g_GameMode == MODE_GREEDIEST)
 				{
 					ply->Score++;
@@ -1594,7 +1665,19 @@ const c8* MenuAction_Start(u8 op, i8 value)
 {
 	value;
 	if(op == MENU_ACTION_SET)
-		FSM_SetState(&State_Select);
+	{
+		switch(value)
+		{
+			case START_BATTLE:
+				FSM_SetState(&State_Select);
+				break;
+			case START_SOLO_NEW:
+				g_TrainLevel = 0;
+			case START_SOLO_CONTINUE:
+				FSM_SetState(&State_Training);
+				break;
+		}
+	}
 	return NULL;
 }
 
@@ -1906,7 +1989,7 @@ const c8* MenuAction_VDP(u8 op, i8 value)
 
 //-----------------------------------------------------------------------------
 //
-const c8* MenuAction_Save(u8 op, i8 value)
+/*const c8* MenuAction_Save(u8 op, i8 value)
 {
 	op;
 	value;
@@ -1919,13 +2002,63 @@ const c8* MenuAction_Save(u8 op, i8 value)
 	}
 
 	return NULL;
-}
+}*/
 
 //-----------------------------------------------------------------------------
 //
 void MenuOpen_Credit()
 {
 	g_Scroll = 0;
+}
+
+//-----------------------------------------------------------------------------
+//
+u8 Menu_HandleInput()
+{
+	u8 new = 0;
+	if(IsInputUp())
+		new |= MENU_INPUT_UP;
+	else if(IsInputDown())
+		new |= MENU_INPUT_DOWN;
+	if(IsInputLeft())
+		new |= MENU_INPUT_LEFT;
+	else if(IsInputRight())
+		new |= MENU_INPUT_RIGHT;
+	if(IsInputButton1())
+		new |= MENU_INPUT_TRIGGER;
+
+	u8 ret = (new & g_MenuInputPrev) ^ new;
+	g_MenuInputPrev = new;
+
+	return ret;
+}
+
+//-----------------------------------------------------------------------------
+//
+void Menu_HandleDraw(u8 x, u8 y, u8 type, const void* text)
+{
+	x;
+	y;
+	type;
+	text;
+}
+
+//-----------------------------------------------------------------------------
+// Callback to handle menu events
+void Menu_HandleEvent(u8 event)
+{
+	switch(event)
+	{
+	case MENU_EVENT_UP:
+	case MENU_EVENT_DOWN:
+	case MENU_EVENT_INC:
+	case MENU_EVENT_DEC:
+		PlaySFX(SFX_MOVE);
+		break;
+	case MENU_EVENT_SET:
+		PlaySFX(SFX_SELECT);
+		break;
+	}
 }
 
 //=============================================================================
@@ -1973,12 +2106,6 @@ void State_Init_Begin()
 	// Set VBlank hook
 	VDP_EnableVBlank(TRUE);
 	Bios_SetHookDirectCallback(H_TIMI, VDP_InterruptHandler);
-
-	// Initialize Joystick and/or Ninja Tap
-	NTap_Check();
-	g_JoyInfo = NTap_GetInfo();
-	g_JoyNum = NTap_GetPortNum();
-	g_PlayerMax = MIN(g_JoyNum + 2, 8);
 
 	// Initialize free device
 	for(u8 i = 0; i < CTRL_MAX; ++i)
@@ -2076,7 +2203,7 @@ void State_Logo_Update()
 		VDP_SetSpritePositionY(6, offset);
 	}
 
-	if((g_Counter == LOGO_END) || Keyboard_IsKeyPressed(KEY_SPACE))
+	if((g_Counter == LOGO_END) || IsInputButton1())
 		FSM_SetState(&State_Title);
 }
 
@@ -2172,7 +2299,7 @@ void State_Title_Update()
 	else
 		VDP_WriteVRAM(g_ScreenBuffer + (20 * 32) + 11, g_ScreenLayoutLow + (20 * 32) + 11, g_ScreenLayoutHigh, 11);
 
-	if(Keyboard_IsKeyPressed(KEY_SPACE))
+	if(IsInputButton1())
 		FSM_SetState(&State_Menu);
 }
 
@@ -2207,8 +2334,10 @@ void State_Menu_Begin()
 	}
 
 	// Initialize menu
-	Menu_SetEventCallback(HandleMenuEvent);
 	Menu_Initialize(g_Menus);
+	Menu_SetInputCallback(Menu_HandleInput);
+	Menu_SetDrawCallback(Menu_HandleDraw);
+	Menu_SetEventCallback(Menu_HandleEvent);
 	Menu_DrawPage(MENU_MAIN);}
 
 //-----------------------------------------------------------------------------
@@ -2286,7 +2415,6 @@ void State_Select_Begin()
 	VDP_DisableSpritesFrom(12);
 
 	g_SelectEdit = FALSE;
-	g_PrevRow8 = 0;
 	MoveCursor(8);
 
 	VDP_EnableDisplay(TRUE);
@@ -2299,25 +2427,23 @@ void State_Select_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
-	u8 row8 = Keyboard_Read(8);
-
 	if(g_SelectEdit) // Handle character edit
 	{
 		Player* ply = &g_Players[g_SlotIdx];
-		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
+		if(IsInputLeft())
 		{
 			SetPrevPlayerController(ply);
 			EditPlayer(g_SlotIdx, TRUE);
 			PlaySFX(SFX_MOVE);
 		}
-		else if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
+		else if(IsInputRight())
 		{
 			SetNextPlayerController(ply);
 			EditPlayer(g_SlotIdx, TRUE);
 			PlaySFX(SFX_MOVE);
 		}
 
-		if(IS_KEY_PRESSED(row8, KEY_SPACE) && !IS_KEY_PRESSED(g_PrevRow8, KEY_SPACE))
+		if(IsInputButton1())
 		{
 			EditPlayer(g_SlotIdx, FALSE);
 			PlaySFX(SFX_SELECT);
@@ -2327,13 +2453,13 @@ void State_Select_Update()
 	{
 		// Move cursor
 		i8 newSlot = -1;
-		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
+		if(IsInputLeft())
 			newSlot = g_SelectSlot[g_SlotIdx].Left;
-		else if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
+		else if(IsInputRight())
 			newSlot = g_SelectSlot[g_SlotIdx].Right;
-		if(IS_KEY_PRESSED(row8, KEY_UP) && !IS_KEY_PRESSED(g_PrevRow8, KEY_UP))
+		if(IsInputUp())
 			newSlot = g_SelectSlot[g_SlotIdx].Up;
-		else if(IS_KEY_PRESSED(row8, KEY_DOWN) && !IS_KEY_PRESSED(g_PrevRow8, KEY_DOWN))
+		else if(IsInputDown())
 			newSlot = g_SelectSlot[g_SlotIdx].Down;
 		if(newSlot != -1)
 		{
@@ -2349,7 +2475,7 @@ void State_Select_Update()
 		VDP_SetSpritePosition(3, g_SelectSlot[g_SlotIdx].DR.X + offset, g_SelectSlot[g_SlotIdx].DR.Y + offset);
 
 		// Handle validation
-		if(IS_KEY_PRESSED(row8, KEY_SPACE) && !IS_KEY_PRESSED(g_PrevRow8, KEY_SPACE))
+		if(IsInputButton1())
 		{
 			switch(g_SlotIdx)
 			{
@@ -2378,7 +2504,7 @@ void State_Select_Update()
 			FSM_SetState(&State_Start);
 			PlaySFX(SFX_SELECT);
 		}
-		if(Keyboard_IsKeyPressed(KEY_ESC))
+		if(IsInputButton2())
 		{
 			FSM_SetState(&State_Title);
 			PlaySFX(SFX_SELECT);
@@ -2402,8 +2528,6 @@ void State_Select_Update()
 			}
 		}
 	}
-
-	g_PrevRow8 = row8;
 }
 
 //.............................................................................
@@ -2500,11 +2624,7 @@ void State_Start_Begin()
 	VDP_DisableSpritesFrom(8);
 
 	g_CurrentPlayer = 0;
-	g_PrevRow3 = 0;
-	g_PrevRow8 = 0;
-
 	g_DoSynch = (GetHumanCount() > 0);
-
 	g_Counter = 0;
 
 	PlayMusic(MUSIC_BATTLE);
@@ -2520,9 +2640,9 @@ void State_Start_Update()
 	WaitVBlank();
 
 	// Check input
-	if(Keyboard_IsKeyPressed(KEY_SPACE))
+	if(IsInputButton1())
 		FSM_SetState(&State_Game);
-	if(Keyboard_IsKeyPressed(KEY_ESC))
+	if(IsInputButton2())
 		FSM_SetState(&State_Select);
 
 	// Skip start sequence
@@ -2671,24 +2791,19 @@ void State_Game_Update()
 	// Update keyboard entries
 	if(g_Input[CTRL_KEY_1] == ACTION_NONE)
 	{
-		u8 row8 = Keyboard_Read(8);
-		if(IS_KEY_PRESSED(row8, KEY_LEFT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_LEFT))
+		if(Keyboard_IsKeyPressed(KEY_LEFT))
 			g_Input[CTRL_KEY_1] = ACTION_LEFT;
-		else if(IS_KEY_PRESSED(row8, KEY_RIGHT) && !IS_KEY_PRESSED(g_PrevRow8, KEY_RIGHT))
+		else if(Keyboard_IsKeyPressed(KEY_RIGHT))
 			g_Input[CTRL_KEY_1] = ACTION_RIGHT;
-		g_PrevRow8 = row8;
 	}
 	if(g_Input[CTRL_KEY_2] == ACTION_NONE)
 	{
-		u8 row3 = Keyboard_Read(3);
-		if(IS_KEY_PRESSED(row3, KEY_D) && !IS_KEY_PRESSED(g_PrevRow3, KEY_D))
+		if(Keyboard_IsKeyPressed(KEY_D))
 			g_Input[CTRL_KEY_2] = ACTION_LEFT;
-		else if(IS_KEY_PRESSED(row3, KEY_G) && !IS_KEY_PRESSED(g_PrevRow3, KEY_G))
+		else if(Keyboard_IsKeyPressed(KEY_G))
 			g_Input[CTRL_KEY_2] = ACTION_RIGHT;
-		g_PrevRow3 = row3;
 	}
 	// Update joysticks
-	NTap_Update();
 	for(u8 i = 0; i < g_JoyNum; ++i)
 	{
 		if(g_Input[i] == ACTION_NONE)
@@ -2753,7 +2868,7 @@ void State_Game_Update()
 		}
 	}
 
-	if(Keyboard_IsKeyPressed(KEY_ESC))
+	if(IsInputButton2())
 		FSM_SetState(&State_Select);
 }
 
@@ -2826,15 +2941,18 @@ void State_Victory_Begin()
 	ply->Length = 1;
 
 	VDP_EnableDisplay(TRUE);
+
+	PlayMusic(MUSIC_VICTORY);
 }
 
 //-----------------------------------------------------------------------------
 //
 void State_Victory_Update()
 {
+	// Wait V-Synch
 	WaitVBlank();
 
-	if(Keyboard_IsKeyPressed(KEY_ESC) || Keyboard_IsKeyPressed(KEY_SPACE))
+	if(IsInputButton1() || IsInputButton2())
 		FSM_SetState(&State_Select);
 
 	u8 col = (g_Frame & 0x08) ? 0 : 2;
@@ -2889,6 +3007,108 @@ void State_Victory_Update()
 	ply->Dir = nextDir;
 }
 
+//.............................................................................
+// TRAINING STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_Training_Begin()
+{
+	VDP_EnableDisplay(FALSE);
+	VDP_DisableSpritesFrom(0);
+
+	// Initialize tiles data
+	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
+	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
+
+	// Draw game field
+	ClearLevel();
+	DrawTile(0,  1, 0xE9);
+	DrawTileX(1,  1, 0xE8, 30);
+	DrawTile(31, 1, 0xEA);
+	DrawTileY(31, 2, 0xEC, 21);
+	DrawTile(31, 23, 0xEE);
+	DrawTileX(1, 23, 0xE8, 30);
+	DrawTile(0, 23, 0xED);
+	DrawTileY(0,  2, 0xEB, 21);
+
+	// Timer board
+	if(g_TimeMax)
+	{
+		DrawTile(14, 23, TILE_CLOCK + 0);
+		DrawTile(15, 23, TILE_CLOCK + 1);
+		DrawTile(16, 23, TILE_CLOCK + 2);
+		DrawTile(17, 23, TILE_CLOCK + 3);
+	}
+
+	// Draw score board
+	DrawTile(1, 0, 0x42 + g_CharaInfo[0].TileBase);
+	UnpackTrainField(g_TrainLevel);
+	DrawLevel();
+	
+	// Initialize font
+	g_PrintData.ScreenWidth = 32;
+	g_PrintData.PatternOffset = 0;
+	Print_SetFontEx(8, 8, 1, 1, ' ', '_', NULL);
+	Print_SetMode(PRINT_MODE_TEXT);
+	Print_SetTabSize(3);
+
+	Print_DrawTextAt(4, 0, "LEVEL:");
+	if(g_TrainLevel < 10)
+		Print_DrawChar('0');
+	Print_DrawInt(g_TrainLevel);
+
+	Player* ply = &g_Players[0];
+	InitPlayer(ply, 0);
+	SetPlayerController(ply, CTRL_KEY_1);
+	SpawnPlayer(ply);
+	ply->PosX = g_PlayerStart.X;
+	ply->PosY = g_PlayerStart.Y;
+
+	Print_DrawTextAt(14, 0, "SCORE:");
+	Print_DrawInt(0);
+	Print_DrawInt(0);
+	Print_DrawInt(0);
+	Print_DrawInt(0);
+	Print_DrawInt(0);
+	// Print_DrawInt(ply->Score);
+
+	VDP_EnableDisplay(TRUE);
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Training_Update()
+{
+	// Wait V-Synch
+	WaitVBlank();
+
+	g_CurrentPlayer++;
+	g_CurrentPlayer %= PLAYER_MAX;
+	if(g_CurrentPlayer)
+		return;
+
+	// Update one of the players
+	Player* ply = &g_Players[0];
+	UpdatePlayer(ply);
+
+	if(Keyboard_IsKeyPressed(KEY_N))
+	{
+		g_TrainLevel++;
+		if(g_TrainLevel >= numberof(g_TrainLevelList))
+			g_TrainLevel = 0;
+		FSM_SetState(&State_Training);
+		return;
+	}
+
+	if(IsInputButton2())
+	{
+		FSM_SetState(&State_Title);
+		PlaySFX(SFX_SELECT);
+	}
+}
+
 //=============================================================================
 // MAIN
 //=============================================================================
@@ -2897,14 +3117,27 @@ void State_Victory_Update()
 // Program entry point
 void main()
 {
-	VDP_EnableDisplay(FALSE);
+	// Initialize screen
 	VDP_SetColor(COLOR_BLACK);
+	VDP_EnableDisplay(FALSE);
+
+	// Initialize empty music
 	PlayMusic(MUSIC_EMPTY);
+
+	// Initialize Joystick and/or Ninja Tap
+	NTap_Check();
+	g_JoyInfo = NTap_GetInfo();
+	g_JoyNum = NTap_GetPortNum();
+	g_PlayerMax = MIN(g_JoyNum + 2, 8);
 
 	// Start the Final State Machine
 	FSM_SetState(&State_Init);
 	while(1)
+	{
+		Keyboard_Update();
+		NTap_Update();
 		FSM_Update();
+	}
 
 	Bios_Exit(0);
 }
