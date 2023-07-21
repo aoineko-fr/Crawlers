@@ -2772,22 +2772,8 @@ void State_Game_Begin()
 	SpawnBonus();
 }
 
-//-----------------------------------------------------------------------------
-//
-void State_Game_Update()
+void UpdateInput()
 {
-	// Wait V-Synch
-	if(g_DoSynch)
-		WaitVBlank();
-	else
-		g_Frame++;
-
-	// Update one of the players
-	Player* ply = &g_Players[g_CurrentPlayer];
-	UpdatePlayer(ply);
-	g_CurrentPlayer++;
-	g_CurrentPlayer %= PLAYER_MAX;
-
 	// Update keyboard entries
 	if(g_Input[CTRL_KEY_1] == ACTION_NONE)
 	{
@@ -2814,6 +2800,25 @@ void State_Game_Update()
 				g_Input[i] = ACTION_RIGHT;
 		}
 	}
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_Game_Update()
+{
+	// Wait V-Synch
+	if(g_DoSynch)
+		WaitVBlank();
+	else
+		g_Frame++;
+
+	// Update one of the players
+	Player* ply = &g_Players[g_CurrentPlayer];
+	UpdatePlayer(ply);
+	g_CurrentPlayer++;
+	g_CurrentPlayer %= PLAYER_MAX;
+
+	UpdateInput();
 
 	if(g_TimeMax && (g_CollapsePhase != 0xFF)) // Field is collapsing...
 	{
@@ -3092,6 +3097,7 @@ void State_Training_Update()
 	// Update one of the players
 	Player* ply = &g_Players[0];
 	UpdatePlayer(ply);
+	UpdateInput();
 
 	if(Keyboard_IsKeyPressed(KEY_N))
 	{
