@@ -10,7 +10,7 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"0.10.0"
+#define GAME_VERSION				"0.11.0"
 
 // Configuration
 #define DEF_MUSIC					TRUE
@@ -65,6 +65,7 @@
 #define AI_WEIGHT_BONUS				1
 
 #define BONUS_GROWTH				5
+#define TRAIN_GROWTH				2
 
 // Controller types define
 enum CTRL_TYPE
@@ -145,8 +146,10 @@ enum GAME_MODE
 	MODE_DEATHMATCH,
 	MODE_SIZEMATTER,
 	MODE_GREEDIEST,
+//-----------------------------
+	MODE_BATTLE_MAX,
 //-- Solo mode
-	MODE_TRAINNNG,
+	MODE_TRAINNNG = MODE_BATTLE_MAX,
 //-----------------------------
 	MODE_MAX,
 };

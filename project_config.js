@@ -106,6 +106,9 @@ Debug = true;
 //-- Move debug symbols do binary folder (true or false)
 DebugSymbols = true;
 
+//-- Allow compiler to generate undocumented Z80 instructions (boolean)
+AllowUndocumented = false;
+
 //-- Assembler code optimizer
 // - None
 // - PeepHole     SDCC otpimizer
@@ -144,7 +147,7 @@ EmulMachine    = false;
 Emul60Hz       = false;
 EmulFullScreen = false;
 EmulMute       = false;
-EmulDebug      = false;
+EmulDebug      = true;
 
 //-- Emulator extensions (true or false):
 EmulSCC      = false;

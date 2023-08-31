@@ -56,7 +56,7 @@ void State_Victory_Update();
 void State_Training_Begin();
 void State_Training_Update();
 
-void MenuOpen_Credit();
+void MenuOpen_Init();
 
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
@@ -200,8 +200,8 @@ const MenuItemMinMax g_MenuTreesMinMax =  { 0, 100, 10 };
 MenuItem g_MenuMain[] =
 {
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
-	{ "BATTLE",              MENU_ITEM_GOTO, NULL, MENU_MULTI },
 	{ "TRAINING",            MENU_ITEM_GOTO, NULL, MENU_SOLO },
+	{ "BATTLE",              MENU_ITEM_GOTO, NULL, MENU_MULTI },
 	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
 	{ "SYSTEM INFO",         MENU_ITEM_GOTO, NULL, MENU_SYSTEM },
 	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
@@ -214,8 +214,8 @@ const MenuItem g_MenuSolo[] =
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "NEW GAME",            MENU_ITEM_ACTION, MenuAction_Start, START_SOLO_NEW },
 	{ "CONTINUE",            MENU_ITEM_ACTION, MenuAction_Start, START_SOLO_CONTINUE },
-	{ "LEVEL",               MENU_ITEM_INT, &g_TrainLevel, NULL },
-	{ "SCORE",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiScore, NULL },
+	{ "LEVEL",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainLevel, NULL },
+	{ "HI-SCORE",            MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiScore, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -282,10 +282,10 @@ const Menu g_Menus[MENU_MAX] =
 {
 	{ NULL, g_MenuMain,   numberof(g_MenuMain),   NULL },
 	{ NULL, g_MenuSolo,   numberof(g_MenuSolo),   NULL },
-	{ NULL, g_MenuMulti,  numberof(g_MenuMulti),  NULL },
+	{ NULL, g_MenuMulti,  numberof(g_MenuMulti),  MenuOpen_Init },
 	{ NULL, g_MenuOption, numberof(g_MenuOption), NULL },
 	{ NULL, g_MenuSystem, numberof(g_MenuSystem), NULL },
-	{ NULL, g_MenuCredit, numberof(g_MenuCredit), MenuOpen_Credit },
+	{ NULL, g_MenuCredit, numberof(g_MenuCredit), MenuOpen_Init },
 };
 
 // 
@@ -469,8 +469,8 @@ u8			g_CollapseY1;
 u8			g_Winner;				// Winner player index
 
 // Solo mode
-u8			g_TrainLevel;			// Current training level
-u16			g_HiScore;
+u8			g_TrainLevel = 0;		// Current training level
+u16			g_HiScore = 0;
 Vector		g_PlayerStart;
 u8			g_BonusNum;
 
@@ -505,7 +505,7 @@ u8			g_MenuInputPrev = 0xFF;
 // Check all connected devices
 bool IsInputUp()
 {
-	if(Keyboard_IsKeyPressed(KEY_UP))
+	if(Keyboard_IsKeyPushed(KEY_UP))
 		return TRUE;
 
 	for(u8 i = 0; i < g_JoyNum; ++i)
@@ -519,7 +519,7 @@ bool IsInputUp()
 // Check all connected devices
 bool IsInputDown()
 {
-	if(Keyboard_IsKeyPressed(KEY_DOWN))
+	if(Keyboard_IsKeyPushed(KEY_DOWN))
 		return TRUE;
 
 	for(u8 i = 0; i < g_JoyNum; ++i)
@@ -533,7 +533,7 @@ bool IsInputDown()
 // Check all connected devices
 bool IsInputLeft()
 {
-	if(Keyboard_IsKeyPressed(KEY_LEFT))
+	if(Keyboard_IsKeyPushed(KEY_LEFT))
 		return TRUE;
 
 	for(u8 i = 0; i < g_JoyNum; ++i)
@@ -547,7 +547,7 @@ bool IsInputLeft()
 // Check all connected devices
 bool IsInputRight()
 {
-	if(Keyboard_IsKeyPressed(KEY_RIGHT))
+	if(Keyboard_IsKeyPushed(KEY_RIGHT))
 		return TRUE;
 
 	for(u8 i = 0; i < g_JoyNum; ++i)
@@ -561,7 +561,7 @@ bool IsInputRight()
 // Check all connected devices
 bool IsInputButton1()
 {
-	if(Keyboard_IsKeyPressed(KEY_SPACE))
+	if(Keyboard_IsKeyPushed(KEY_SPACE))
 		return TRUE;
 
 	for(u8 i = 0; i < g_JoyNum; ++i)
@@ -575,7 +575,7 @@ bool IsInputButton1()
 // Check all connected devices
 bool IsInputButton2()
 {
-	if(Keyboard_IsKeyPressed(KEY_ESC))
+	if(Keyboard_IsKeyPushed(KEY_ESC))
 		return TRUE;
 
 	for(u8 i = 0; i < g_JoyNum; ++i)
@@ -1019,6 +1019,25 @@ bool CheckGreediest(Player* ply)
 		FSM_SetState(&State_Victory);
 		return TRUE;
 	}
+	return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+//
+bool CheckTraining()
+{
+	if(g_BonusNum == 0)
+	{
+		g_TrainLevel++;
+		if(g_TrainLevel == 20)
+		{
+			g_Winner = 0;
+			FSM_SetState(&State_Victory);
+		}
+		else
+			State_Training_Begin();
+		return TRUE;
+	}						
 	return FALSE;
 }
 
@@ -1539,6 +1558,9 @@ void UpdatePlayer(Player* ply)
 			case MODE_GREEDIEST:
 				SpawnPlayer(ply);
 				return;
+			case MODE_TRAINNNG:
+				State_Training_Begin(); // Restart level from sratch
+				return;
 			};
 		}
 		else // No obstacle
@@ -1556,7 +1578,12 @@ void UpdatePlayer(Player* ply)
 				PlaySFX(SFX_BONUS);
 				ply->Expect += g_BonusLen;
 				if(g_GameMode == MODE_TRAINNNG)
+				{
+					DrawTile(x, y, 0xF2);
 					g_BonusNum--;
+					if(CheckTraining())
+						return;
+				}
 				else
 					SpawnBonus();
 				if(g_GameMode == MODE_GREEDIEST)
@@ -1690,7 +1717,7 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
-		if(g_GameMode < MODE_MAX-1)
+		if(g_GameMode < MODE_BATTLE_MAX - 1)
 			SetGameMode(g_GameMode + 1);
 		else
 			SetGameMode(0);
@@ -1701,7 +1728,7 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 		if(g_GameMode > 0)
 			SetGameMode(g_GameMode - 1);
 		else
-			SetGameMode(MODE_MAX - 1);
+			SetGameMode(MODE_BATTLE_MAX - 1);
 		g_Scroll = 0;
 		break;
 
@@ -2006,9 +2033,10 @@ const c8* MenuAction_VDP(u8 op, i8 value)
 
 //-----------------------------------------------------------------------------
 //
-void MenuOpen_Credit()
+void MenuOpen_Init()
 {
 	g_Scroll = 0;
+	g_GameMode = MODE_BATTLEROYAL;
 }
 
 //-----------------------------------------------------------------------------
@@ -2327,11 +2355,11 @@ void State_Menu_Begin()
 	PrintChrY(MENU_POS_LEFT,   MENU_POS_TOP+1,  0xEB, MENU_POS_BOTTOM-MENU_POS_TOP-1);
 
 	// Disable MSX2 only feature
-	if(g_VersionMSX == MSXVER_1)
-	{
-		g_MenuMain[5].Type = MENU_ITEM_EMPTY;
-		g_MenuOption[2].Type = MENU_ITEM_EMPTY;
-	}
+	// if(g_VersionMSX == MSXVER_1)
+	// {
+	// 	g_MenuMain[5].Type = MENU_ITEM_EMPTY;
+	// 	g_MenuOption[2].Type = MENU_ITEM_EMPTY;
+	// }
 
 	// Initialize menu
 	Menu_Initialize(g_Menus);
@@ -2499,7 +2527,7 @@ void State_Select_Update()
 			PlaySFX(SFX_SELECT);
 		}
 
-		if(Keyboard_IsKeyPressed(KEY_RET))
+		if(Keyboard_IsKeyPushed(KEY_RET))
 		{
 			FSM_SetState(&State_Start);
 			PlaySFX(SFX_SELECT);
@@ -2518,7 +2546,7 @@ void State_Select_Update()
 			{
 				if(g_CtrlReg[g_CtrlBind[i].Ctrl] == CTRL_FREE)
 				{
-					if(Keyboard_IsKeyPressed(g_CtrlBind[i].Key))
+					if(Keyboard_IsKeyPushed(g_CtrlBind[i].Key))
 					{
 						SetPlayerController(ply, g_CtrlBind[i].Ctrl);
 						EditPlayer(g_SlotIdx, FALSE);
@@ -2777,16 +2805,16 @@ void UpdateInput()
 	// Update keyboard entries
 	if(g_Input[CTRL_KEY_1] == ACTION_NONE)
 	{
-		if(Keyboard_IsKeyPressed(KEY_LEFT))
+		if(Keyboard_IsKeyPushed(KEY_LEFT))
 			g_Input[CTRL_KEY_1] = ACTION_LEFT;
-		else if(Keyboard_IsKeyPressed(KEY_RIGHT))
+		else if(Keyboard_IsKeyPushed(KEY_RIGHT))
 			g_Input[CTRL_KEY_1] = ACTION_RIGHT;
 	}
 	if(g_Input[CTRL_KEY_2] == ACTION_NONE)
 	{
-		if(Keyboard_IsKeyPressed(KEY_D))
+		if(Keyboard_IsKeyPushed(KEY_D))
 			g_Input[CTRL_KEY_2] = ACTION_LEFT;
-		else if(Keyboard_IsKeyPressed(KEY_G))
+		else if(Keyboard_IsKeyPushed(KEY_G))
 			g_Input[CTRL_KEY_2] = ACTION_RIGHT;
 	}
 	// Update joysticks
@@ -3021,6 +3049,7 @@ void State_Victory_Update()
 void State_Training_Begin()
 {
 	VDP_EnableDisplay(FALSE);
+	VDP_HideAllSprites();
 	VDP_DisableSpritesFrom(0);
 
 	// Initialize tiles data
@@ -3079,6 +3108,9 @@ void State_Training_Begin()
 	Print_DrawInt(0);
 	// Print_DrawInt(ply->Score);
 
+	g_GameMode = MODE_TRAINNNG;
+	g_BonusLen  = TRAIN_GROWTH;
+
 	VDP_EnableDisplay(TRUE);
 }
 
@@ -3089,6 +3121,8 @@ void State_Training_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
+	UpdateInput();
+
 	g_CurrentPlayer++;
 	g_CurrentPlayer %= PLAYER_MAX;
 	if(g_CurrentPlayer)
@@ -3097,9 +3131,8 @@ void State_Training_Update()
 	// Update one of the players
 	Player* ply = &g_Players[0];
 	UpdatePlayer(ply);
-	UpdateInput();
 
-	if(Keyboard_IsKeyPressed(KEY_N))
+	if(Keyboard_IsKeyPushed(KEY_N))
 	{
 		g_TrainLevel++;
 		if(g_TrainLevel >= numberof(g_TrainLevelList))

@@ -1,0 +1,19 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "emulicious-debugger",
+			"request": "attach",
+			"name": "Attach to Emulicious",
+			"port": 58870
+		},
+		{
+			"type": "emulicious-debugger",
+			"request": "launch",
+			"name": "Launch in Emulicious",
+			"program": "${workspaceFolder}/emul/rom/crawlers.rom",
+			"port": 58870,
+			"stopOnEntry": true
+		}
+	]
+}
