@@ -215,7 +215,7 @@ const MenuItem g_MenuSolo[] =
 	{ "NEW GAME",            MENU_ITEM_ACTION, MenuAction_Start, START_SOLO_NEW },
 	{ "CONTINUE",            MENU_ITEM_ACTION, MenuAction_Start, START_SOLO_CONTINUE },
 	{ "LEVEL",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainLevel, NULL },
-	{ "HI-SCORE",            MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiScore, NULL },
+	// { "HI-SCORE",            MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiScore, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -469,10 +469,12 @@ u8			g_CollapseY1;
 u8			g_Winner;				// Winner player index
 
 // Solo mode
-u8			g_TrainLevel = 0;		// Current training level
-u16			g_HiScore = 0;
 Vector		g_PlayerStart;
 u8			g_BonusNum;
+u8			g_TrainLevel = 0;		// Current training level
+u16			g_TrainScore[TRAIN_LEVEL_MAX];
+u8			g_HiLevel = 0;
+u16			g_HiScore[TRAIN_LEVEL_MAX];
 
 // Timers
 u8			g_Counter;
@@ -1024,18 +1026,40 @@ bool CheckGreediest(Player* ply)
 
 //-----------------------------------------------------------------------------
 //
-bool CheckTraining()
+u16 GetTotalTrainingScore(const u16* tab)
 {
-	if(g_BonusNum == 0)
+	u16 score = 0;
+	loop(i, TRAIN_LEVEL_MAX)
+		score += tab[i];
+	return score;
+}
+
+//-----------------------------------------------------------------------------
+//
+bool CheckTraining(Player* ply)
+{
+	if(g_BonusNum == 0) // Got the last bonus!
 	{
+		// Compute level score
+		u16 score = 0;
+		if(ply->Score < 1000)
+			score = 1000 - ply->Score;
+		if(score > g_HiScore[g_TrainLevel])
+			g_HiScore[g_TrainLevel] = score;
+		g_TrainScore[g_TrainLevel] = score;
+
+		// Move to next level
 		g_TrainLevel++;
+		if(g_TrainLevel > g_HiLevel)
+			g_HiLevel = g_TrainLevel;
 		if(g_TrainLevel == 20)
 		{
-			g_Winner = 0;
+			g_Winner = ply->ID;
 			FSM_SetState(&State_Victory);
 		}
 		else
 			State_Training_Begin();
+
 		return TRUE;
 	}						
 	return FALSE;
@@ -1581,7 +1605,7 @@ void UpdatePlayer(Player* ply)
 				{
 					DrawTile(x, y, 0xF2);
 					g_BonusNum--;
-					if(CheckTraining())
+					if(CheckTraining(ply))
 						return;
 				}
 				else
@@ -1700,6 +1724,7 @@ const c8* MenuAction_Start(u8 op, i8 value)
 				break;
 			case START_SOLO_NEW:
 				g_TrainLevel = 0;
+				// g_TotalScore = 0;
 			case START_SOLO_CONTINUE:
 				FSM_SetState(&State_Training);
 				break;
@@ -3089,9 +3114,10 @@ void State_Training_Begin()
 	Print_SetTabSize(3);
 
 	Print_DrawTextAt(4, 0, "LEVEL:");
-	if(g_TrainLevel < 10)
+	u8 level = g_TrainLevel + 1;
+	if(level < 10)
 		Print_DrawChar('0');
-	Print_DrawInt(g_TrainLevel);
+	Print_DrawInt(level);
 
 	Player* ply = &g_Players[0];
 	InitPlayer(ply, 0);
@@ -3101,12 +3127,7 @@ void State_Training_Begin()
 	ply->PosY = g_PlayerStart.Y;
 
 	Print_DrawTextAt(14, 0, "SCORE:");
-	Print_DrawInt(0);
-	Print_DrawInt(0);
-	Print_DrawInt(0);
-	Print_DrawInt(0);
-	Print_DrawInt(0);
-	// Print_DrawInt(ply->Score);
+	Print_DrawInt(GetTotalTrainingScore(g_TrainScore));
 
 	g_GameMode = MODE_TRAINNNG;
 	g_BonusLen  = TRAIN_GROWTH;
@@ -3131,6 +3152,7 @@ void State_Training_Update()
 	// Update one of the players
 	Player* ply = &g_Players[0];
 	UpdatePlayer(ply);
+	ply->Score++;
 
 	if(Keyboard_IsKeyPushed(KEY_N))
 	{

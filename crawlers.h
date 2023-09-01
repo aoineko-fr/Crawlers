@@ -67,6 +67,8 @@
 #define BONUS_GROWTH				5
 #define TRAIN_GROWTH				2
 
+#define TRAIN_LEVEL_MAX				20
+
 // Controller types define
 enum CTRL_TYPE
 {
