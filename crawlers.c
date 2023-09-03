@@ -57,6 +57,7 @@ void State_Training_Begin();
 void State_Training_Update();
 
 void MenuOpen_Init();
+void MenuOpen_Solo();
 
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
@@ -215,7 +216,7 @@ const MenuItem g_MenuSolo[] =
 	{ "NEW GAME",            MENU_ITEM_ACTION, MenuAction_Start, START_SOLO_NEW },
 	{ "CONTINUE",            MENU_ITEM_ACTION, MenuAction_Start, START_SOLO_CONTINUE },
 	{ "LEVEL",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainLevel, NULL },
-	// { "HI-SCORE",            MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiScore, NULL },
+	{ "HI-SCORE",            MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiTotal, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -281,7 +282,7 @@ MenuItem g_MenuCredit[] =
 const Menu g_Menus[MENU_MAX] =
 {
 	{ NULL, g_MenuMain,   numberof(g_MenuMain),   NULL },
-	{ NULL, g_MenuSolo,   numberof(g_MenuSolo),   NULL },
+	{ NULL, g_MenuSolo,   numberof(g_MenuSolo),   MenuOpen_Solo },
 	{ NULL, g_MenuMulti,  numberof(g_MenuMulti),  MenuOpen_Init },
 	{ NULL, g_MenuOption, numberof(g_MenuOption), NULL },
 	{ NULL, g_MenuSystem, numberof(g_MenuSystem), NULL },
@@ -473,8 +474,10 @@ Vector		g_PlayerStart;
 u8			g_BonusNum;
 u8			g_TrainLevel = 0;		// Current training level
 u16			g_TrainScore[TRAIN_LEVEL_MAX];
+u16			g_TrainTotal;
 u8			g_HiLevel = 0;
 u16			g_HiScore[TRAIN_LEVEL_MAX];
+u16			g_HiTotal;
 
 // Timers
 u8			g_Counter;
@@ -1026,10 +1029,10 @@ bool CheckGreediest(Player* ply)
 
 //-----------------------------------------------------------------------------
 //
-u16 GetTotalTrainingScore(const u16* tab)
+u16 GetTotalTrainingScore(const u16* tab, u8 num)
 {
 	u16 score = 0;
-	loop(i, TRAIN_LEVEL_MAX)
+	loop(i, num)
 		score += tab[i];
 	return score;
 }
@@ -1047,6 +1050,10 @@ bool CheckTraining(Player* ply)
 		if(score > g_HiScore[g_TrainLevel])
 			g_HiScore[g_TrainLevel] = score;
 		g_TrainScore[g_TrainLevel] = score;
+
+		// Compute total
+		g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel + 1);
+		g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel + 1);
 
 		// Move to next level
 		g_TrainLevel++;
@@ -2062,6 +2069,15 @@ void MenuOpen_Init()
 {
 	g_Scroll = 0;
 	g_GameMode = MODE_BATTLEROYAL;
+}
+
+//-----------------------------------------------------------------------------
+//
+void MenuOpen_Solo()
+{
+	// Compute total
+	g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel + 1);
+	g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel + 1);
 }
 
 //-----------------------------------------------------------------------------
@@ -3127,7 +3143,7 @@ void State_Training_Begin()
 	ply->PosY = g_PlayerStart.Y;
 
 	Print_DrawTextAt(14, 0, "SCORE:");
-	Print_DrawInt(GetTotalTrainingScore(g_TrainScore));
+	Print_DrawInt(g_TrainTotal);
 
 	g_GameMode = MODE_TRAINNNG;
 	g_BonusLen  = TRAIN_GROWTH;
