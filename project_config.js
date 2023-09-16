@@ -98,7 +98,7 @@ AppID = "CR";
 //*******************************************************************************
 
 //-- Use static MSXgl library (true or false)
-BuildLibrary = true;
+BuildLibrary = false;
 
 //-- Debug flag (true or false)
 Debug = true;
@@ -179,5 +179,5 @@ DoRun     = true;
 // START BUILD
 //*****************************************************************************
 
-LogFile = true;
+LogFile = false;
 LogFileName = "log.txt";

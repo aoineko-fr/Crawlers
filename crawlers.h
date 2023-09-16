@@ -10,7 +10,7 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"0.11.0"
+#define GAME_VERSION				"0.12.0"
 
 // Configuration
 #define DEF_MUSIC					TRUE
@@ -134,8 +134,10 @@ enum MENU_PAGE
 	MENU_SOLO,
 	MENU_MULTI,
 	MENU_OPTION,
-	MENU_SYSTEM,
 	MENU_CREDIT,
+	MENU_GRAPH,
+	MENU_CONTROL,
+	MENU_AUDIO,
 //-----------------------------
 	MENU_MAX,
 };
@@ -160,8 +162,8 @@ enum GAME_MODE
 enum MENU_START
 {
 	START_BATTLE = 0,
-	START_SOLO_NEW,
-	START_SOLO_CONTINUE,
+	START_TRAIN_NEW,
+	START_TRAIN_CONTINUE,
 //-----------------------------
 	START_MAX,
 };
@@ -174,6 +176,16 @@ enum FREQ_MODE
 	FREQ_50HZ,							// Force 50 Hz
 //-----------------------------
 	FREQ_MAX,
+};
+
+// Trun mode enumaration
+enum TURN_MODE
+{
+	TURN_RELATIVE,						// All players use relative rotation control
+	TURN_ABSOLUTE,						// All players use absolute rotation control
+	TURN_CUSTOM,						// Each player can choose their rotation control
+//-----------------------------
+	TURN_MAX,
 };
 
 // Palette enumaration
@@ -239,6 +251,7 @@ typedef struct PlayerTag
 	u8  ID;
 	InputCB Action;
 	u8  Controller;
+	u8  Turn;
 	u8  PosX;
 	u8  PosY;
 	u8  Dir;
@@ -260,6 +273,9 @@ typedef struct
 	u8        FrameX;
 	u8        FrameY;
 	const u8* Face;
+	Vector    EyeOffset;
+	u8        EyePattern;
+	u8        EyeColor;
 } Character;
 
 // Device
@@ -326,6 +342,11 @@ typedef struct
 #define SELECT_START			g_DataSelectL29_Names	// 7x2
 #define SELECT_EXIT				g_DataSelectL30_Names	// 6x2
 
+#define SELECT_DEV_REL_S		g_DataSelectL31_Names	// 7x2
+#define SELECT_DEV_REL			g_DataSelectL32_Names	// 7x2
+#define SELECT_DEV_ABS_S		g_DataSelectL33_Names	// 7x2
+#define SELECT_DEV_ABS			g_DataSelectL34_Names	// 7x3
+
 #define SELECT_FACE_1			g_DataFace1L0_Names		// 5x5
 #define SELECT_FACE_2			g_DataFace1L1_Names		// 5x5
 #define SELECT_FACE_3			g_DataFace1L2_Names		// 5x5
@@ -390,6 +411,10 @@ extern const unsigned char g_DataSelectL27_Names[];
 extern const unsigned char g_DataSelectL28_Names[];
 extern const unsigned char g_DataSelectL29_Names[];
 extern const unsigned char g_DataSelectL30_Names[];
+extern const unsigned char g_DataSelectL31_Names[];
+extern const unsigned char g_DataSelectL32_Names[];
+extern const unsigned char g_DataSelectL33_Names[];
+extern const unsigned char g_DataSelectL34_Names[];
 extern const unsigned char g_DataSelect_Patterns[];
 extern const unsigned char g_DataSelect_Colors[];
 extern const unsigned char g_DataSFX[];

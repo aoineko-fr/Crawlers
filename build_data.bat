@@ -45,12 +45,12 @@ echo  Convert SC2 Images...
 
 REM %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\title.h -mode gm2 --gm2name 1 -name g_DataTitle -pos 0 0 -size 128 128 -l gm2 0 152 192 40
 
-%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face1.h -mode gm2 -compress pletter -name g_DataFace1 -pos 0 216 -size 40 40 -offset 128 ^
+%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face1.h -mode gm2 -compress pletter -name g_DataFace1 -pos 0 216 -size 40 40 -offset 160 ^
 	-l gm2 40  216 40 40 ^
 	-l gm2 80  216 40 40 ^
 	-l gm2 120 216 40 40
 
-%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face2.h -mode gm2 -compress pletter -name g_DataFace2 -pos 0 256 -size 40 40 -offset 128 ^
+%MSXtk%\MSXimg.exe datasrc\menu.png -out content\face2.h -mode gm2 -compress pletter -name g_DataFace2 -pos 0 256 -size 40 40 -offset 160 ^
 	-l gm2 40  256 40 40 ^
 	-l gm2 80  256 40 40 ^
 	-l gm2 120 256 40 40
@@ -85,7 +85,11 @@ REM %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\title.h -mode gm2 --gm2
 	-l gm2 56  168 56 24 ^
 	-l gm2 112 144 56 48 ^
 	-l gm2 168 144 56 16 ^
-	-l gm2 168 160 48 16
+	-l gm2 168 160 48 16 ^
+	-l gm2 0   200 56 16 ^
+	-l gm2 56  200 56 16 ^
+	-l gm2 112 200 56 16 ^
+	-l gm2 168 200 56 16
 
 %MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_tile.h -mode gm2 -compress pletter -name g_DataLogoTile -pos 0 0 -size 48 16 ^
 	-l gm2 0 16 32 32
