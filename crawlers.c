@@ -91,12 +91,21 @@ bool IsInputRight();
 bool IsInputButton1();
 bool IsInputButton2();
 
+#if (TARGET_TYPE == TYPE_DOS)
+u8 g_VersionROM = 0;
+u8 g_VersionMSX = 0;
+#else
 extern u8 g_VersionROM;
 extern u8 g_VersionMSX;
+#endif
 
 //=============================================================================
 // READ-ONLY DATA
 //=============================================================================
+
+#if (TARGET_TYPE == TYPE_DOS)
+	#include "crawlers_p0.c"
+#endif
 
 //
 const Shapes g_Body[] =
@@ -556,7 +565,7 @@ u8			g_CtrlTurn = TURN_RELATIVE;
 //.............................................................................
 
 //-----------------------------------------------------------------------------
-// Check all connected devices
+// Check if up drection is pressed
 bool IsInputUp()
 {
 	if (Keyboard_IsKeyPushed(KEY_UP))
@@ -570,7 +579,7 @@ bool IsInputUp()
 }
 
 //-----------------------------------------------------------------------------
-// Check all connected devices
+// Check if down drection is pressed
 bool IsInputDown()
 {
 	if (Keyboard_IsKeyPushed(KEY_DOWN))
@@ -584,7 +593,7 @@ bool IsInputDown()
 }
 
 //-----------------------------------------------------------------------------
-// Check all connected devices
+// Check if left drection is pressed
 bool IsInputLeft()
 {
 	if (Keyboard_IsKeyPushed(KEY_LEFT))
@@ -598,7 +607,7 @@ bool IsInputLeft()
 }
 
 //-----------------------------------------------------------------------------
-// Check all connected devices
+// Check if right drection is pressed
 bool IsInputRight()
 {
 	if (Keyboard_IsKeyPushed(KEY_RIGHT))
@@ -612,7 +621,7 @@ bool IsInputRight()
 }
 
 //-----------------------------------------------------------------------------
-// Check all connected devices
+// Check if trigger A is pressed
 bool IsInputButton1()
 {
 	if (Keyboard_IsKeyPushed(KEY_SPACE))
@@ -626,7 +635,7 @@ bool IsInputButton1()
 }
 
 //-----------------------------------------------------------------------------
-// Check all connected devices
+// Check if trigger B is pressed
 bool IsInputButton2()
 {
 	if (Keyboard_IsKeyPushed(KEY_ESC))
@@ -644,7 +653,7 @@ bool IsInputButton2()
 //.............................................................................
 
 //-----------------------------------------------------------------------------
-// 
+// Play the given music
 void PlayMusic(u8 id)
 {
 	if (!g_OptMusic)
@@ -662,7 +671,7 @@ void PlayMusic(u8 id)
 }
 
 //-----------------------------------------------------------------------------
-// 
+// Play the given sound effect
 void PlaySFX(u8 id)
 {
 	if (!g_OptSFX)
@@ -722,7 +731,7 @@ void PrintChrY(u8 x, u8 y, c8 chr, u8 len)
 }
 
 //-----------------------------------------------------------------------------
-// 
+// Clear the frame buffer in RAM
 inline void ClearLevel()
 {
 	u8* ptr = g_ScreenBuffer;
@@ -734,28 +743,28 @@ inline void ClearLevel()
 }
 
 //-----------------------------------------------------------------------------
-// 
+// Draw the frame buffer in RAM to the VRAM at once
 inline void DrawLevel()
 {
-	VDP_WriteVRAM(g_ScreenBuffer, g_ScreenLayoutLow, g_ScreenLayoutHigh, 32*24);
+	VDP_WriteVRAM(g_ScreenBuffer, g_ScreenLayoutLow, g_ScreenLayoutHigh, 32 * 24);
 }
 
 //-----------------------------------------------------------------------------
-// 
+// Get tile value from the RAM frame buffer
 inline u8 GetTile(u8 x, u8 y)
 {
 	return g_ScreenBuffer[x + (y * 32)];
 }
 
 //-----------------------------------------------------------------------------
-// 
+// Draw a tile in he frame buffer in RAM
 inline void DrawTile(u8 x, u8 y, c8 chr)
 {
 	g_ScreenBuffer[x + (y * 32)] = chr;
 }
 
 //-----------------------------------------------------------------------------
-// 
+// Draw a horizontal line of tiles
 void DrawTileX(u8 x, u8 y, c8 chr, u8 len)
 {
 	for(u8 i = 0; i < len; ++i)
@@ -763,7 +772,7 @@ void DrawTileX(u8 x, u8 y, c8 chr, u8 len)
 }
 
 //-----------------------------------------------------------------------------
-// 
+// Draw a verical line of tiles
 void DrawTileY(u8 x, u8 y, c8 chr, u8 len)
 {
 	for(u8 i = 0; i < len; ++i)
@@ -771,7 +780,7 @@ void DrawTileY(u8 x, u8 y, c8 chr, u8 len)
 }
 
 //-----------------------------------------------------------------------------
-// 
+// Uncompress the give training field data
 void UnpackTrainField(u8 id)
 {
 	g_BonusNum = 0;
@@ -817,14 +826,14 @@ void UnpackTrainField(u8 id)
 }
 
 //-----------------------------------------------------------------------------
-//
+// Update the player score on screen
 inline void SetScore(Player* ply)
 {
 	Print_DrawIntAt(ply->ID * 4 + 1, 0, ply->Score);
 }
 
 //-----------------------------------------------------------------------------
-//
+// Draw the game start countdown
 void DrawCounter(u8 x, u8 y, u8 step)
 {
 	u8 x0 = x;
@@ -848,7 +857,7 @@ void DrawCounter(u8 x, u8 y, u8 step)
 }
 
 //-----------------------------------------------------------------------------
-//
+// Set the gameplay timer value (in minutes)
 void SetTimer(u8 min)
 {
 	g_TimeFrame = 0;
@@ -871,7 +880,7 @@ void SetTimer(u8 min)
 }
 
 //-----------------------------------------------------------------------------
-//
+// Dcrease the gameplayer timer (decrease ime)
 bool UpdateTimer()
 {
 	// Blink the timer when less than 30 seconds remains
@@ -923,7 +932,7 @@ bool UpdateTimer()
 }
 
 //-----------------------------------------------------------------------------
-//
+// Move selection cursor to the given button map index 
 void MoveCursor(i8 idx)
 {
 	idx %= numberof(g_BattleSelectSlot);
@@ -936,7 +945,7 @@ void MoveCursor(i8 idx)
 }
 
 //-----------------------------------------------------------------------------
-//
+// Display the player edit interface
 void EditPlayer(u8 id, bool bEdit)
 {
 	// Display controller selection
@@ -968,7 +977,7 @@ void EditPlayer(u8 id, bool bEdit)
 }
 
 //-----------------------------------------------------------------------------
-//
+// Get remaining alive human players count
 u8 GetHumanCount()
 {
 	u8 count = 0;
@@ -2622,6 +2631,12 @@ void State_BattleSelect_Update()
 		else if (IsInputRight())
 		{
 			SetNextPlayerController(ply);
+			EditPlayer(g_SlotIdx, TRUE);
+			PlaySFX(SFX_MOVE);
+		}
+		else if (IsInputUp() || IsInputDown())
+		{
+			ply->Turn = 1 - ply->Turn;
 			EditPlayer(g_SlotIdx, TRUE);
 			PlaySFX(SFX_MOVE);
 		}
