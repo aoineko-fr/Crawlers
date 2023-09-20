@@ -212,7 +212,6 @@ const MenuItemMinMax g_MenuTreesMinMax =  { 0, 100, 10 };
 // Main menu
 MenuItem g_MenuMain[] =
 {
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BATTLE",              MENU_ITEM_GOTO, NULL, MENU_MULTI },
 	{ "TRAINING",            MENU_ITEM_GOTO, NULL, MENU_SOLO },
 	{ "OPTIONS",             MENU_ITEM_GOTO, NULL, MENU_OPTION },
@@ -222,7 +221,6 @@ MenuItem g_MenuMain[] =
 // Training menu
 const MenuItem g_MenuSolo[] =
 {
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "NEW GAME",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_NEW },
 	{ "CONTINUE",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_CONTINUE },
 	{ "LEVEL",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainLevel, NULL },
@@ -238,7 +236,6 @@ MenuItem g_MenuMulti[] =
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
 	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
 	{ "TIME",                MENU_ITEM_INT, &g_TimeMax, (i16)&g_MenuRoundsMinMax },
-	{ "BONUS",               MENU_ITEM_INT, &g_BonusLen, (i16)&g_MenuRoundsMinMax },
 	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
@@ -249,7 +246,6 @@ MenuItem g_MenuMulti[] =
 // Options menu
 MenuItem g_MenuOption[] =
 {
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "GRAPH",               MENU_ITEM_GOTO, NULL, MENU_GRAPH },
 	{ "CONTROL",             MENU_ITEM_GOTO, NULL, MENU_CONTROL },
 	{ "AUDIO",               MENU_ITEM_GOTO, NULL, MENU_AUDIO },
@@ -264,7 +260,6 @@ MenuItem g_MenuOption[] =
 // Graphic options menu
 MenuItem g_MenuGraph[] =
 {
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "SYSTEM",              MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_MSX, 0 },
 	{ "VIDEO",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_VDP, 0 },
 	{ "FREQ",                MENU_ITEM_ACTION, MenuAction_Freq, 0 },
@@ -278,7 +273,6 @@ MenuItem g_MenuGraph[] =
 // Control options menu
 MenuItem g_MenuControl[] =
 {
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
 	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
 	{ "MAX JOY",             MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_JoyNum, NULL },
@@ -292,7 +286,6 @@ MenuItem g_MenuControl[] =
 // Audio options menu
 MenuItem g_MenuAudio[] =
 {
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "MUSIC",               MENU_ITEM_ACTION, MenuAction_Music, 0 },
 	{ "SFX",                 MENU_ITEM_ACTION, MenuAction_SFX, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -306,7 +299,6 @@ MenuItem g_MenuAudio[] =
 // Credit page
 MenuItem g_MenuCredit[] =
 {
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "CODE   AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
 	{ "MUSIC  TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
 	{ "SFX    AOINEKO,TOTTA",MENU_ITEM_TEXT, NULL, 0 },
@@ -1931,6 +1923,13 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 	return NULL;
 }
 
+//-----------------------------------------------------------------------------
+//
+void ApplyTurnSetup()
+{
+	for(u8 i = 0; i < PLAYER_MAX; ++i)
+		g_Players[i].Turn = (g_CtrlTurn == TURN_ABSOLUTE) ? TURN_ABSOLUTE : TURN_RELATIVE;
+}
 
 //-----------------------------------------------------------------------------
 //
@@ -1942,9 +1941,11 @@ const c8* MenuAction_Turn(u8 op, i8 value)
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
 		g_CtrlTurn = (g_CtrlTurn + 1) % TURN_MAX;
+		ApplyTurnSetup();
 		break;
 	case MENU_ACTION_DEC:
 		g_CtrlTurn = (g_CtrlTurn + (TURN_MAX - 1)) % TURN_MAX;
+		ApplyTurnSetup();
 		break;
 	}
 
@@ -2511,6 +2512,7 @@ void State_Menu_Begin()
 	PrintChr(MENU_POS_LEFT,    MENU_POS_TOP,    0xE9);
 	PrintChrX(MENU_POS_LEFT+1, MENU_POS_TOP,    0xE8, MENU_POS_RIGHT-MENU_POS_LEFT-1);
 	PrintChr(MENU_POS_RIGHT,   MENU_POS_TOP,    0xEA);
+	PrintChrX(MENU_POS_LEFT+1, MENU_POS_TOP+1,  0x00, MENU_POS_RIGHT-MENU_POS_LEFT-1);
 	PrintChrY(MENU_POS_RIGHT,  MENU_POS_TOP+1,  0xEC, MENU_POS_BOTTOM-MENU_POS_TOP-1);
 	PrintChr(MENU_POS_RIGHT,   MENU_POS_BOTTOM, 0xEE);
 	PrintChrX(MENU_POS_LEFT+1, MENU_POS_BOTTOM, 0xE8, MENU_POS_RIGHT-MENU_POS_LEFT-1);

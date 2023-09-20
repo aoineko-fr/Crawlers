@@ -242,9 +242,9 @@
 #define MENU_SCREEN_WIDTH			32		// Screen width
 #define MENU_CLEAR					0		// Clear character
 #define MENU_POS_X					4		// Frame position X
-#define MENU_POS_Y					11		// Frame position Y
+#define MENU_POS_Y					12		// Frame position Y
 #define MENU_WIDTH					24		// Frame width
-#define MENU_HEIGHT					10		// Frame height
+#define MENU_HEIGHT					9		// Frame height
 #define MENU_CHAR_CURSOR			'@'		// Cursor charactter
 #define MENU_CHAR_TRUE				'*'		// True charactter
 #define MENU_CHAR_FALSE				'/'		// False charactter
