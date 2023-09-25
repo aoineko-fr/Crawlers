@@ -58,6 +58,7 @@ Machine = "12";
 // - ROM_KONAMI_SCC	.rom	128KB ROM using Konami SCC mapper (8KB segments)
 // - DOS1			.com	MSX-DOS 1 program (0100h~) No direct acces to Main-ROM
 // - DOS2			.com	MSX-DOS 2 program (0100h~) No direct acces to Main-ROM
+// Target = "DOS0";
 Target = "ROM_48K_ISR";
 
 //-- ROM mapper size (from 64 to 4096). Must be a multiple of 8 or 16 depending on the mapper type
@@ -98,7 +99,7 @@ AppID = "CR";
 //*******************************************************************************
 
 //-- Use static MSXgl library (true or false)
-BuildLibrary = true;
+BuildLibrary = false;
 
 //-- Debug flag (true or false)
 Debug = true;

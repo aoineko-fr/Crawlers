@@ -14,9 +14,14 @@ set MSXtk=%Tools%\MSXtk\bin
 if not exist "content" ( md content )
 
 echo -----------------------------------------------------------------------------
-echo  Convert Music...
+echo  Convert SFX...
 
-%MSXtk%\MSXbin.exe datasrc\sfx.akx -t g_DataSFX -ad -o content\sfx.h
+%Tools%\compress\Pletter\pletter.exe datasrc\sfx.akx datasrc\sfx.pl5
+%MSXtk%\MSXbin.exe datasrc\sfx.pl5 -t g_DataSFX -ad -o content\sfx.h
+
+REM %MSXtk%\MSXbin.exe datasrc\sfx.akx -t g_DataSFX -ad -o content\sfx.h
+
+echo  Convert Music...
 
 %Tools%\compress\Pletter\pletter.exe datasrc\music_intro.akg datasrc\music_intro.pl5
 %MSXtk%\MSXbin.exe datasrc\music_intro.pl5 -t g_MusicIntro -ad -o content\music_intro.h
@@ -89,7 +94,8 @@ REM %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\title.h -mode gm2 --gm2
 	-l gm2 0   200 56 16 ^
 	-l gm2 56  200 56 16 ^
 	-l gm2 112 200 56 16 ^
-	-l gm2 168 200 56 16
+	-l gm2 168 200 56 16 ^
+	-l gm2 168 176 56 24
 
 %MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_tile.h -mode gm2 -compress pletter -name g_DataLogoTile -pos 0 0 -size 48 16 ^
 	-l gm2 0 16 32 32

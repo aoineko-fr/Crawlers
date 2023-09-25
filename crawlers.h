@@ -33,6 +33,8 @@
 #define TILE_TREE2					0xE2
 #define TILE_HOLE					0xE3
 #define TILE_INCOMING				0xE4
+#define TILE_FENCE					0xE8
+#define TILE_WATER					0xEF
 // No-collider tiles
 #define TILE_EMPTY					0xF0
 #define TILE_PREHOLE				0xF2
@@ -347,6 +349,8 @@ typedef struct
 #define SELECT_DEV_ABS_S		g_DataSelectL33_Names	// 7x2
 #define SELECT_DEV_ABS			g_DataSelectL34_Names	// 7x3
 
+#define SELECT_CHARA			g_DataSelectL35_Names	// 7x3
+
 #define SELECT_FACE_1			g_DataFace1L0_Names		// 5x5
 #define SELECT_FACE_2			g_DataFace1L1_Names		// 5x5
 #define SELECT_FACE_3			g_DataFace1L2_Names		// 5x5
@@ -415,6 +419,7 @@ extern const unsigned char g_DataSelectL31_Names[];
 extern const unsigned char g_DataSelectL32_Names[];
 extern const unsigned char g_DataSelectL33_Names[];
 extern const unsigned char g_DataSelectL34_Names[];
+extern const unsigned char g_DataSelectL35_Names[];
 extern const unsigned char g_DataSelect_Patterns[];
 extern const unsigned char g_DataSelect_Colors[];
 extern const unsigned char g_DataSFX[];

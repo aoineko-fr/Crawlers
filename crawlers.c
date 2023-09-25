@@ -76,6 +76,7 @@ const c8* MenuAction_Port(u8 op, i8 value);
 const c8* MenuAction_MSX(u8 op, i8 value);
 const c8* MenuAction_VDP(u8 op, i8 value);
 // const c8* MenuAction_Save(u8 op, i8 value);
+const c8* MenuAction_Turn(u8 op, i8 value);
 
 void InitPlayer(Player* ply, u8 id);
 void ResetPlayer(Player* ply);
@@ -210,7 +211,7 @@ const MenuItemMinMax g_MenuRoundsMinMax = { 1, 20, 1 };
 const MenuItemMinMax g_MenuTreesMinMax =  { 0, 100, 10 };
 
 // Main menu
-MenuItem g_MenuMain[] =
+const MenuItem g_MenuMain[] =
 {
 	{ "BATTLE",              MENU_ITEM_GOTO, NULL, MENU_MULTI },
 	{ "TRAINING",            MENU_ITEM_GOTO, NULL, MENU_SOLO },
@@ -224,13 +225,14 @@ const MenuItem g_MenuSolo[] =
 	{ "NEW GAME",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_NEW },
 	{ "CONTINUE",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_CONTINUE },
 	{ "LEVEL",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainLevel, NULL },
+	{ "SCORE",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainTotal, NULL },
 	{ "HI-SCORE",            MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiTotal, NULL },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
 
 // Multiplayer battle menu
-MenuItem g_MenuMulti[] =
+const MenuItem g_MenuMulti[] =
 {
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, START_BATTLE },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
@@ -244,7 +246,7 @@ MenuItem g_MenuMulti[] =
 };
 
 // Options menu
-MenuItem g_MenuOption[] =
+const MenuItem g_MenuOption[] =
 {
 	{ "GRAPH",               MENU_ITEM_GOTO, NULL, MENU_GRAPH },
 	{ "CONTROL",             MENU_ITEM_GOTO, NULL, MENU_CONTROL },
@@ -258,7 +260,7 @@ MenuItem g_MenuOption[] =
 };
 
 // Graphic options menu
-MenuItem g_MenuGraph[] =
+const MenuItem g_MenuGraph[] =
 {
 	{ "SYSTEM",              MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_MSX, 0 },
 	{ "VIDEO",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_VDP, 0 },
@@ -271,7 +273,7 @@ MenuItem g_MenuGraph[] =
 };
 
 // Control options menu
-MenuItem g_MenuControl[] =
+const MenuItem g_MenuControl[] =
 {
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
 	{ "PORT2",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 1 },
@@ -284,7 +286,7 @@ MenuItem g_MenuControl[] =
 };
 
 // Audio options menu
-MenuItem g_MenuAudio[] =
+const MenuItem g_MenuAudio[] =
 {
 	{ "MUSIC",               MENU_ITEM_ACTION, MenuAction_Music, 0 },
 	{ "SFX",                 MENU_ITEM_ACTION, MenuAction_SFX, 0 },
@@ -297,7 +299,7 @@ MenuItem g_MenuAudio[] =
 };
 
 // Credit page
-MenuItem g_MenuCredit[] =
+const MenuItem g_MenuCredit[] =
 {
 	{ "CODE   AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
 	{ "MUSIC  TOTTA",        MENU_ITEM_TEXT, NULL, 0 },
@@ -409,9 +411,9 @@ const CtrlBind g_CtrlBind[] =
 };
 
 const u8 g_BonusData[8+1] = { 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFF, 0 };
-const u8 g_WallData[4+1] = { 0xE1, 0xE2, 0xE8, 0xEF, 0 };
+const u8 g_WallData[4+1] = { TILE_TREE, TILE_TREE2, TILE_FENCE, TILE_WATER, 0 };
 
-const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLAPSE AFTER TIMER END.";
+const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLLAPSE AFTER TIMER END.";
 const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH.";
 const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN TIME, THE ONE WHO HAS REACHED THE LARGEST SIZE WINS THE MATCH.";
 const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GETS THE MOST BONUSES AT THE END OF THE SET TIME WINS THE GAME.";
@@ -523,10 +525,10 @@ Vector		g_PlayerStart;
 u8			g_BonusNum;
 u8			g_TrainLevel = 0;		// Current training level
 u16			g_TrainScore[TRAIN_LEVEL_MAX];
-u16			g_TrainTotal;
+u16			g_TrainTotal = 0;
 u8			g_HiLevel = 0;
 u16			g_HiScore[TRAIN_LEVEL_MAX];
-u16			g_HiTotal;
+u16			g_HiTotal = 0;
 
 // Timers
 u8			g_Counter;
@@ -651,6 +653,7 @@ void PlayMusic(u8 id)
 	if (!g_OptMusic)
 		id = MUSIC_EMPTY;
 
+	// Load Music data
 	const void* mus = g_MusicInfo[id];
 	if (g_LastMusicId != id)
 	{
@@ -659,7 +662,10 @@ void PlayMusic(u8 id)
 		Pletter_UnpackToRAM(mus, (void*)0xD000);
 	}
 	AKG_Init((const void*)0xD000, 0);
-	g_OptSFXNum = AKG_InitSFX((const void*)0x0100);
+
+	// Load SFX data
+	Pletter_UnpackToRAM(g_DataSFX, (void*)0xE800);
+	g_OptSFXNum = AKG_InitSFX((const void*)0xE800);
 }
 
 //-----------------------------------------------------------------------------
@@ -1092,10 +1098,10 @@ bool CheckGreediest(Player* ply)
 
 //-----------------------------------------------------------------------------
 //
-u16 GetTotalTrainingScore(const u16* tab, u8 num)
+u16 GetTotalTrainingScore(const u16* tab, u8 level)
 {
 	u16 score = 0;
-	loop(i, num)
+	loop(i, level + 1)
 		score += tab[i];
 	return score;
 }
@@ -1671,8 +1677,7 @@ void UpdatePlayer(Player* ply)
 				SpawnPlayer(ply);
 				return;
 			case MODE_TRAINNNG:
-				State_TrainSelect_Begin();
-				// State_TrainGame_Begin(); // Restart level from sratch
+				State_TrainGame_Begin(); // Restart level from sratch
 				return;
 			};
 		}
@@ -2199,8 +2204,16 @@ void MenuOpen_Init()
 void MenuOpen_Solo()
 {
 	// Compute total
-	g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel + 1);
-	g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel + 1);
+	if(g_TrainLevel > 0)
+	{
+		g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel - 1);
+		g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel - 1);
+	}
+	else
+	{
+		g_TrainTotal = 0;
+		g_HiTotal = 0;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -2376,6 +2389,9 @@ void State_Logo_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
+	if (IsInputButton1())
+		FSM_SetState(&State_Title);
+
 	if ((g_Frame & 0x03) != 0)
 		return;
 
@@ -2395,7 +2411,7 @@ void State_Logo_Update()
 		VDP_SetSpritePositionY(6, offset);
 	}
 
-	if ((g_Counter == LOGO_END) || IsInputButton1())
+	if (g_Counter == LOGO_END)
 		FSM_SetState(&State_Title);
 }
 
@@ -2706,10 +2722,10 @@ void State_BattleSelect_Update()
 				break;
 			case 8:
 				FSM_SetState(&State_BattleStart);
-				break;
+				return;
 			case 9:
 				FSM_SetState(&State_Title);
-				break;
+				return;
 			};
 			PlaySFX(SFX_SELECT);
 		}
@@ -2718,11 +2734,13 @@ void State_BattleSelect_Update()
 		{
 			FSM_SetState(&State_BattleStart);
 			PlaySFX(SFX_SELECT);
+			return;
 		}
 		if (IsInputButton2())
 		{
 			FSM_SetState(&State_Title);
 			PlaySFX(SFX_SELECT);
+			return;
 		}
 
 		// Handle special keys
@@ -2856,9 +2874,15 @@ void State_BattleStart_Update()
 
 	// Check input
 	if (IsInputButton1())
+	{
 		FSM_SetState(&State_BattleGame);
+		return;
+	}
 	if (IsInputButton2())
+	{
 		FSM_SetState(&State_BattleSelect);
+		return;
+	}
 
 	// Skip start sequence
 	if ((g_Frame & 0x0F) != 0)
@@ -3054,9 +3078,16 @@ void State_BattleGame_Update()
 			u8 phase = g_CollapsePhase & 0x3;
 			u8 tile = g_HoleAnim[phase];
 
+			DrawTileX(g_CollapseX0, g_CollapseY0, tile, g_CollapseX1 - g_CollapseX0 + 1);
 			PrintChrX(g_CollapseX0, g_CollapseY0, tile, g_CollapseX1 - g_CollapseX0 + 1);
+
+			DrawTileX(g_CollapseX0, g_CollapseY1, tile, g_CollapseX1 - g_CollapseX0 + 1);
 			PrintChrX(g_CollapseX0, g_CollapseY1, tile, g_CollapseX1 - g_CollapseX0 + 1);
+
+			DrawTileX(g_CollapseX0, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
 			PrintChrY(g_CollapseX0, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
+
+			DrawTileX(g_CollapseX1, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
 			PrintChrY(g_CollapseX1, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
 
 			if (phase == 3)
@@ -3185,7 +3216,14 @@ void State_Victory_Update()
 	WaitVBlank();
 
 	if (IsInputButton1() || IsInputButton2())
-		FSM_SetState(&State_BattleSelect);
+	{
+		if (g_GameMode == MODE_TRAINNNG)
+			FSM_SetState(&State_TrainSelect);
+		else
+			FSM_SetState(&State_BattleSelect);
+		PlayMusic(MUSIC_MENU);
+		return;
+	}
 
 	u8 col = (g_Frame & 0x08) ? 0 : 2;
 	VDP_LoadColor_GM2(g_BallColor[col], 1, TILE_BALL);
@@ -3387,6 +3425,8 @@ void State_TrainGame_Begin()
 	g_GameMode = MODE_TRAINNNG;
 	g_BonusLen  = TRAIN_GROWTH;
 
+	PlayMusic(g_TrainLevel & 1 ? MUSIC_MENU : MUSIC_BATTLE);
+
 	VDP_EnableDisplay(TRUE);
 }
 
@@ -3398,16 +3438,6 @@ void State_TrainGame_Update()
 	WaitVBlank();
 
 	UpdateInput();
-
-	g_CurrentPlayer++;
-	g_CurrentPlayer %= PLAYER_MAX;
-	if (g_CurrentPlayer)
-		return;
-
-	// Update one of the players
-	Player* ply = &g_Players[0];
-	UpdatePlayer(ply);
-	ply->Score++;
 
 	if (Keyboard_IsKeyPushed(KEY_N))
 	{
@@ -3423,6 +3453,16 @@ void State_TrainGame_Update()
 		FSM_SetState(&State_Title);
 		PlaySFX(SFX_SELECT);
 	}
+
+	g_CurrentPlayer++;
+	g_CurrentPlayer %= PLAYER_MAX;
+	if (g_CurrentPlayer)
+		return;
+
+	// Update one of the players
+	Player* ply = &g_Players[0];
+	UpdatePlayer(ply);
+	ply->Score++;
 }
 
 //=============================================================================
