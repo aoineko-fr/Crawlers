@@ -53,11 +53,14 @@ void State_BattleGame_Update();
 void State_Victory_Begin();
 void State_Victory_Update();
 
+void State_TrainSelect_Begin();
+void State_TrainSelect_Update();
+
 void State_TrainGame_Begin();
 void State_TrainGame_Update();
 
-void State_TrainSelect_Begin();
-void State_TrainSelect_Update();
+void State_TrainScore_Begin();
+void State_TrainScore_Update();
 
 void MenuOpen_Init();
 void MenuOpen_Solo();
@@ -335,6 +338,7 @@ const FSM_State State_BattleGame =		{ 0, State_BattleGame_Begin,	State_BattleGam
 const FSM_State State_Victory =			{ 0, State_Victory_Begin,		State_Victory_Update,		NULL };
 const FSM_State State_TrainSelect =		{ 0, State_TrainSelect_Begin,	State_TrainSelect_Update,	NULL };
 const FSM_State State_TrainGame =		{ 0, State_TrainGame_Begin,		State_TrainGame_Update,		NULL };
+const FSM_State State_TrainScore =		{ 0, State_TrainScore_Begin,	State_TrainScore_Update,	NULL };
 
 // 
 const SelectDevice g_DeviceSelect[CTRL_MAX] =
@@ -426,7 +430,7 @@ const ModeInfo g_ModeInfo[] =
 	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   10, 0,   5 },
 };
 
-const c8 g_TextCredits[]   = "        CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY THOMAS 'TOTTA'    GFX ENHANCEMENT BY LUDO 'GFX'    THANKS TO ALL MSX VILLAGE, MRC AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F";
+const c8 g_TextCredits[]   = "        CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY THOMAS 'TOTTA'    GFX ENHANCEMENT BY LUDO 'GFX'    THANKS TO ALL MRC, MSX VILLAGE AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F  ";
 
 // 14 13 12  |  OOO  O    OO   OO    O    OO   O
 // 11 10 09  |  O    O      O    O  OO   O    O O
@@ -1107,41 +1111,6 @@ u16 GetTotalTrainingScore(const u16* tab, u8 level)
 }
 
 //-----------------------------------------------------------------------------
-//
-bool CheckTraining(Player* ply)
-{
-	if (g_BonusNum == 0) // Got the last bonus!
-	{
-		// Compute level score
-		u16 score = 0;
-		if (ply->Score < 1000)
-			score = 1000 - ply->Score;
-		if (score > g_HiScore[g_TrainLevel])
-			g_HiScore[g_TrainLevel] = score;
-		g_TrainScore[g_TrainLevel] = score;
-
-		// Compute total
-		g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel);
-		g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel);
-
-		// Move to next level
-		g_TrainLevel++;
-		if (g_TrainLevel > g_HiLevel)
-			g_HiLevel = g_TrainLevel;
-		if (g_TrainLevel == 20)
-		{
-			g_Winner = ply->ID;
-			FSM_SetState(&State_Victory);
-		}
-		else
-			State_TrainGame_Begin();
-
-		return TRUE;
-	}						
-	return FALSE;
-}
-
-//-----------------------------------------------------------------------------
 // 
 void SpawnBonus()
 {
@@ -1699,8 +1668,11 @@ void UpdatePlayer(Player* ply)
 				{
 					DrawTile(x, y, 0xF2);
 					g_BonusNum--;
-					if (CheckTraining(ply))
+					if (g_BonusNum == 0) // Got the last bonus!
+					{
+						FSM_SetState(&State_TrainScore);
 						return;
+					}
 				}
 				else
 					SpawnBonus();
@@ -2313,14 +2285,19 @@ void State_Init_Begin()
 	Bios_SetHookDirectCallback(H_TIMI, VDP_InterruptHandler);
 
 	// Initialize free device
-	for(u8 i = 0; i < CTRL_MAX; ++i)
-	{
+	loop(i, CTRL_MAX)
 		g_CtrlReg[i] = ((i >= g_JoyNum) && (i <= CTRL_JOY_8)) ? CTRL_UNAVAILABLE : CTRL_FREE;
-	}
 
 	// Initialize players
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	loop(i, PLAYER_MAX)
 		InitPlayer(&g_Players[i], i);
+
+	// Initialize score
+	loop(i, TRAIN_LEVEL_MAX)
+	{
+		g_TrainScore[i] = 0;
+		g_HiScore[i] = 0;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -2494,6 +2471,15 @@ void State_Title_Begin()
 	VDP_EnableDisplay(TRUE);
 }
 
+//-----------------------------------------------------------------------------
+//
+void PressKeyBlink()
+{
+	if (g_Frame & 0x10)
+		Print_DrawTextAt(11, 20, "PRESS A KEY");
+	else
+		VDP_WriteVRAM(g_ScreenBuffer + (20 * 32) + 11, g_ScreenLayoutLow + (20 * 32) + 11, g_ScreenLayoutHigh, 11);
+}
 
 //-----------------------------------------------------------------------------
 //
@@ -2502,10 +2488,7 @@ void State_Title_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
-	if (g_Frame & 0x10)
-		Print_DrawTextAt(11, 20, "PRESS SPACE");
-	else
-		VDP_WriteVRAM(g_ScreenBuffer + (20 * 32) + 11, g_ScreenLayoutLow + (20 * 32) + 11, g_ScreenLayoutHigh, 11);
+	PressKeyBlink();
 
 	if (IsInputButton1())
 		FSM_SetState(&State_Menu);
@@ -3218,7 +3201,7 @@ void State_Victory_Update()
 	if (IsInputButton1() || IsInputButton2())
 	{
 		if (g_GameMode == MODE_TRAINNNG)
-			FSM_SetState(&State_TrainSelect);
+			FSM_SetState(&State_Title);
 		else
 			FSM_SetState(&State_BattleSelect);
 		PlayMusic(MUSIC_MENU);
@@ -3418,6 +3401,7 @@ void State_TrainGame_Begin()
 	SpawnPlayer(ply);
 	ply->PosX = g_PlayerStart.X;
 	ply->PosY = g_PlayerStart.Y;
+	ply->Score = 0;
 
 	Print_DrawTextAt(14, 0, "SCORE:");
 	Print_DrawInt(g_TrainTotal);
@@ -3441,10 +3425,7 @@ void State_TrainGame_Update()
 
 	if (Keyboard_IsKeyPushed(KEY_N))
 	{
-		g_TrainLevel++;
-		if (g_TrainLevel >= numberof(g_TrainLevelList))
-			g_TrainLevel = 0;
-		FSM_SetState(&State_TrainGame);
+		FSM_SetState(&State_TrainScore);
 		return;
 	}
 
@@ -3462,7 +3443,101 @@ void State_TrainGame_Update()
 	// Update one of the players
 	Player* ply = &g_Players[0];
 	UpdatePlayer(ply);
-	ply->Score++;
+	if(ply->State == STATE_PLAYING)
+		ply->Score++;
+}
+
+//.............................................................................
+// TRAINING SCORE STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_TrainScore_Begin()
+{
+	// Initialize VDP
+	VDP_EnableDisplay(FALSE);
+	VDP_DisableSpritesFrom(0);
+
+	// Initialize tiles data
+	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
+	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
+
+	// Draw game field
+	ClearLevel();
+	DrawLevel();
+
+	// Draw field
+	PrintChr(0,  0, TILE_TREE);
+	PrintChrX(1, 0, TILE_TREE, 30);
+	PrintChrX(1, 6, TILE_TREE, 30);
+	PrintChr(31, 0, TILE_TREE);
+	PrintChrY(31,1, TILE_TREE, 22);
+	PrintChr(31, 23, TILE_TREE);
+	PrintChrX(1, 23, TILE_TREE, 30);
+	PrintChr(0, 23, TILE_TREE);
+	PrintChrY(0, 1, TILE_TREE, 22);
+
+	// Compute level score
+	Player* ply = &g_Players[0];
+	u16 score = 0;
+	if (ply->Score < 1000)
+		score = 1000 - ply->Score;
+	if (score > g_HiScore[g_TrainLevel])
+		g_HiScore[g_TrainLevel] = score;
+	g_TrainScore[g_TrainLevel] = score;
+
+	// Compute total
+	g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel);
+	g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel);
+
+	Print_DrawTextAt(9, 3, "LEVEL ");
+	Print_DrawInt(g_TrainLevel + 1);
+	Print_DrawText(" CLEAR!");
+
+	Print_DrawTextAt(11, 10, "SCORE:");
+	Print_DrawIntAt(17, 10, g_TrainScore[g_TrainLevel]);
+	Print_DrawTextAt(11, 11, "TOTAL:");
+	Print_DrawIntAt(17, 11, g_TrainTotal);
+
+	Print_DrawTextAt(8, 14, "HI-SCORE:");
+	Print_DrawIntAt(17, 14, g_HiScore[g_TrainLevel]);
+	Print_DrawTextAt(11, 15, "TOTAL:");
+	Print_DrawIntAt(17, 15, g_HiTotal);
+
+	// Move to next level
+	g_TrainLevel++;
+	if (g_TrainLevel > g_HiLevel)
+		g_HiLevel = g_TrainLevel;
+
+	VDP_EnableDisplay(TRUE);
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_TrainScore_Update()
+{
+	// Wait V-Synch
+	WaitVBlank();
+
+	PressKeyBlink();
+
+	// Handle input
+	if (IsInputButton1())
+	{
+		if (g_TrainLevel == 20)
+		{
+			g_Winner = g_Players[0].ID;
+			FSM_SetState(&State_Victory);
+		}
+		else
+			FSM_SetState(&State_TrainGame);
+	}
+	if (IsInputButton2())
+	{
+		FSM_SetState(&State_Title);
+		PlaySFX(SFX_SELECT);
+	}
 }
 
 //=============================================================================
