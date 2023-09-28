@@ -503,9 +503,10 @@ u8			g_OptSFXNum;
 u8			g_LastMusicId = 0xFF;
 
 // Gameplay
-u8			g_GameMode = MODE_BATTLEROYAL;
+u8			g_GameMode = MODE_GREEDIEST;
 u8			g_GameCount = 3;
 Player		g_Players[PLAYER_MAX];	// Players information
+Player		g_TrainPlayer;	// Players information
 u8			g_PlayerMax;
 Vector		g_BonusPos;				// Bonus information
 u8			g_BonusTile;
@@ -522,7 +523,7 @@ u8			g_CollapseX0;
 u8			g_CollapseY0;
 u8			g_CollapseX1;
 u8			g_CollapseY1;
-u8			g_Winner;				// Winner player index
+Player*		g_Winner;				// Winner player index
 
 // Solo mode
 Vector		g_PlayerStart;
@@ -869,7 +870,7 @@ void SetTimer(u8 min)
 	g_TimeSecLow = 0;
 	g_CollapseTimer = 0;
 	g_CollapsePhase = 0xFF;
-	if (g_HurryUp)
+	if (g_GameMode != MODE_TRAINNNG && g_HurryUp)
 	{
 		PlayMusic(MUSIC_BATTLE);
 		g_HurryUp = FALSE;
@@ -882,7 +883,7 @@ void SetTimer(u8 min)
 }
 
 //-----------------------------------------------------------------------------
-// Dcrease the gameplayer timer (decrease ime)
+// Dicrease the gameplayer timer
 bool UpdateTimer()
 {
 	// Blink the timer when less than 30 seconds remains
@@ -931,6 +932,40 @@ bool UpdateTimer()
 	}
 
 	return g_TimeMinHigh | g_TimeMinLow | g_TimeSecHigh | g_TimeSecLow;
+}
+
+//-----------------------------------------------------------------------------
+// Increment the gameplayer timer
+bool IncTimer()
+{
+	g_TimeFrame++;
+	if (g_TimeFrame == 50)
+	{
+		g_TimeFrame = 0;
+		g_TimeSecLow++;
+		if (g_TimeSecLow == 10)
+		{
+			g_TimeSecLow = 0;
+			g_TimeSecHigh++;
+			if (g_TimeSecHigh == 6)
+			{
+				g_TimeSecHigh = 0;
+				g_TimeMinLow++;
+				if (g_TimeMinLow == 10)
+				{
+					g_TimeMinLow = 0;
+					g_TimeMinHigh++;
+					if (g_TimeMinHigh == 6)
+						g_TimeMinHigh = 0;
+				}
+			}
+		}
+
+		VDP_SetSpritePattern(4, 16 + g_TimeMinHigh);
+		VDP_SetSpritePattern(5, 16 + g_TimeMinLow);
+		VDP_SetSpritePattern(6, 16 + g_TimeSecHigh);
+		VDP_SetSpritePattern(7, 16 + g_TimeSecLow);
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1014,7 +1049,7 @@ void CheckBattleRoyal()
 	// Check victory condition
 	if (lastPly->Score >= g_GameCount)
 	{
-		g_Winner = lastPly->ID;
+		g_Winner = lastPly;
 		FSM_SetState(&State_Victory);
 		return;
 	}
@@ -1063,7 +1098,7 @@ bool CheckDeathMatch(Player* ply, u8 cell)
 		// Check victory condition
 		if (op->Score >= g_GameCount)
 		{
-			g_Winner = op->ID;
+			g_Winner = op;
 			FSM_SetState(&State_Victory);
 			return FALSE;
 		}
@@ -1083,7 +1118,7 @@ void CheckSizeMatter()
 			if (g_Players[i].Score > maxPly->Score)
 				maxPly = &g_Players[i];
 
-	g_Winner = maxPly->ID;
+	g_Winner = maxPly;
 	FSM_SetState(&State_Victory);
 }
 
@@ -1093,7 +1128,7 @@ bool CheckGreediest(Player* ply)
 {
 	if (ply->Score >= g_GameCount) // check victory count
 	{
-		g_Winner = ply->ID;
+		g_Winner = ply;
 		FSM_SetState(&State_Victory);
 		return TRUE;
 	}
@@ -1416,7 +1451,8 @@ void SpawnPlayer(Player* ply)
 	for(u8 i = 0; i < LENGTH_MIN; ++i)
 		ply->Path[i] = start->Dir;
 
-	SetScore(ply);
+	if(g_GameMode != MODE_TRAINNNG)
+		SetScore(ply);
 }
 
 //-----------------------------------------------------------------------------
@@ -1806,6 +1842,10 @@ const c8* MenuAction_Start(u8 op, i8 value)
 const c8* MenuAction_Mode(u8 op, i8 value)
 {
 	value;
+	
+	if(g_GameMode == MODE_TRAINNNG)
+		g_GameMode = MODE_GREEDIEST;
+
 	switch(op)
 	{
 	case MENU_ACTION_SET:
@@ -1904,8 +1944,11 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 //
 void ApplyTurnSetup()
 {
+	u8 turn = (g_CtrlTurn == TURN_ABSOLUTE) ? TURN_ABSOLUTE : TURN_RELATIVE;
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
-		g_Players[i].Turn = (g_CtrlTurn == TURN_ABSOLUTE) ? TURN_ABSOLUTE : TURN_RELATIVE;
+		g_Players[i].Turn = turn;
+
+	g_TrainPlayer.Turn = turn;
 }
 
 //-----------------------------------------------------------------------------
@@ -2168,7 +2211,6 @@ const c8* MenuAction_VDP(u8 op, i8 value)
 void MenuOpen_Init()
 {
 	g_Scroll = 0;
-	g_GameMode = MODE_BATTLEROYAL;
 }
 
 //-----------------------------------------------------------------------------
@@ -2291,6 +2333,9 @@ void State_Init_Begin()
 	// Initialize players
 	loop(i, PLAYER_MAX)
 		InitPlayer(&g_Players[i], i);
+	InitPlayer(&g_TrainPlayer, 0);
+	g_TrainPlayer.Controller  = CTRL_KEY_1;
+	g_TrainPlayer.Action = UpdatePlayerInput;
 
 	// Initialize score
 	loop(i, TRAIN_LEVEL_MAX)
@@ -3015,9 +3060,9 @@ void UpdateInput()
 		else if (Keyboard_IsKeyPushed(KEY_G))
 			g_Input[CTRL_KEY_2] = DIR_RIGHT;
 		else if (Keyboard_IsKeyPushed(KEY_R))
-			g_Input[CTRL_KEY_1] = DIR_UP;
+			g_Input[CTRL_KEY_2] = DIR_UP;
 		else if (Keyboard_IsKeyPushed(KEY_F))
-			g_Input[CTRL_KEY_1] = DIR_DOWN;
+			g_Input[CTRL_KEY_2] = DIR_DOWN;
 	}
 	// Update joysticks
 	for(u8 i = 0; i < g_JoyNum; ++i)
@@ -3138,9 +3183,12 @@ void State_Victory_Begin()
 	DrawLevel();
 
 	// Draw score
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
-		if (g_Players[i].Controller != CTRL_NONE)
-			SetScore(&g_Players[i]);
+	if(g_GameMode != MODE_TRAINNNG)
+	{
+		for(u8 i = 0; i < PLAYER_MAX; ++i)
+			if (g_Players[i].Controller != CTRL_NONE)
+				SetScore(&g_Players[i]);
+	}
 
 	// Draw field
 	PrintChr(0,  1, TILE_TREE);
@@ -3179,7 +3227,7 @@ void State_Victory_Begin()
 	VDP_HideSprite(3);
 	VDP_DisableSpritesFrom(4);
 
-	Player* ply = &g_Players[g_Winner];
+	Player* ply = g_Winner;
 	ply->PosX = 7;
 	ply->PosY = 15;
 	ply->Dir = DIR_RIGHT;
@@ -3219,9 +3267,9 @@ void State_Victory_Update()
 	if ((g_Frame & 0x07) != 0)
 		return;
 
-	Player* ply = &g_Players[g_Winner];
 
 	// Move
+	Player* ply = g_Winner;
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
 	u8 nextDir = ply->Dir;
@@ -3266,63 +3314,81 @@ void State_Victory_Update()
 
 //-----------------------------------------------------------------------------
 //
+void SelectCrawler(u8 id)
+{
+	g_TrainPlayer.ID = id;
+
+	// Clean
+	VDP_FillLayout_GM2(0x1C, TRAIN_FRAME_X + 1, TRAIN_FRAME_Y + 1, 5, 5);
+	VDP_HideSprite(0); // Eyes
+
+	// Load data
+	u16 dst = g_ScreenPatternLow + 0x800 + (160 * 8);
+	Pletter_UnpackToVRAM(id < 4 ? g_DataFace1_Patterns : g_DataFace2_Patterns, dst);
+	dst = g_ScreenColorLow + 0x800 + (160 * 8);
+	Pletter_UnpackToVRAM(id < 4 ? g_DataFace1_Colors : g_DataFace2_Colors, dst);
+
+	// Draw face
+	const Character* info = &g_CharaInfo[id];
+	VDP_WriteLayout_GM2(info->Face, TRAIN_FRAME_X + 1, TRAIN_FRAME_Y + 1, 5, 5);
+
+	// Eye sprite
+	u8 x = TRAIN_FRAME_X * 8 + info->EyeOffset.X;
+	u8 y = TRAIN_FRAME_Y * 8 + info->EyeOffset.Y;
+	VDP_SetSpriteSM1(0, x, y, info->EyePattern, info->EyeColor); // Eyes
+}
+
+//-----------------------------------------------------------------------------
+//
+void SelectControl(u8 id)
+{
+	VDP_WriteLayout_GM2(g_DeviceSelect[id].Edit, TRAIN_FRAME_X, TRAIN_FRAME_Y + 6, 7, 3);
+	g_TrainPlayer.Controller = id;
+}
+
+//-----------------------------------------------------------------------------
+//
 void State_TrainSelect_Begin()
 {
-	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
 
 	//........................................
 	// Load tiles
 
-	// Initialize tiles data
-	VDP_LoadPattern_GM2_Pletter(g_DataSelect_Patterns, 0);
-	VDP_LoadColor_GM2_Pletter(g_DataSelect_Colors, 0);
-	// Portaits tiles
-	u16 dst = g_ScreenPatternLow + (144 * 8);
-	Pletter_UnpackToVRAM(g_DataFace1_Patterns, dst);
+	// Initialize tiles pattern
+	u16 dst = g_ScreenPatternLow + (0 * 8);
+	Pletter_UnpackToVRAM(g_DataTiles_Patterns, dst);
 	dst += 0x800;
-	Pletter_UnpackToVRAM(g_DataFace1_Patterns, dst);
+	Pletter_UnpackToVRAM(g_DataSelect_Patterns, dst);
 	dst += 0x800;
-	Pletter_UnpackToVRAM(g_DataFace2_Patterns, dst);
-	// Portaits colors
-	dst = g_ScreenColorLow + (144 * 8);
-	Pletter_UnpackToVRAM(g_DataFace1_Colors, dst);
+	Pletter_UnpackToVRAM(g_DataSelect_Patterns, dst);
+
+	// Initialize tiles color
+	dst = g_ScreenColorLow + (0 * 8);
+	Pletter_UnpackToVRAM(g_DataTiles_Colors, dst);
 	dst += 0x800;
-	Pletter_UnpackToVRAM(g_DataFace1_Colors, dst);
+	Pletter_UnpackToVRAM(g_DataSelect_Colors, dst);
 	dst += 0x800;
-	Pletter_UnpackToVRAM(g_DataFace2_Colors, dst);
+	Pletter_UnpackToVRAM(g_DataSelect_Colors, dst);
 
 	//........................................
 	// Draw page
 
 	// Background
-	VDP_FillScreen_GM2(0x1C);
-	// Buttons
-	// VDP_WriteLayout_GM2(SELECT_START, 2, 1, 7, 2);
-	// VDP_WriteLayout_GM2(SELECT_EXIT, 24, 1, 6, 2);
-	// Frames and devices
-	u8 x = 13;
-	u8 y = 8;
-	VDP_WriteLayout_GM2(SELECT_FRAME, x, y, 7, 6);
-	VDP_WriteLayout_GM2(g_CharaInfo[0].Face, x + 1, y + 1, 5, 5);
-	u8 ctrl = g_Players[0].Controller;
-	VDP_WriteLayout_GM2(g_DeviceSelect[ctrl].Edit, x, y + 6, 7, 3);
+	VDP_FillVRAM(0x00, g_ScreenLayoutLow, g_ScreenLayoutHigh, 32*8);
+	VDP_FillVRAM(0x1C, g_ScreenLayoutLow + 32*8, g_ScreenLayoutHigh, 32*16);
 
-	//........................................
-	// Eyes
-	// VDP_SetSpriteSM1( 4,  49,  67, 12, COLOR_DARK_BLUE);
-	// VDP_SetSpriteSM1( 5, 102,  64, 13, COLOR_DARK_BLUE);
-	// VDP_SetSpriteSM1( 6, 158,  63, 14, COLOR_BLACK);
-	// VDP_SetSpriteSM1( 7, 214,  65, 15, COLOR_BLACK);
-	// VDP_SetSpriteSM1( 8, 161, 139, 12, COLOR_DARK_BLUE);
-	// VDP_SetSpriteSM1( 9, 214, 136, 13, COLOR_BLACK);
-	// VDP_SetSpriteSM1(10,  46, 135, 14, COLOR_BLACK);
-	// VDP_SetSpriteSM1(11, 102, 137, 15, COLOR_DARK_BLUE);
-	// VDP_DisableSpritesFrom(12);
-	VDP_DisableSpritesFrom(0);
+	// Text
+	Print_DrawTextAt(9, 6, "SELECT CRAWLER");
 
-	// g_SelectEdit = FALSE;
-	// MoveCursor(8);
+	// Display player character
+	VDP_WriteLayout_GM2(SELECT_FRAME, TRAIN_FRAME_X, TRAIN_FRAME_Y, 7, 6);
+	VDP_WriteLayout_GM2(SELECT_CHARA, TRAIN_FRAME_X, TRAIN_FRAME_Y + 6, 7, 3);
+	SelectCrawler(Math_GetRandom8() % PLAYER_MAX);
+	g_SelectEdit = FALSE;
+
+	// Sprite
+	VDP_DisableSpritesFrom(1);
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -3331,8 +3397,45 @@ void State_TrainSelect_Begin()
 //
 void State_TrainSelect_Update()
 {
-	if (IsInputButton1())
-		FSM_SetState(&State_TrainGame);
+	// Wait V-Synch
+	WaitVBlank();
+	
+	if(g_SelectEdit)
+	{
+		if (IsInputRight())
+		{
+			u8 ctrl = (g_TrainPlayer.Controller + 1) % CTRL_PLY_NUM;
+			SelectControl(ctrl);
+		}
+		else if (IsInputLeft())
+		{
+			u8 ctrl = (g_TrainPlayer.Controller + CTRL_PLY_NUM - 1) % CTRL_PLY_NUM;
+			SelectControl(ctrl);
+		}
+
+		if (IsInputButton1())
+			FSM_SetState(&State_TrainGame);
+	}
+	else
+	{
+		if (IsInputRight())
+		{
+			u8 id = (g_TrainPlayer.ID + 1) % PLAYER_MAX;
+			SelectCrawler(id);
+		}
+		else if (IsInputLeft())
+		{
+			u8 id = (g_TrainPlayer.ID + PLAYER_MAX - 1) % PLAYER_MAX;
+			SelectCrawler(id);
+		}
+
+		if (IsInputButton1())
+		{
+			g_SelectEdit = TRUE;
+			Print_DrawTextAt(9, 6, "SELECT CONTROL");
+			SelectControl(g_TrainPlayer.Controller);
+		}
+	}
 
 	if (IsInputButton2())
 	{
@@ -3350,8 +3453,9 @@ void State_TrainSelect_Update()
 void State_TrainGame_Begin()
 {
 	VDP_EnableDisplay(FALSE);
+
 	VDP_HideAllSprites();
-	VDP_DisableSpritesFrom(0);
+	// VDP_DisableSpritesFrom(0);
 
 	// Initialize tiles data
 	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
@@ -3369,16 +3473,14 @@ void State_TrainGame_Begin()
 	DrawTileY(0,  2, 0xEB, 21);
 
 	// Timer board
-	if (g_TimeMax)
-	{
-		DrawTile(14, 23, TILE_CLOCK + 0);
-		DrawTile(15, 23, TILE_CLOCK + 1);
-		DrawTile(16, 23, TILE_CLOCK + 2);
-		DrawTile(17, 23, TILE_CLOCK + 3);
-	}
+	DrawTile(14, 23, TILE_CLOCK + 0);
+	DrawTile(15, 23, TILE_CLOCK + 1);
+	DrawTile(16, 23, TILE_CLOCK + 2);
+	DrawTile(17, 23, TILE_CLOCK + 3);
 
 	// Draw score board
-	DrawTile(1, 0, 0x42 + g_CharaInfo[0].TileBase);
+	Player* ply = &g_TrainPlayer;
+	DrawTile(1, 0, 0x42 + g_CharaInfo[ply->ID].TileBase);
 	UnpackTrainField(g_TrainLevel);
 	DrawLevel();
 	
@@ -3389,26 +3491,26 @@ void State_TrainGame_Begin()
 	Print_SetMode(PRINT_MODE_TEXT);
 	Print_SetTabSize(3);
 
+	// Draw info
 	Print_DrawTextAt(4, 0, "LEVEL:");
 	u8 level = g_TrainLevel + 1;
 	if (level < 10)
 		Print_DrawChar('0');
 	Print_DrawInt(level);
 
-	Player* ply = &g_Players[0];
-	// InitPlayer(ply, 0);
-	SetPlayerController(ply, CTRL_KEY_1);
-	SpawnPlayer(ply);
-	ply->PosX = g_PlayerStart.X;
-	ply->PosY = g_PlayerStart.Y;
-	ply->Score = 0;
-
 	Print_DrawTextAt(14, 0, "SCORE:");
 	Print_DrawInt(g_TrainTotal);
 
+	// Init player
 	g_GameMode = MODE_TRAINNNG;
-	g_BonusLen  = TRAIN_GROWTH;
-
+	g_BonusLen = TRAIN_GROWTH;
+	SpawnPlayer(ply);
+	ply->PosX = g_PlayerStart.X;
+	ply->PosY = g_PlayerStart.Y;
+	ply->Dir = DIR_UP;
+	ply->Score = 0;
+	
+	SetTimer(0);
 	PlayMusic(g_TrainLevel & 1 ? MUSIC_MENU : MUSIC_BATTLE);
 
 	VDP_EnableDisplay(TRUE);
@@ -3428,20 +3530,24 @@ void State_TrainGame_Update()
 		FSM_SetState(&State_TrainScore);
 		return;
 	}
-
 	if (IsInputButton2())
 	{
 		FSM_SetState(&State_Title);
 		PlaySFX(SFX_SELECT);
 	}
 
+	// Timer
+	Player* ply = &g_TrainPlayer;
+	if(ply->State == STATE_PLAYING)
+		IncTimer();
+
+	// Update only every 8th frame
 	g_CurrentPlayer++;
 	g_CurrentPlayer %= PLAYER_MAX;
 	if (g_CurrentPlayer)
 		return;
 
 	// Update one of the players
-	Player* ply = &g_Players[0];
 	UpdatePlayer(ply);
 	if(ply->State == STATE_PLAYING)
 		ply->Score++;
@@ -3479,7 +3585,7 @@ void State_TrainScore_Begin()
 	PrintChrY(0, 1, TILE_TREE, 22);
 
 	// Compute level score
-	Player* ply = &g_Players[0];
+	Player* ply = &g_TrainPlayer;
 	u16 score = 0;
 	if (ply->Score < 1000)
 		score = 1000 - ply->Score;
@@ -3527,7 +3633,7 @@ void State_TrainScore_Update()
 	{
 		if (g_TrainLevel == 20)
 		{
-			g_Winner = g_Players[0].ID;
+			g_Winner = &g_TrainPlayer;
 			FSM_SetState(&State_Victory);
 		}
 		else

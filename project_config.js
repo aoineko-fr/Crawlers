@@ -102,7 +102,7 @@ AppID = "CR";
 BuildLibrary = false;
 
 //-- Debug flag (true or false)
-Debug = true;
+Debug = false;
 
 //-- Move debug symbols do binary folder (true or false)
 DebugSymbols = true;
@@ -148,7 +148,7 @@ EmulMachine    = false;
 Emul60Hz       = false;
 EmulFullScreen = false;
 EmulMute       = false;
-EmulDebug      = true;
+EmulDebug      = false;
 
 //-- Emulator extensions (true or false):
 EmulSCC      = false;

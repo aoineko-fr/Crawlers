@@ -71,6 +71,9 @@
 
 #define TRAIN_LEVEL_MAX				20
 
+#define TRAIN_FRAME_X				13
+#define TRAIN_FRAME_Y				8
+
 // Controller types define
 enum CTRL_TYPE
 {
