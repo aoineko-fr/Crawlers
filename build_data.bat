@@ -110,3 +110,18 @@ echo  Convert sprite...
 	-l i16 0  0 2 1 0xB95E51 ^
 	-l i16 0 16 2 1 0xFFFFFF ^
 	-l i16 0 32 2 1 0xDED087
+
+echo -----------------------------------------------------------------------------
+echo  Convert level...
+
+setlocal EnableDelayedExpansion
+
+for /L %%G in (1,1,40) do (
+	if %%G LSS 10 (
+		set FileNum=00%%G
+	) else  (
+		set FileNum=0%%G
+	)
+	%Tools%\compress\Pletter\pletter.exe datasrc\level\level!FileNum!.bin datasrc\level\level!FileNum!.pl5
+	%MSXtk%\MSXbin.exe datasrc\level\level!FileNum!.pl5 -t g_Level!FileNum! -ad -o content\level\level!FileNum!.h -size
+)

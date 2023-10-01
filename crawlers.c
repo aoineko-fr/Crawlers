@@ -67,6 +67,7 @@ void MenuOpen_Solo();
 
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
+const c8* MenuAction_Speed(u8 op, i8 value);
 const c8* MenuAction_Info(u8 op, i8 value);
 const c8* MenuAction_Credits(u8 op, i8 value);
 const c8* MenuAction_Freq(u8 op, i8 value);
@@ -102,6 +103,8 @@ u8 g_VersionMSX = 0;
 extern u8 g_VersionROM;
 extern u8 g_VersionMSX;
 #endif
+
+extern MenuItemMinMax g_MenuLevelMinMax;
 
 //=============================================================================
 // READ-ONLY DATA
@@ -227,9 +230,12 @@ const MenuItem g_MenuSolo[] =
 {
 	{ "NEW GAME",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_NEW },
 	{ "CONTINUE",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_CONTINUE },
-	{ "LEVEL",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainLevel, NULL },
-	{ "SCORE",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainTotal, NULL },
-	{ "HI-SCORE",            MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiTotal, NULL },
+	{ "LEVEL",               MENU_ITEM_INT, &g_TrainLevel, (i16)&g_MenuLevelMinMax },
+	{ "SPEED",               MENU_ITEM_ACTION, MenuAction_Speed, 0 },
+	// { "SCORE",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainTotal, NULL },
+	// { "HI-SCORE",            MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiTotal, NULL },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
@@ -381,14 +387,6 @@ const SelectSlot g_BattleSelectSlot[] =
 	{ { 198,  15-8 }, { 226,  22-8 },  8, -1, -1,  3 }, // 9 - Exit
 };
 
-// Training select slots data
-// const SelectSlot g_TrainSelectSlot[] =
-// {	//                             L   R   U   D
-// 	{ {  22,  53 }, {  58,  89 },  2,  1, -1, -1 }, // 0 - Face
-// 	{ {  22,  15 }, {  58,  22 }, -1,  0, -1, -1 }, // 1 - Start
-// 	{ { 198,  15 }, { 226,  22 },  0, -1, -1, -1 }, // 2 - Exit
-// };
-
 // Cursor offset animation
 const u8 g_CursorAnim[8] = { 1, 1, 2, 1, 1, 0, 0, 0 };
 
@@ -430,7 +428,7 @@ const ModeInfo g_ModeInfo[] =
 	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   10, 0,   5 },
 };
 
-const c8 g_TextCredits[]   = "        CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY THOMAS 'TOTTA'    GFX ENHANCEMENT BY LUDO 'GFX'    THANKS TO ALL MRC, MSX VILLAGE AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F  ";
+const c8 g_TextCredits[]   = "        CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY TOTTA    GFX ENHANCEMENT BY LUDOVIC 'GFX' AVOT    THANKS TO ALL MRC, MSX VILLAGE AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F  ";
 
 // 14 13 12  |  OOO  O    OO   OO    O    OO   O
 // 11 10 09  |  O    O      O    O  OO   O    O O
@@ -467,14 +465,28 @@ const u8 g_BallColor[][8] =
 };
 
 //
+const SpeedData g_SpeedData[SPEED_MAX] = 
+{
+	{  8, 1000 }, // Normal 
+	{  4, 1100 }, // Turbo
+	{ 16,  500 }, // Snail
+	{ 12,  700 }, // Chill
+};
+
+//
 const u16 g_ClearBG[] = { (u16)(((TILE_EMPTY + 1) << 8) + TILE_EMPTY), (u16)((TILE_EMPTY << 8) + (TILE_EMPTY + 1)) };
 
+// Training levels list
 const u8* g_TrainLevelList[] =
 { 
 	g_Level001, g_Level002, g_Level003, g_Level004, g_Level005,
 	g_Level006, g_Level007, g_Level008, g_Level009, g_Level010,
 	g_Level011, g_Level012, g_Level013, g_Level014, g_Level015,
-	g_Level016, g_Level017, g_Level018, g_Level019, g_Level020
+	g_Level016, g_Level017, g_Level018, g_Level019, g_Level020,
+	g_Level021, g_Level022, g_Level023, g_Level024, g_Level025,
+	g_Level026, g_Level027, g_Level028, g_Level029, g_Level030,
+	g_Level031, g_Level032, g_Level033, g_Level034, g_Level035,
+	g_Level036, g_Level037, g_Level038, g_Level039, g_Level040
 };
 
 //=============================================================================
@@ -524,11 +536,13 @@ u8			g_CollapseY0;
 u8			g_CollapseX1;
 u8			g_CollapseY1;
 Player*		g_Winner;				// Winner player index
+u8			g_Speed = SPEED_NORMAL;
+MenuItemMinMax g_MenuLevelMinMax;
 
 // Solo mode
 Vector		g_PlayerStart;
 u8			g_BonusNum;
-u8			g_TrainLevel = 0;		// Current training level
+u8			g_TrainLevel = 0;		// Current training level [1~40]
 u16			g_TrainScore[TRAIN_LEVEL_MAX];
 u16			g_TrainTotal = 0;
 u8			g_HiLevel = 0;
@@ -554,6 +568,7 @@ bool		g_SelectEdit;
 u8			g_CtrlReg[CTRL_MAX];
 u8			g_MenuInputPrev = 0xFF;
 u8			g_CtrlTurn = TURN_RELATIVE;
+bool		g_Cheat = FALSE;
 
 //=============================================================================
 // FUNCTIONS
@@ -680,7 +695,7 @@ void PlaySFX(u8 id)
 	if (!g_OptSFX)
 		return;
 
-	AKG_PlaySFX(id, ARKOS_CHANNEL_A, 0);
+	AKG_PlaySFX(id, ARKOS_CHANNEL_C, 0);
 }
 
 //.............................................................................
@@ -783,14 +798,26 @@ void DrawTileY(u8 x, u8 y, c8 chr, u8 len)
 }
 
 //-----------------------------------------------------------------------------
+//
+u8 GetWallTile()
+{
+	u8 tile = g_WallData[g_WallOpt];
+	if (tile == 0)
+		tile = g_WallData[Math_GetRandom8() & 0x03];
+	return tile;
+}
+
+//-----------------------------------------------------------------------------
 // Uncompress the give training field data
 void UnpackTrainField(u8 id)
 {
+	u8* ptr = (u8*)Mem_GetHeapAddress();
+	Pletter_UnpackToRAM(g_TrainLevelList[id], ptr);
+
 	g_BonusNum = 0;
 
 	u8 x = 1;
 	u8 y = 2;
-	const u8* ptr = g_TrainLevelList[id];
 	for(u8 i = 0; i < 32 * 21 / 4; ++i)
 	{
 		u8 val = *ptr;
@@ -800,7 +827,7 @@ void UnpackTrainField(u8 id)
 			switch(val & 0x3)
 			{
 			case 1:
-				tile = TILE_TREE;
+				tile = GetWallTile();
 				break;
 			case 2:
 				tile = TILE_HEART;
@@ -1607,9 +1634,9 @@ void UpdatePlayer(Player* ply)
 		return;
 
 	case STATE_INIT:
+		PlaySFX(SFX_HOLE);
 		ply->Timer = COOLDOWN_WAIT;
 		ply->State = STATE_COOLDOWN;
-		PlaySFX(SFX_HOLE);
 
 	case STATE_COOLDOWN:
 		if (VDP_Peek_GM2(ply->PosX, ply->PosY) >= TILE_EMPTY)
@@ -1706,6 +1733,7 @@ void UpdatePlayer(Player* ply)
 					g_BonusNum--;
 					if (g_BonusNum == 0) // Got the last bonus!
 					{
+						PlaySFX(SFX_VICTORY);
 						FSM_SetState(&State_TrainScore);
 						return;
 					}
@@ -1752,8 +1780,6 @@ void SetGameMode(u8 newMode)
 	Menu_DisplayItem(3);
 	Menu_DisplayItem(4);
 }
-
-#define STR_SCROLL_LEN				22
 
 //-----------------------------------------------------------------------------
 //
@@ -1825,8 +1851,6 @@ const c8* MenuAction_Start(u8 op, i8 value)
 				FSM_SetState(&State_BattleSelect);
 				break;
 			case START_TRAIN_NEW:
-				g_TrainLevel = 0;
-				// g_TotalScore = 0;
 				FSM_SetState(&State_TrainSelect);
 				break;
 			case START_TRAIN_CONTINUE:
@@ -1867,6 +1891,35 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 
 	case MENU_ACTION_GET:
 		return g_ModeInfo[g_GameMode].Name;
+	};
+	return NULL;
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_Speed(u8 op, i8 value)
+{
+	value;
+	
+	switch(op)
+	{
+	case MENU_ACTION_SET:
+	case MENU_ACTION_INC:
+		g_Speed = (g_Speed + 1) % SPEED_MAX;
+		break;
+
+	case MENU_ACTION_DEC:
+		g_Speed = (g_Speed + SPEED_MAX - 1) % SPEED_MAX;
+		break;
+
+	case MENU_ACTION_GET:
+		switch(g_Speed)
+		{
+		case SPEED_NORMAL: return "NORMAL (3)"; 
+		case SPEED_TURBO:  return "TURBO (4)"; 
+		case SPEED_SNAIL:  return "SNAIL (1)"; 
+		case SPEED_CHILL:  return "CHILL (2)"; 
+		}
 	};
 	return NULL;
 }
@@ -2068,14 +2121,14 @@ const c8* MenuAction_SFX(u8 op, i8 value)
 			g_OptSFXIdx++;
 		else
 			g_OptSFXIdx = 0;
-		AKG_PlaySFX(g_OptSFXIdx, 0, 0);
+		// AKG_PlaySFX(g_OptSFXIdx, 0, 0);
 		break;
 	case MENU_ACTION_DEC:
 		if (g_OptSFXIdx > 0)
 			g_OptSFXIdx--;
 		else
 			g_OptSFXIdx = g_OptSFXNum - 1;
-		AKG_PlaySFX(g_OptSFXIdx, 0, 0);
+		// AKG_PlaySFX(g_OptSFXIdx, 0, 0);
 		break;
 	}
 	return g_OptSFX ? "*" : "/";
@@ -2218,16 +2271,20 @@ void MenuOpen_Init()
 void MenuOpen_Solo()
 {
 	// Compute total
-	if(g_TrainLevel > 0)
-	{
-		g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel - 1);
-		g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel - 1);
-	}
-	else
+	// if(g_TrainLevel > 0)
+	// {
+	// 	g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel - 1);
+	// 	g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel - 1);
+	// }
+	// else
 	{
 		g_TrainTotal = 0;
 		g_HiTotal = 0;
 	}
+
+	g_MenuLevelMinMax.Min = 1;
+	g_MenuLevelMinMax.Max = g_HiLevel;
+	g_MenuLevelMinMax.Step = 1;
 }
 
 //-----------------------------------------------------------------------------
@@ -2412,7 +2469,10 @@ void State_Logo_Update()
 	WaitVBlank();
 
 	if (IsInputButton1())
+	{
+		PlaySFX(SFX_SELECT);		
 		FSM_SetState(&State_Title);
+	}
 
 	if ((g_Frame & 0x03) != 0)
 		return;
@@ -2536,7 +2596,10 @@ void State_Title_Update()
 	PressKeyBlink();
 
 	if (IsInputButton1())
+	{
+		PlaySFX(SFX_SELECT);		
 		FSM_SetState(&State_Menu);
+	}
 }
 
 //.............................................................................
@@ -2552,6 +2615,8 @@ void State_Title_Update()
 //
 void State_Menu_Begin()
 {
+	PlaySFX(SFX_START);
+
 	// Draw menu frame
 	PrintChr(MENU_POS_LEFT,    MENU_POS_TOP,    0xE9);
 	PrintChrX(MENU_POS_LEFT+1, MENU_POS_TOP,    0xE8, MENU_POS_RIGHT-MENU_POS_LEFT-1);
@@ -2596,6 +2661,8 @@ void State_Menu_Update()
 //
 void State_BattleSelect_Begin()
 {
+	PlaySFX(SFX_START);
+	
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
 
@@ -2670,27 +2737,27 @@ void State_BattleSelect_Update()
 		Player* ply = &g_Players[g_SlotIdx];
 		if (IsInputLeft())
 		{
+			PlaySFX(SFX_MOVE);
 			SetPrevPlayerController(ply);
 			EditPlayer(g_SlotIdx, TRUE);
-			PlaySFX(SFX_MOVE);
 		}
 		else if (IsInputRight())
 		{
+			PlaySFX(SFX_MOVE);
 			SetNextPlayerController(ply);
 			EditPlayer(g_SlotIdx, TRUE);
-			PlaySFX(SFX_MOVE);
 		}
 		else if (IsInputUp() || IsInputDown())
 		{
+			PlaySFX(SFX_MOVE);
 			ply->Turn = 1 - ply->Turn;
 			EditPlayer(g_SlotIdx, TRUE);
-			PlaySFX(SFX_MOVE);
 		}
 
 		if (IsInputButton1())
 		{
-			EditPlayer(g_SlotIdx, FALSE);
 			PlaySFX(SFX_SELECT);
+			EditPlayer(g_SlotIdx, FALSE);
 		}
 	}
 	else // Handle menu update
@@ -2708,8 +2775,8 @@ void State_BattleSelect_Update()
 			newSlot = slot->Down;
 		if (newSlot != -1)
 		{
-			MoveCursor(newSlot);
 			PlaySFX(SFX_MOVE);
+			MoveCursor(newSlot);
 		}
 
 		// Animate cursor
@@ -2736,6 +2803,7 @@ void State_BattleSelect_Update()
 		// Handle validation
 		if (IsInputButton1())
 		{
+			PlaySFX(SFX_SELECT);
 			switch(g_SlotIdx)
 			{
 			case 0:
@@ -2755,19 +2823,18 @@ void State_BattleSelect_Update()
 				FSM_SetState(&State_Title);
 				return;
 			};
-			PlaySFX(SFX_SELECT);
 		}
 
 		if (Keyboard_IsKeyPushed(KEY_RET))
 		{
-			FSM_SetState(&State_BattleStart);
 			PlaySFX(SFX_SELECT);
+			FSM_SetState(&State_BattleStart);
 			return;
 		}
 		if (IsInputButton2())
 		{
-			FSM_SetState(&State_Title);
 			PlaySFX(SFX_SELECT);
+			FSM_SetState(&State_Title);
 			return;
 		}
 
@@ -2799,6 +2866,8 @@ void State_BattleSelect_Update()
 //
 void State_BattleStart_Begin()
 {
+	PlaySFX(SFX_START);
+
 	VDP_EnableDisplay(FALSE);
 
 	// Initialize tiles data
@@ -2838,7 +2907,6 @@ void State_BattleStart_Begin()
 	}
 
 	// Initialize obstacles
-	u8 wallTile = g_WallData[g_WallOpt];
 	for(u8 i = 0; i < g_WallNum; ++i)
 	{
 		u8 x = 0, y = 0;
@@ -2866,10 +2934,7 @@ void State_BattleStart_Begin()
 				}
 			}
 		}
-		u8 wall = wallTile;
-		if (wall == 0)
-			wall = g_WallData[Math_GetRandom8() & 0x03];
-		DrawTile(x, y, wall);
+		DrawTile(x, y, GetWallTile());
 	}
 
 	// Copy screen buffer to VRAM
@@ -2903,11 +2968,13 @@ void State_BattleStart_Update()
 	// Check input
 	if (IsInputButton1())
 	{
+		PlaySFX(SFX_SELECT);		
 		FSM_SetState(&State_BattleGame);
 		return;
 	}
 	if (IsInputButton2())
 	{
+		PlaySFX(SFX_SELECT);		
 		FSM_SetState(&State_BattleSelect);
 		return;
 	}
@@ -3160,7 +3227,10 @@ void State_BattleGame_Update()
 	}
 
 	if (IsInputButton2())
+	{
+		PlaySFX(SFX_SELECT);		
 		FSM_SetState(&State_BattleSelect);
+	}
 }
 
 //.............................................................................
@@ -3248,6 +3318,7 @@ void State_Victory_Update()
 
 	if (IsInputButton1() || IsInputButton2())
 	{
+		PlaySFX(SFX_SELECT);		
 		if (g_GameMode == MODE_TRAINNNG)
 			FSM_SetState(&State_Title);
 		else
@@ -3350,6 +3421,8 @@ void SelectControl(u8 id)
 //
 void State_TrainSelect_Begin()
 {
+	PlaySFX(SFX_START);
+
 	VDP_EnableDisplay(FALSE);
 
 	//........................................
@@ -3404,33 +3477,42 @@ void State_TrainSelect_Update()
 	{
 		if (IsInputRight())
 		{
+			PlaySFX(SFX_MOVE);
 			u8 ctrl = (g_TrainPlayer.Controller + 1) % CTRL_PLY_NUM;
 			SelectControl(ctrl);
 		}
 		else if (IsInputLeft())
 		{
+			PlaySFX(SFX_MOVE);
 			u8 ctrl = (g_TrainPlayer.Controller + CTRL_PLY_NUM - 1) % CTRL_PLY_NUM;
 			SelectControl(ctrl);
 		}
 
 		if (IsInputButton1())
+		{
+			PlaySFX(SFX_SELECT);
+			g_TrainLevel = 1;
 			FSM_SetState(&State_TrainGame);
+		}
 	}
 	else
 	{
 		if (IsInputRight())
 		{
+			PlaySFX(SFX_MOVE);
 			u8 id = (g_TrainPlayer.ID + 1) % PLAYER_MAX;
 			SelectCrawler(id);
 		}
 		else if (IsInputLeft())
 		{
+			PlaySFX(SFX_MOVE);
 			u8 id = (g_TrainPlayer.ID + PLAYER_MAX - 1) % PLAYER_MAX;
 			SelectCrawler(id);
 		}
 
 		if (IsInputButton1())
 		{
+			PlaySFX(SFX_SELECT);
 			g_SelectEdit = TRUE;
 			Print_DrawTextAt(9, 6, "SELECT CONTROL");
 			SelectControl(g_TrainPlayer.Controller);
@@ -3439,8 +3521,8 @@ void State_TrainSelect_Update()
 
 	if (IsInputButton2())
 	{
-		FSM_SetState(&State_Title);
 		PlaySFX(SFX_SELECT);
+		FSM_SetState(&State_Title);
 	}
 }
 
@@ -3481,7 +3563,7 @@ void State_TrainGame_Begin()
 	// Draw score board
 	Player* ply = &g_TrainPlayer;
 	DrawTile(1, 0, 0x42 + g_CharaInfo[ply->ID].TileBase);
-	UnpackTrainField(g_TrainLevel);
+	UnpackTrainField(g_TrainLevel - 1);
 	DrawLevel();
 	
 	// Initialize font
@@ -3493,10 +3575,7 @@ void State_TrainGame_Begin()
 
 	// Draw info
 	Print_DrawTextAt(4, 0, "LEVEL:");
-	u8 level = g_TrainLevel + 1;
-	if (level < 10)
-		Print_DrawChar('0');
-	Print_DrawInt(level);
+	Print_DrawInt(g_TrainLevel);
 
 	Print_DrawTextAt(14, 0, "SCORE:");
 	Print_DrawInt(g_TrainTotal);
@@ -3511,7 +3590,7 @@ void State_TrainGame_Begin()
 	ply->Score = 0;
 	
 	SetTimer(0);
-	PlayMusic(g_TrainLevel & 1 ? MUSIC_MENU : MUSIC_BATTLE);
+	PlayMusic(g_TrainLevel & 1 ? MUSIC_BATTLE : MUSIC_HURRYUP);
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -3525,15 +3604,15 @@ void State_TrainGame_Update()
 
 	UpdateInput();
 
-	if (Keyboard_IsKeyPushed(KEY_N))
+	if (g_Cheat && Keyboard_IsKeyPushed(KEY_N))
 	{
 		FSM_SetState(&State_TrainScore);
 		return;
 	}
 	if (IsInputButton2())
 	{
-		FSM_SetState(&State_Title);
 		PlaySFX(SFX_SELECT);
+		FSM_SetState(&State_Title);
 	}
 
 	// Timer
@@ -3543,9 +3622,11 @@ void State_TrainGame_Update()
 
 	// Update only every 8th frame
 	g_CurrentPlayer++;
-	g_CurrentPlayer %= PLAYER_MAX;
-	if (g_CurrentPlayer)
+	u8 speed = (ply->State == STATE_PLAYING) ? g_Speed : SPEED_NORMAL;
+	if(g_CurrentPlayer != g_SpeedData[speed].Count)
 		return;
+	
+	g_CurrentPlayer = 0;
 
 	// Update one of the players
 	UpdatePlayer(ply);
@@ -3587,32 +3668,34 @@ void State_TrainScore_Begin()
 	// Compute level score
 	Player* ply = &g_TrainPlayer;
 	u16 score = 0;
-	if (ply->Score < 1000)
-		score = 1000 - ply->Score;
-	if (score > g_HiScore[g_TrainLevel])
-		g_HiScore[g_TrainLevel] = score;
-	g_TrainScore[g_TrainLevel] = score;
+	u16 maxScore = g_SpeedData[g_Speed].Score;
+	if (ply->Score < maxScore)
+		score = maxScore - ply->Score;
+	if (score > g_HiScore[g_TrainLevel - 1])
+		g_HiScore[g_TrainLevel - 1] = score;
+	g_TrainScore[g_TrainLevel - 1] = score;
 
 	// Compute total
-	g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel);
-	g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel);
+	g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel - 1);
+	g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel - 1);
 
 	Print_DrawTextAt(9, 3, "LEVEL ");
-	Print_DrawInt(g_TrainLevel + 1);
+	Print_DrawInt(g_TrainLevel);
 	Print_DrawText(" CLEAR!");
 
 	Print_DrawTextAt(11, 10, "SCORE:");
-	Print_DrawIntAt(17, 10, g_TrainScore[g_TrainLevel]);
+	Print_DrawIntAt(17, 10, g_TrainScore[g_TrainLevel - 1]);
 	Print_DrawTextAt(11, 11, "TOTAL:");
 	Print_DrawIntAt(17, 11, g_TrainTotal);
 
 	Print_DrawTextAt(8, 14, "HI-SCORE:");
-	Print_DrawIntAt(17, 14, g_HiScore[g_TrainLevel]);
+	Print_DrawIntAt(17, 14, g_HiScore[g_TrainLevel - 1]);
 	Print_DrawTextAt(11, 15, "TOTAL:");
 	Print_DrawIntAt(17, 15, g_HiTotal);
 
 	// Move to next level
-	g_TrainLevel++;
+	if(g_TrainLevel < TRAIN_LEVEL_MAX)
+		g_TrainLevel++;
 	if (g_TrainLevel > g_HiLevel)
 		g_HiLevel = g_TrainLevel;
 
@@ -3631,7 +3714,8 @@ void State_TrainScore_Update()
 	// Handle input
 	if (IsInputButton1())
 	{
-		if (g_TrainLevel == 20)
+		PlaySFX(SFX_MOVE);
+		if (g_TrainLevel == TRAIN_LEVEL_MAX)
 		{
 			g_Winner = &g_TrainPlayer;
 			FSM_SetState(&State_Victory);
@@ -3641,14 +3725,32 @@ void State_TrainScore_Update()
 	}
 	if (IsInputButton2())
 	{
-		FSM_SetState(&State_Title);
 		PlaySFX(SFX_SELECT);
+		FSM_SetState(&State_Title);
 	}
 }
 
 //=============================================================================
 // MAIN
 //=============================================================================
+
+//-----------------------------------------------------------------------------
+// Check if cheat is activated or no
+void CheckCheat()
+{
+	if(g_Cheat)
+		return;
+	if(!Keyboard_IsKeyPressed(KEY_N))
+		return;
+	if(!Keyboard_IsKeyPressed(KEY_O))
+		return;
+	if(!Keyboard_IsKeyPressed(KEY_E))
+		return;
+
+	PlaySFX(SFX_VICTORY);
+	g_Cheat = TRUE;
+	g_HiLevel = TRAIN_LEVEL_MAX;
+}
 
 //-----------------------------------------------------------------------------
 // Program entry point
@@ -3672,6 +3774,7 @@ void main()
 	while(1)
 	{
 		Keyboard_Update();
+		CheckCheat();
 		NTap_Update();
 		FSM_Update();
 	}

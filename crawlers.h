@@ -16,17 +16,14 @@
 #define DEF_MUSIC					TRUE
 #define DEF_SFX						TRUE
 #define PLAYER_MAX					8
+#define TRAIN_LEVEL_MAX				40
 
 // Logo tiles
 #define MSXGL						"[\\]^"
-
-// 
 #define CHAR_FIRST					' '
-
-//
-#define LENGTH_MIN					1
-#define LENGTH_MAX					128
-#define LENGTH_DEFAULT				5
+#define LOGO_START					8
+#define LOGO_OFFSET					33+16
+#define LOGO_END					64+16
 
 // Collider tiles
 #define TILE_TREE					0xE1
@@ -51,28 +48,29 @@
 #define TILE_BALL					0xE0
 
 // SFX number
-#define SFX_MOVE					12
-#define SFX_SELECT					2
-#define SFX_BONUS					0
+#define SFX_MOVE					0
+#define SFX_SELECT					6
+#define SFX_BACK					4
+#define SFX_START					1
+#define SFX_BONUS					7
 #define SFX_HOLE					14
-#define SFX_DIED					1
+#define SFX_DIED					10
+#define SFX_VICTORY					11
 
+// Gameplay defines
+#define LENGTH_MIN					1
+#define LENGTH_MAX					128
+#define LENGTH_DEFAULT				5
 #define SPAWN_WAIT					20 // Spawn waiting time (N * 8 frames)
 #define COOLDOWN_WAIT				8
-
-#define LOGO_START					8
-#define LOGO_OFFSET					33+16
-#define LOGO_END					64+16
-
 #define AI_WEIGHT_BONUS				1
-
 #define BONUS_GROWTH				5
 #define TRAIN_GROWTH				2
 
-#define TRAIN_LEVEL_MAX				20
-
+// LAyout defines
 #define TRAIN_FRAME_X				13
 #define TRAIN_FRAME_Y				8
+#define STR_SCROLL_LEN				22
 
 // Controller types define
 enum CTRL_TYPE
@@ -216,6 +214,17 @@ enum MUSIC_ID
 	MUSIC_MAX,
 };
 
+// Speed enumaration
+enum SPEED_ID
+{
+	SPEED_NORMAL = 0,
+	SPEED_TURBO,
+	SPEED_SNAIL,
+	SPEED_CHILL,
+//-----------------------------
+	SPEED_MAX,
+};
+
 // Start position structure
 typedef struct
 {
@@ -244,6 +253,14 @@ typedef struct
 	u8 Key;
 	u8 Ctrl;
 } CtrlBind;
+
+// Speed data structure
+typedef struct
+{
+	u8  Count;
+	u16 Score;
+} SpeedData;
+
 
 struct PlayerTag;
 
@@ -449,3 +466,23 @@ extern const unsigned char g_Level017[];
 extern const unsigned char g_Level018[];
 extern const unsigned char g_Level019[];
 extern const unsigned char g_Level020[];
+extern const unsigned char g_Level021[];
+extern const unsigned char g_Level022[];
+extern const unsigned char g_Level023[];
+extern const unsigned char g_Level024[];
+extern const unsigned char g_Level025[];
+extern const unsigned char g_Level026[];
+extern const unsigned char g_Level027[];
+extern const unsigned char g_Level028[];
+extern const unsigned char g_Level029[];
+extern const unsigned char g_Level030[];
+extern const unsigned char g_Level031[];
+extern const unsigned char g_Level032[];
+extern const unsigned char g_Level033[];
+extern const unsigned char g_Level034[];
+extern const unsigned char g_Level035[];
+extern const unsigned char g_Level036[];
+extern const unsigned char g_Level037[];
+extern const unsigned char g_Level038[];
+extern const unsigned char g_Level039[];
+extern const unsigned char g_Level040[];
