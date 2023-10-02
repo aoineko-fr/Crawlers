@@ -467,10 +467,10 @@ const u8 g_BallColor[][8] =
 //
 const SpeedData g_SpeedData[SPEED_MAX] = 
 {
-	{  8, 1000 }, // Normal 
-	{  4, 1100 }, // Turbo
-	{ 16,  500 }, // Snail
-	{ 12,  700 }, // Chill
+	{  8, 800 }, // Normal 
+	{  4, 850 }, // Turbo
+	{ 16, 500 }, // Snail
+	{ 12, 600 }, // Chill
 };
 
 //
@@ -567,7 +567,7 @@ u8			g_SlotIdx;
 bool		g_SelectEdit;
 u8			g_CtrlReg[CTRL_MAX];
 u8			g_MenuInputPrev = 0xFF;
-u8			g_CtrlTurn = TURN_RELATIVE;
+u8			g_CtrlTurn = TURN_ABSOLUTE;
 bool		g_Cheat = FALSE;
 
 //=============================================================================
