@@ -62,8 +62,9 @@ void State_TrainGame_Update();
 void State_TrainScore_Begin();
 void State_TrainScore_Update();
 
-void MenuOpen_Init();
+void MenuOpen_Multi();
 void MenuOpen_Solo();
+void MenuOpen_Credit();
 
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
@@ -216,7 +217,7 @@ const u8 g_TitleTile[] =
 const MenuItemMinMax g_MenuRoundsMinMax = { 1, 20, 1 };
 const MenuItemMinMax g_MenuTreesMinMax =  { 0, 100, 10 };
 
-// Main menu
+// MENU_MAIN - Main menu
 const MenuItem g_MenuMain[] =
 {
 	{ "BATTLE",              MENU_ITEM_GOTO, NULL, MENU_MULTI },
@@ -225,8 +226,8 @@ const MenuItem g_MenuMain[] =
 	{ "CREDITS",             MENU_ITEM_GOTO, NULL, MENU_CREDIT },
 };
 
-// Training menu
-const MenuItem g_MenuSolo[] =
+// MENU_SOLO - Training menu
+MenuItem g_MenuSolo[] =
 {
 	{ "NEW GAME",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_NEW },
 	{ "CONTINUE",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_CONTINUE },
@@ -240,7 +241,7 @@ const MenuItem g_MenuSolo[] =
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
 
-// Multiplayer battle menu
+// MENU_MULTI - Multiplayer battle menu
 const MenuItem g_MenuMulti[] =
 {
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, START_BATTLE },
@@ -254,7 +255,7 @@ const MenuItem g_MenuMulti[] =
 	{ NULL,                  MENU_ITEM_UPDATE, MenuAction_Info, -1 },
 };
 
-// Options menu
+// MENU_OPTION - Options menu
 const MenuItem g_MenuOption[] =
 {
 	{ "GRAPH",               MENU_ITEM_GOTO, NULL, MENU_GRAPH },
@@ -268,7 +269,7 @@ const MenuItem g_MenuOption[] =
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 };
 
-// Graphic options menu
+// MENU_GRAPH - Graphic options menu
 const MenuItem g_MenuGraph[] =
 {
 	{ "SYSTEM",              MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_MSX, 0 },
@@ -281,7 +282,7 @@ const MenuItem g_MenuGraph[] =
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_OPTION },
 };
 
-// Control options menu
+// MENU_CONTROL - Control options menu
 const MenuItem g_MenuControl[] =
 {
 	{ "PORT1",               MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_Port, 0 },
@@ -294,7 +295,7 @@ const MenuItem g_MenuControl[] =
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_OPTION },
 };
 
-// Audio options menu
+// MENU_AUDIO - Audio options menu
 const MenuItem g_MenuAudio[] =
 {
 	{ "MUSIC",               MENU_ITEM_ACTION, MenuAction_Music, 0 },
@@ -307,7 +308,7 @@ const MenuItem g_MenuAudio[] =
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_OPTION },
 };
 
-// Credit page
+// MENU_CREDIT - Credit page
 const MenuItem g_MenuCredit[] =
 {
 	{ "CODE   AOINEKO",      MENU_ITEM_TEXT, NULL, 0 },
@@ -325,9 +326,9 @@ const Menu g_Menus[MENU_MAX] =
 {
 	{ NULL, g_MenuMain,    numberof(g_MenuMain),    NULL },				// MENU_MAIN
 	{ NULL, g_MenuSolo,    numberof(g_MenuSolo),    MenuOpen_Solo },	// MENU_SOLO
-	{ NULL, g_MenuMulti,   numberof(g_MenuMulti),   MenuOpen_Init },	// MENU_MULTI
+	{ NULL, g_MenuMulti,   numberof(g_MenuMulti),   MenuOpen_Multi },	// MENU_MULTI
 	{ NULL, g_MenuOption,  numberof(g_MenuOption),  NULL },				// MENU_OPTION
-	{ NULL, g_MenuCredit,  numberof(g_MenuCredit),  MenuOpen_Init },	// MENU_CREDIT
+	{ NULL, g_MenuCredit,  numberof(g_MenuCredit),  MenuOpen_Credit },	// MENU_CREDIT
 	{ NULL, g_MenuGraph,   numberof(g_MenuGraph),   NULL },				// MENU_GRAPH
 	{ NULL, g_MenuControl, numberof(g_MenuControl), NULL },				// MENU_CONTROL
 	{ NULL, g_MenuAudio,   numberof(g_MenuAudio),   NULL },				// MENU_AUDIO
@@ -515,7 +516,7 @@ u8			g_OptSFXNum;
 u8			g_LastMusicId = 0xFF;
 
 // Gameplay
-u8			g_GameMode = MODE_GREEDIEST;
+u8			g_GameMode = MODE_TRAINNNG;
 u8			g_GameCount = 3;
 Player		g_Players[PLAYER_MAX];	// Players information
 Player		g_TrainPlayer;	// Players information
@@ -1867,9 +1868,6 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 {
 	value;
 	
-	if(g_GameMode == MODE_TRAINNNG)
-		g_GameMode = MODE_GREEDIEST;
-
 	switch(op)
 	{
 	case MENU_ACTION_SET:
@@ -1915,10 +1913,10 @@ const c8* MenuAction_Speed(u8 op, i8 value)
 	case MENU_ACTION_GET:
 		switch(g_Speed)
 		{
-		case SPEED_NORMAL: return "NORMAL (3)"; 
-		case SPEED_TURBO:  return "TURBO (4)"; 
-		case SPEED_SNAIL:  return "SNAIL (1)"; 
-		case SPEED_CHILL:  return "CHILL (2)"; 
+		case SPEED_NORMAL: return "NORMAL \x1F\x1F\x1F"; 
+		case SPEED_TURBO:  return "TURBO  \x1F\x1F\x1F\x1F"; 
+		case SPEED_SNAIL:  return "SNAIL  \x1F"; 
+		case SPEED_CHILL:  return "CHILL  \x1F\x1F"; 
 		}
 	};
 	return NULL;
@@ -2261,9 +2259,12 @@ const c8* MenuAction_VDP(u8 op, i8 value)
 
 //-----------------------------------------------------------------------------
 //
-void MenuOpen_Init()
+void MenuOpen_Multi()
 {
 	g_Scroll = 0;
+
+	if(g_GameMode == MODE_TRAINNNG)
+		SetGameMode(MODE_GREEDIEST);
 }
 
 //-----------------------------------------------------------------------------
@@ -2277,14 +2278,32 @@ void MenuOpen_Solo()
 	// 	g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel - 1);
 	// }
 	// else
-	{
-		g_TrainTotal = 0;
-		g_HiTotal = 0;
-	}
+	// {
+	// 	g_TrainTotal = 0;
+	// 	g_HiTotal = 0;
+	// }
 
+	if(g_TrainLevel)
+	{
+		g_MenuSolo[1].Type = MENU_ITEM_ACTION;
+		g_MenuSolo[2].Type = MENU_ITEM_INT;
+	}
+	else
+	{
+		g_MenuSolo[1].Type = MENU_ITEM_ACTION|MENU_ITEM_DISABLE;
+		g_MenuSolo[2].Type = MENU_ITEM_INT|MENU_ITEM_DISABLE;
+	}
+	
 	g_MenuLevelMinMax.Min = 1;
 	g_MenuLevelMinMax.Max = g_HiLevel;
 	g_MenuLevelMinMax.Step = 1;
+}
+
+//-----------------------------------------------------------------------------
+//
+void MenuOpen_Credit()
+{
+	g_Scroll = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -3385,8 +3404,19 @@ void State_Victory_Update()
 
 //-----------------------------------------------------------------------------
 //
+void UnpackCrawler(u8 id)
+{
+	u16 dst = g_ScreenPatternLow + 0x800 + (160 * 8);
+	Pletter_UnpackToVRAM(id < 4 ? g_DataFace1_Patterns : g_DataFace2_Patterns, dst);
+	dst = g_ScreenColorLow + 0x800 + (160 * 8);
+	Pletter_UnpackToVRAM(id < 4 ? g_DataFace1_Colors : g_DataFace2_Colors, dst);
+}
+
+//-----------------------------------------------------------------------------
+//
 void SelectCrawler(u8 id)
 {
+	u8 prev = g_TrainPlayer.ID;
 	g_TrainPlayer.ID = id;
 
 	// Clean
@@ -3394,10 +3424,17 @@ void SelectCrawler(u8 id)
 	VDP_HideSprite(0); // Eyes
 
 	// Load data
-	u16 dst = g_ScreenPatternLow + 0x800 + (160 * 8);
-	Pletter_UnpackToVRAM(id < 4 ? g_DataFace1_Patterns : g_DataFace2_Patterns, dst);
-	dst = g_ScreenColorLow + 0x800 + (160 * 8);
-	Pletter_UnpackToVRAM(id < 4 ? g_DataFace1_Colors : g_DataFace2_Colors, dst);
+	if(g_VersionVDP == VDP_VERSION_TMS9918A)
+	{
+		if((prev / 4) != (id / 4))
+		{
+			VDP_EnableDisplay(FALSE);
+			UnpackCrawler(id); // On MSX 1, unpack is too fast when screen is enable
+			VDP_EnableDisplay(TRUE);
+		}
+	}
+	else
+		UnpackCrawler(id);
 
 	// Draw face
 	const Character* info = &g_CharaInfo[id];
@@ -3457,7 +3494,9 @@ void State_TrainSelect_Begin()
 	// Display player character
 	VDP_WriteLayout_GM2(SELECT_FRAME, TRAIN_FRAME_X, TRAIN_FRAME_Y, 7, 6);
 	VDP_WriteLayout_GM2(SELECT_CHARA, TRAIN_FRAME_X, TRAIN_FRAME_Y + 6, 7, 3);
-	SelectCrawler(Math_GetRandom8() % PLAYER_MAX);
+	u8 rnd = Math_GetRandom8() % PLAYER_MAX;
+	UnpackCrawler(rnd); // Force to unpack once for MSX1
+	SelectCrawler(rnd);
 	g_SelectEdit = FALSE;
 
 	// Sprite
@@ -3472,19 +3511,23 @@ void State_TrainSelect_Update()
 {
 	// Wait V-Synch
 	WaitVBlank();
-	
+
 	if(g_SelectEdit)
 	{
 		if (IsInputRight())
 		{
 			PlaySFX(SFX_MOVE);
 			u8 ctrl = (g_TrainPlayer.Controller + 1) % CTRL_PLY_NUM;
+			if((ctrl >= g_JoyNum) && (ctrl < CTRL_KEY_1))
+				ctrl = CTRL_KEY_1;
 			SelectControl(ctrl);
 		}
 		else if (IsInputLeft())
 		{
 			PlaySFX(SFX_MOVE);
 			u8 ctrl = (g_TrainPlayer.Controller + CTRL_PLY_NUM - 1) % CTRL_PLY_NUM;
+			if((ctrl >= g_JoyNum) && (ctrl < CTRL_KEY_1))
+				ctrl = g_JoyNum - 1;
 			SelectControl(ctrl);
 		}
 

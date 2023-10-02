@@ -58,8 +58,8 @@ Machine = "12";
 // - ROM_KONAMI_SCC	.rom	128KB ROM using Konami SCC mapper (8KB segments)
 // - DOS1			.com	MSX-DOS 1 program (0100h~) No direct acces to Main-ROM
 // - DOS2			.com	MSX-DOS 2 program (0100h~) No direct acces to Main-ROM
-// Target = "DOS0";
-Target = "ROM_48K_ISR";
+Target = "DOS0";
+// Target = "ROM_48K_ISR";
 
 //-- ROM mapper size (from 64 to 4096). Must be a multiple of 8 or 16 depending on the mapper type
 ROMSize = 0;
@@ -84,6 +84,9 @@ ForceRamAddr = 0;
 
 //-- Data to copy to disk (comma separated list)
 DiskFiles = [];
+
+//-- Size of the final disk (.DSK file). Can be "360K" or "720K" (string)
+DiskSize = "360K";
 
 //-- Add application signature to binary data (true or false)
 AppSignature = true;
@@ -157,8 +160,8 @@ EmulMSXAudio = false;
 EmulPSG2     = false;
 EmulV9990    = false;
 
-//-- Emulator port: joystick, mouse, keyboard (fake joystick)
-EmulPortA = "";
+//-- Plug a virtual device into the joystick port A (string)
+EmulPortA = "NinjaTap";
 EmulPortB = "";
 
 //-- Emulator extra parameters to be add to command-line (emulator sotfware specific)
