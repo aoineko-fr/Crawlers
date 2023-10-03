@@ -10,7 +10,7 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"1.0.0"
+#define GAME_VERSION				"1.0.1"
 
 // Configuration
 #define DEF_MUSIC					TRUE
@@ -205,11 +205,11 @@ enum PAL_ID
 // Music enumaration
 enum MUSIC_ID
 {
-	MUSIC_EMPTY = 0,
-	MUSIC_MENU,
+	MUSIC_MENU = 0,
 	MUSIC_BATTLE,
 	MUSIC_HURRYUP,
 	MUSIC_VICTORY,
+	MUSIC_EMPTY,
 //-----------------------------
 	MUSIC_MAX,
 };

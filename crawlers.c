@@ -299,8 +299,8 @@ const MenuItem g_MenuControl[] =
 const MenuItem g_MenuAudio[] =
 {
 	{ "MUSIC",               MENU_ITEM_ACTION, MenuAction_Music, 0 },
+	{ "TEST",                MENU_ITEM_ACTION, MenuAction_Music, 1 },
 	{ "SFX",                 MENU_ITEM_ACTION, MenuAction_SFX, 0 },
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -450,11 +450,11 @@ const u16 g_TimerLayout[7] =
 //
 const void* g_MusicInfo[MUSIC_MAX] =
 {
-	{ g_MusicEmpty   }, // MUSIC_EMPTY
 	{ g_MusicIntro   }, // MUSIC_MENU
 	{ g_MusicGame    }, // MUSIC_BATTLE
 	{ g_MusicHurry   }, // MUSIC_HURRYUP
 	{ g_MusicVictory }, // MUSIC_VICTORY
+	{ g_MusicEmpty   }, // MUSIC_EMPTY
 };
 
 //
@@ -2075,33 +2075,49 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 //
 const c8* MenuAction_Music(u8 op, i8 value)
 {
-	value;
-	u8 mus = 0xFF;
-	switch(op)
+	if(value == 0)
 	{
-	case MENU_ACTION_SET:
-		TOGGLE(g_OptMusic);
-		mus = MUSIC_MENU;
-		break;
-	case MENU_ACTION_INC:
-		if (g_OptMusicIdx < numberof(g_MusicInfo) - 1)
-			g_OptMusicIdx++;
-		else
-			g_OptMusicIdx = 0;
-		mus = g_OptMusicIdx;
-		break;
-	case MENU_ACTION_DEC:
-		if (g_OptMusicIdx > 0)
-			g_OptMusicIdx--;
-		else
-			g_OptMusicIdx =  numberof(g_MusicInfo) - 1;
-		mus = g_OptMusicIdx;
-		break;
+		switch(op)
+		{
+		case MENU_ACTION_SET:
+		case MENU_ACTION_INC:
+		case MENU_ACTION_DEC:
+			TOGGLE(g_OptMusic);
+			PlayMusic(g_OptMusicIdx);
+			break;
+		}
+		return g_OptMusic ? "*" : "/";
+	}
+	else
+	{
+		switch(op)
+		{
+		case MENU_ACTION_INC:
+			if (g_OptMusicIdx < numberof(g_MusicInfo) - 2)
+				g_OptMusicIdx++;
+			else
+				g_OptMusicIdx = 0;
+			PlayMusic(g_OptMusicIdx);
+			break;
+		case MENU_ACTION_DEC:
+			if (g_OptMusicIdx > 0)
+				g_OptMusicIdx--;
+			else
+				g_OptMusicIdx =  numberof(g_MusicInfo) - 2;
+			PlayMusic(g_OptMusicIdx);
+			break;
+		}
+
+		switch(g_OptMusicIdx)
+		{
+			case MUSIC_MENU:    return "MENU";
+			case MUSIC_BATTLE:  return "BATTLE";
+			case MUSIC_HURRYUP: return "HURRYUP";
+			case MUSIC_VICTORY: return "VICTORY";
+		}
 	}
 
-	if (mus != 0xFF)
-		PlayMusic(mus);
-	return g_OptMusic ? "*" : "/";
+	return NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -2112,21 +2128,9 @@ const c8* MenuAction_SFX(u8 op, i8 value)
 	switch(op)
 	{
 	case MENU_ACTION_SET:
-		TOGGLE(g_OptSFX);
-		break;
 	case MENU_ACTION_INC:
-		if (g_OptSFXIdx < g_OptSFXNum - 1)
-			g_OptSFXIdx++;
-		else
-			g_OptSFXIdx = 0;
-		// AKG_PlaySFX(g_OptSFXIdx, 0, 0);
-		break;
 	case MENU_ACTION_DEC:
-		if (g_OptSFXIdx > 0)
-			g_OptSFXIdx--;
-		else
-			g_OptSFXIdx = g_OptSFXNum - 1;
-		// AKG_PlaySFX(g_OptSFXIdx, 0, 0);
+		TOGGLE(g_OptSFX);
 		break;
 	}
 	return g_OptSFX ? "*" : "/";
@@ -2766,7 +2770,7 @@ void State_BattleSelect_Update()
 			SetNextPlayerController(ply);
 			EditPlayer(g_SlotIdx, TRUE);
 		}
-		else if (IsInputUp() || IsInputDown())
+		else if ((g_CtrlTurn == TURN_CUSTOM) && (IsInputUp() || IsInputDown()))
 		{
 			PlaySFX(SFX_MOVE);
 			ply->Turn = 1 - ply->Turn;
@@ -3038,7 +3042,7 @@ void State_BattleStart_Update()
 			case CTRL_JOY_6:
 			case CTRL_JOY_7:
 			case CTRL_JOY_8:
-				num = 21 + ply->Controller;
+				num = 21 - 4 + ply->Controller;
 				tile = TILE_JOY;
 				break;
 			case CTRL_KEY_1:
@@ -3535,6 +3539,7 @@ void State_TrainSelect_Update()
 		{
 			PlaySFX(SFX_SELECT);
 			g_TrainLevel = 1;
+			g_HiLevel = 1;
 			FSM_SetState(&State_TrainGame);
 		}
 	}
