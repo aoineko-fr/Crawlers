@@ -10,7 +10,7 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"1.0.1"
+#define GAME_VERSION				"1.0.2"
 
 // Configuration
 #define DEF_MUSIC					TRUE
@@ -54,7 +54,7 @@
 #define SFX_START					1
 #define SFX_BONUS					7
 #define SFX_HOLE					14
-#define SFX_DIED					10
+#define SFX_DEATH					10
 #define SFX_VICTORY					11
 
 // Gameplay defines
@@ -250,8 +250,9 @@ typedef struct
 // Controller binding structure
 typedef struct
 {
-	u8 Key;
-	u8 Ctrl;
+	u8 Key;    // Key ID
+	u8 Ctrl;   // Controller ID
+	bool bAll; // Can apply to all Crawlers
 } CtrlBind;
 
 // Speed data structure

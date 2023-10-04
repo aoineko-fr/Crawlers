@@ -86,7 +86,7 @@ const c8* MenuAction_Turn(u8 op, i8 value);
 void InitPlayer(Player* ply, u8 id);
 void ResetPlayer(Player* ply);
 void SpawnPlayer(Player* ply);
-void DrawPlayer(Player* ply);
+void DrawPlayer(Player* ply, u8 x, u8 y);
 void ClearPlayer(Player* ply);
 void UpdatePlayer(Player* ply);
 
@@ -397,20 +397,20 @@ const u8 g_HoleAnim[4] = { TILE_PREHOLE, (u8)(TILE_PREHOLE+1), (u8)(TILE_PREHOLE
 // Controller binding
 const CtrlBind g_CtrlBind[] =
 {
-	{ KEY_DEL,	CTRL_NONE },
-	{ KEY_F1,	CTRL_AI_EASY },
-	{ KEY_F2,	CTRL_AI_MED },
-	{ KEY_F3,	CTRL_AI_HARD },
-	{ KEY_F4,	CTRL_KEY_1 },
-	{ KEY_F5,	CTRL_KEY_2 },
-	{ KEY_1,	CTRL_JOY_1 },
-	{ KEY_2,	CTRL_JOY_2 },
-	{ KEY_3,	CTRL_JOY_3 },
-	{ KEY_4,	CTRL_JOY_4 },
-	{ KEY_5,	CTRL_JOY_5 },
-	{ KEY_6,	CTRL_JOY_6 },
-	{ KEY_7,	CTRL_JOY_7 },
-	{ KEY_8,	CTRL_JOY_8 },
+	{ KEY_DEL,	CTRL_NONE,    TRUE },
+	{ KEY_F1,	CTRL_AI_EASY, TRUE },
+	{ KEY_F2,	CTRL_AI_MED,  TRUE },
+	{ KEY_F3,	CTRL_AI_HARD, TRUE },
+	{ KEY_F4,	CTRL_KEY_1,   FALSE },
+	{ KEY_F5,	CTRL_KEY_2,   FALSE },
+	{ KEY_1,	CTRL_JOY_1,   FALSE },
+	{ KEY_2,	CTRL_JOY_2,   FALSE },
+	{ KEY_3,	CTRL_JOY_3,   FALSE },
+	{ KEY_4,	CTRL_JOY_4,   FALSE },
+	{ KEY_5,	CTRL_JOY_5,   FALSE },
+	{ KEY_6,	CTRL_JOY_6,   FALSE },
+	{ KEY_7,	CTRL_JOY_7,   FALSE },
+	{ KEY_8,	CTRL_JOY_8,   FALSE },
 };
 
 const u8 g_BonusData[8+1] = { 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFF, 0 };
@@ -429,7 +429,7 @@ const ModeInfo g_ModeInfo[] =
 	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   10, 0,   5 },
 };
 
-const c8 g_TextCredits[]   = "        CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY TOTTA    GFX ENHANCEMENT BY LUDOVIC 'GFX' AVOT    THANKS TO ALL MRC, MSX VILLAGE AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F  ";
+const c8 g_TextCredits[]   = "        CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY TOTTA    GFX ENHANCEMENT BY LUDOVIC 'GFX' AVOT    FONT BY DAMIEN GUARD    THANKS TO ALL MRC, MSX VILLAGE AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F  ";
 
 // 14 13 12  |  OOO  O    OO   OO    O    OO   O
 // 11 10 09  |  O    O      O    O  OO   O    O O
@@ -1174,21 +1174,28 @@ u16 GetTotalTrainingScore(const u16* tab, u8 level)
 }
 
 //-----------------------------------------------------------------------------
-// 
+// Find a free spot to spawn a bonus
 void SpawnBonus()
 {
 	if (g_CollapsePhase != 0xFF)
 		return;
 
-	u8 rnd = Math_GetRandom8();
-	u8 x = 8 + rnd % 16;
-	u8 y = 8 + (rnd >> 4) % 8;
-	while(VDP_Peek_GM2(x, y) != TILE_EMPTY)
-		x++;
+	// Search a free spot
+	u8 x = 0;
+	u8 y = 0;
+	do
+	{
+		u8 rnd = Math_GetRandom8();
+		x = 8 + rnd % 16;
+		y = 8 + (rnd >> 4) % 8;
+	}
+	while(VDP_Peek_GM2(x, y) != TILE_EMPTY);
+
+	// Spawn the bonus
 	g_BonusPos.X = x;
 	g_BonusPos.Y = y;
 	g_BonusTile = g_BonusData[g_BonusOpt];
-	if (g_BonusTile == 0)
+	if (g_BonusTile == 0) // Random bonus tile
 	{
 		u8 rnd = Math_GetRandom8() % 8;
 		g_BonusTile = g_BonusData[rnd];
@@ -1485,10 +1492,14 @@ void SpawnPlayer(Player* ply)
 
 //-----------------------------------------------------------------------------
 //
-void DrawPlayer(Player* ply)
+void DrawPlayer(Player* ply, u8 x, u8 y)
 {
-	u8 x = ply->PosX;
-	u8 y = ply->PosY;
+	ply->PosX = x;
+	ply->PosY = y;
+	ply->Idx--;
+	ply->Idx %= LENGTH_MAX;
+	ply->Path[ply->Idx] = ply->Dir;
+
 	u8 idx = ply->Idx;
 	u8 baseTile = g_CharaInfo[ply->ID].TileBase;
 	bool bGrow = FALSE;
@@ -1591,7 +1602,7 @@ void DrawPlayer(Player* ply)
 //
 void ClearPlayer(Player* ply)
 {
-	PlaySFX(SFX_DIED);
+	PlaySFX(SFX_DEATH);
 
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
@@ -1748,12 +1759,7 @@ void UpdatePlayer(Player* ply)
 					CheckGreediest(ply); // Check victory condition
 				}
 			default:
-				ply->PosX = x;
-				ply->PosY = y;
-				ply->Idx--;
-				ply->Idx %= LENGTH_MAX;
-				ply->Path[ply->Idx] = ply->Dir;
-				DrawPlayer(ply);
+				DrawPlayer(ply, x, y);
 				break;
 			}
 		}
@@ -2638,7 +2644,7 @@ void State_Title_Update()
 //
 void State_Menu_Begin()
 {
-	PlaySFX(SFX_START);
+	// PlaySFX(SFX_START);
 
 	// Draw menu frame
 	PrintChr(MENU_POS_LEFT,    MENU_POS_TOP,    0xE9);
@@ -2682,9 +2688,21 @@ void State_Menu_Update()
 
 //-----------------------------------------------------------------------------
 //
+u8 GetPlayerNum()
+{
+	u8 num = 0;
+	loop(i, PLAYER_MAX)
+		if(g_Players[i].Controller != CTRL_NONE)
+			num++;
+
+	return num;
+}
+
+//-----------------------------------------------------------------------------
+//
 void State_BattleSelect_Begin()
 {
-	PlaySFX(SFX_START);
+	// PlaySFX(SFX_START);
 	
 	// Initialize VDP
 	VDP_EnableDisplay(FALSE);
@@ -2840,7 +2858,10 @@ void State_BattleSelect_Update()
 				EditPlayer(g_SlotIdx, TRUE);
 				break;
 			case 8:
-				FSM_SetState(&State_BattleStart);
+				if(GetPlayerNum() >= 2)
+					FSM_SetState(&State_BattleStart);
+				else
+					PlaySFX(SFX_DEATH);
 				return;
 			case 9:
 				FSM_SetState(&State_Title);
@@ -2850,8 +2871,13 @@ void State_BattleSelect_Update()
 
 		if (Keyboard_IsKeyPushed(KEY_RET))
 		{
-			PlaySFX(SFX_SELECT);
-			FSM_SetState(&State_BattleStart);
+			if(GetPlayerNum() >= 2)
+			{
+				PlaySFX(SFX_SELECT);
+				FSM_SetState(&State_BattleStart);
+			}
+			else
+				PlaySFX(SFX_DEATH);
 			return;
 		}
 		if (IsInputButton2())
@@ -2862,16 +2888,27 @@ void State_BattleSelect_Update()
 		}
 
 		// Handle special keys
-		if (g_SlotIdx < 8)
+		loop(i, numberof(g_CtrlBind))
 		{
-			Player* ply = &g_Players[g_SlotIdx];
-			for(u8 i = 0; i < numberof(g_CtrlBind); ++i)
+			if(g_CtrlBind[i].bAll && Keyboard_IsKeyPressed(KEY_CTRL))
+			{
+				if (Keyboard_IsKeyPushed(g_CtrlBind[i].Key))
+				{
+					loop(j, PLAYER_MAX)
+					{
+						SetPlayerController(&g_Players[j], g_CtrlBind[i].Ctrl);
+						EditPlayer(j, FALSE);
+					}
+					break;
+				}
+			}
+			else if (g_SlotIdx < 8)
 			{
 				if (g_CtrlReg[g_CtrlBind[i].Ctrl] == CTRL_FREE)
 				{
 					if (Keyboard_IsKeyPushed(g_CtrlBind[i].Key))
 					{
-						SetPlayerController(ply, g_CtrlBind[i].Ctrl);
+						SetPlayerController(&g_Players[g_SlotIdx], g_CtrlBind[i].Ctrl);
 						EditPlayer(g_SlotIdx, FALSE);
 						break;
 					}
@@ -2889,7 +2926,7 @@ void State_BattleSelect_Update()
 //
 void State_BattleStart_Begin()
 {
-	PlaySFX(SFX_START);
+	// PlaySFX(SFX_START);
 
 	VDP_EnableDisplay(FALSE);
 
@@ -3392,12 +3429,7 @@ void State_Victory_Update()
 	}
 
 	// Move
-	ply->PosX = x;
-	ply->PosY = y;
-	ply->Idx--;
-	ply->Idx %= LENGTH_MAX;
-	ply->Path[ply->Idx] = ply->Dir;
-	DrawPlayer(ply);
+	DrawPlayer(ply, x, y);
 	// Turn if needed
 	ply->Dir = nextDir;
 }
@@ -3462,7 +3494,7 @@ void SelectControl(u8 id)
 //
 void State_TrainSelect_Begin()
 {
-	PlaySFX(SFX_START);
+	// PlaySFX(SFX_START);
 
 	VDP_EnableDisplay(FALSE);
 
