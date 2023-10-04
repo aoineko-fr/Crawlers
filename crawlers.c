@@ -1556,7 +1556,7 @@ void DrawPlayer(Player* ply, u8 x, u8 y)
 			}
 		}
 		// Body
-		else if (i == 1)
+		else if ((i == 1) && (ply->Length > 2))
 		{
 			u8 prev = idx - 1;
 			prev  %= LENGTH_MAX;

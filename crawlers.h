@@ -10,7 +10,7 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"1.0.2"
+#define GAME_VERSION				"1.0.3"
 
 // Configuration
 #define DEF_MUSIC					TRUE
