@@ -10,7 +10,7 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"1.0.3"
+#define GAME_VERSION				"1.0.4"
 
 // Configuration
 #define DEF_MUSIC					TRUE
@@ -67,10 +67,11 @@
 #define BONUS_GROWTH				5
 #define TRAIN_GROWTH				2
 
-// LAyout defines
+// Layout defines
 #define TRAIN_FRAME_X				13
 #define TRAIN_FRAME_Y				8
 #define STR_SCROLL_LEN				22
+#define COLLAPSE_OFF				0xFF
 
 // Controller types define
 enum CTRL_TYPE

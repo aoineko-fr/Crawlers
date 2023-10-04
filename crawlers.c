@@ -897,7 +897,7 @@ void SetTimer(u8 min)
 	g_TimeSecHigh = 0;
 	g_TimeSecLow = 0;
 	g_CollapseTimer = 0;
-	g_CollapsePhase = 0xFF;
+	g_CollapsePhase = COLLAPSE_OFF;
 	if (g_GameMode != MODE_TRAINNNG && g_HurryUp)
 	{
 		PlayMusic(MUSIC_BATTLE);
@@ -1177,7 +1177,7 @@ u16 GetTotalTrainingScore(const u16* tab, u8 level)
 // Find a free spot to spawn a bonus
 void SpawnBonus()
 {
-	if (g_CollapsePhase != 0xFF)
+	if (g_CollapsePhase != COLLAPSE_OFF)
 		return;
 
 	// Search a free spot
@@ -1566,7 +1566,8 @@ void DrawPlayer(Player* ply, u8 x, u8 y)
 				tile = vec->A;
 			else
 				tile = vec->B;
-			VDP_Poke_GM2(x, y, tile + baseTile);
+			if (VDP_Peek_GM2(x, y) != TILE_HOLE)
+				VDP_Poke_GM2(x, y, tile + baseTile);
 		}
 		// Tail
 		else if (i == ply->Length - 1)
@@ -1576,7 +1577,8 @@ void DrawPlayer(Player* ply, u8 x, u8 y)
 			u8 tile = 0x4C + ply->Path[prev] * 2;
 			if (ply->Anim & 1)
 				tile++;
-			VDP_Poke_GM2(x, y, tile + baseTile);
+			if (VDP_Peek_GM2(x, y) != TILE_HOLE)
+				VDP_Poke_GM2(x, y, tile + baseTile);
 		}
 		// Clear
 		else if ((!bGrow) && (i == ply->Length))
@@ -2880,7 +2882,7 @@ void State_BattleSelect_Update()
 				PlaySFX(SFX_DEATH);
 			return;
 		}
-		if (IsInputButton2())
+		if (Keyboard_IsKeyPushed(KEY_ESC))
 		{
 			PlaySFX(SFX_SELECT);
 			FSM_SetState(&State_Title);
@@ -3032,7 +3034,7 @@ void State_BattleStart_Update()
 		FSM_SetState(&State_BattleGame);
 		return;
 	}
-	if (IsInputButton2())
+	if (Keyboard_IsKeyPushed(KEY_ESC))
 	{
 		PlaySFX(SFX_SELECT);		
 		FSM_SetState(&State_BattleSelect);
@@ -3145,7 +3147,7 @@ void State_BattleGame_Begin()
 	// Initialize timer
 	if (g_TimeMax)
 		SetTimer(g_TimeMax);
-	g_CollapsePhase = 0xFF;
+	g_CollapsePhase = COLLAPSE_OFF;
 
 	// Copy screen buffer to VRAM
 	DrawLevel();
@@ -3226,23 +3228,16 @@ void State_BattleGame_Update()
 
 	UpdateInput();
 
-	if (g_TimeMax && (g_CollapsePhase != 0xFF)) // Field is collapsing...
+	if (g_TimeMax && (g_CollapsePhase != COLLAPSE_OFF)) // Field is collapsing...
 	{
 		if ((g_CollapseTimer >= 32) && (g_CollapseY0 < 12))
 		{
 			u8 phase = g_CollapsePhase & 0x3;
 			u8 tile = g_HoleAnim[phase];
 
-			DrawTileX(g_CollapseX0, g_CollapseY0, tile, g_CollapseX1 - g_CollapseX0 + 1);
 			PrintChrX(g_CollapseX0, g_CollapseY0, tile, g_CollapseX1 - g_CollapseX0 + 1);
-
-			DrawTileX(g_CollapseX0, g_CollapseY1, tile, g_CollapseX1 - g_CollapseX0 + 1);
 			PrintChrX(g_CollapseX0, g_CollapseY1, tile, g_CollapseX1 - g_CollapseX0 + 1);
-
-			DrawTileX(g_CollapseX0, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
 			PrintChrY(g_CollapseX0, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
-
-			DrawTileX(g_CollapseX1, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
 			PrintChrY(g_CollapseX1, g_CollapseY0 + 1, tile, g_CollapseY1 - g_CollapseY0 - 1);
 
 			if (phase == 3)
@@ -3286,7 +3281,7 @@ void State_BattleGame_Update()
 		}
 	}
 
-	if (IsInputButton2())
+	if (Keyboard_IsKeyPushed(KEY_ESC))
 	{
 		PlaySFX(SFX_SELECT);		
 		FSM_SetState(&State_BattleSelect);
@@ -3599,7 +3594,7 @@ void State_TrainSelect_Update()
 		}
 	}
 
-	if (IsInputButton2())
+	if (Keyboard_IsKeyPushed(KEY_ESC))
 	{
 		PlaySFX(SFX_SELECT);
 		FSM_SetState(&State_Title);
@@ -3689,7 +3684,7 @@ void State_TrainGame_Update()
 		FSM_SetState(&State_TrainScore);
 		return;
 	}
-	if (IsInputButton2())
+	if (Keyboard_IsKeyPushed(KEY_ESC))
 	{
 		PlaySFX(SFX_SELECT);
 		FSM_SetState(&State_Title);
@@ -3803,7 +3798,7 @@ void State_TrainScore_Update()
 		else
 			FSM_SetState(&State_TrainGame);
 	}
-	if (IsInputButton2())
+	if (Keyboard_IsKeyPushed(KEY_ESC))
 	{
 		PlaySFX(SFX_SELECT);
 		FSM_SetState(&State_Title);
