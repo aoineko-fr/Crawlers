@@ -10,13 +10,24 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"1.0.4"
+#define GAME_VERSION				"1.0.5"
 
 // Configuration
 #define DEF_MUSIC					TRUE
 #define DEF_SFX						TRUE
 #define PLAYER_MAX					8
 #define TRAIN_LEVEL_MAX				40
+
+// Gameplay defines
+#define LENGTH_MIN					1
+#define LENGTH_MAX					128
+#define LENGTH_DEFAULT				5
+#define SPAWN_WAIT					20 // Spawn waiting time (N * 8 frames)
+#define COOLDOWN_WAIT				8
+#define AI_WEIGHT_BONUS				1
+#define BONUS_GROWTH				5
+#define TRAIN_GROWTH				2
+#define BATTLEROYAL_TIME			1
 
 // Logo tiles
 #define MSXGL						"[\\]^"
@@ -56,16 +67,6 @@
 #define SFX_HOLE					14
 #define SFX_DEATH					10
 #define SFX_VICTORY					11
-
-// Gameplay defines
-#define LENGTH_MIN					1
-#define LENGTH_MAX					128
-#define LENGTH_DEFAULT				5
-#define SPAWN_WAIT					20 // Spawn waiting time (N * 8 frames)
-#define COOLDOWN_WAIT				8
-#define AI_WEIGHT_BONUS				1
-#define BONUS_GROWTH				5
-#define TRAIN_GROWTH				2
 
 // Layout defines
 #define TRAIN_FRAME_X				13
@@ -150,10 +151,10 @@ enum MENU_PAGE
 enum GAME_MODE
 {
 //-- Battle modes
-	MODE_BATTLEROYAL = 0,
+	MODE_GREEDIEST = 0,
 	MODE_DEATHMATCH,
 	MODE_SIZEMATTER,
-	MODE_GREEDIEST,
+	MODE_BATTLEROYAL,
 //-----------------------------
 	MODE_BATTLE_MAX,
 //-- Solo mode
@@ -315,8 +316,8 @@ typedef struct
 	const c8*	Name;				// Mode's name
 	const c8*	Desc;				// Description
 	u8			Length;				// Description length
-	u8			Rounds;				// Default round number
-	u8			Time;				// Default time
+	u8			Count;				// Default round number
+	bool		Time;				// Default time
 	u8			Bonus;				// Default bonus length
 } ModeInfo;
 

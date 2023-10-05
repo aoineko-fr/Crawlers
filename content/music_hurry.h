@@ -3,7 +3,7 @@
 // â–ˆ  â–ˆ â–ˆ  â–€â–€  â–„â–ˆ  â–ˆ  â–ˆ â–ˆâ–ˆâ–„â–€ â–ˆâ–ˆ â–ˆâ–ˆ â–ˆ
 // â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€
 // MSXbin 1.4.1 by Guillaume "Aoineko" Blanchard (2022) under CC BY-SA free license
-// File generated on Tue Oct  3 00:21:34 2023
+// File generated on Thu Oct  5 23:12:53 2023
 // Soure file: datasrc\music_hurry.pl5
 const unsigned char g_MusicHurry[] = {
 	0x00, 0x41, 0x54, 0x32, 0x30, 0x0E, 0xD0, 0xE0, 0x01, 0x75, 0xD0, 0xAB, 0xD0, 0x00, 0x1A, 0xD0, //      0

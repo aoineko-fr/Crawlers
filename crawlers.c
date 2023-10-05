@@ -246,9 +246,9 @@ const MenuItem g_MenuMulti[] =
 {
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, START_BATTLE },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
-	{ "ROUNDS",              MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
-	{ "TIME",                MENU_ITEM_INT, &g_TimeMax, (i16)&g_MenuRoundsMinMax },
+	{ "COUNT",               MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
 	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -416,17 +416,17 @@ const CtrlBind g_CtrlBind[] =
 const u8 g_BonusData[8+1] = { 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFF, 0 };
 const u8 g_WallData[4+1] = { TILE_TREE, TILE_TREE2, TILE_FENCE, TILE_WATER, 0 };
 
-const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS IS REACHED. FIELD COLLAPSE AFTER TIMER END.";
-const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (ROUNDS) WINS THE MATCH.";
-const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN TIME, THE ONE WHO HAS REACHED THE LARGEST SIZE WINS THE MATCH.";
-const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GETS THE MOST BONUSES AT THE END OF THE SET TIME WINS THE GAME.";
+const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GET A BONUS WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF BONUSES (COUNT) WINS THE BATTLE.";
+const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (COUNT) WINS THE BATTLE.";
+const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN NUMBER OF MINUTES (COUNT), THE ONE WHO HAS REACHED THE LARGEST SIZE WINS THE BATTLE.";
+const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS (COUNT) IS REACHED. FIELD COLLAPSE AFTER TIMER ENDS.";
 
 const ModeInfo g_ModeInfo[] =
-{//   Name            Dec.               Length                     Rnd Time Length
-	{ "BATTLE ROYAL", g_DescBattleRoyal, sizeof(g_DescBattleRoyal), 5,  1,   5 },
-	{ "DEATH MATCH",  g_DescDeathMatch,  sizeof(g_DescDeathMatch),  10, 0,   5 },
-	{ "SIZE MATTER",  g_DescSizeMatter,  sizeof(g_DescSizeMatter),  0,  5,   5 },
-	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   10, 0,   5 },
+{//   Name            Dec.               Length                     Rnd Time   Length
+	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   10, FALSE, 5 },
+	{ "DEATH MATCH",  g_DescDeathMatch,  sizeof(g_DescDeathMatch),  5,  FALSE, 5 },
+	{ "SIZE MATTER",  g_DescSizeMatter,  sizeof(g_DescSizeMatter),  2,  TRUE,  5 },
+	{ "BATTLE ROYAL", g_DescBattleRoyal, sizeof(g_DescBattleRoyal), 3,  TRUE,  5 },
 };
 
 const c8 g_TextCredits[]   = "        CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY TOTTA    GFX ENHANCEMENT BY LUDOVIC 'GFX' AVOT    FONT BY DAMIEN GUARD    THANKS TO ALL MRC, MSX VILLAGE AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F  ";
@@ -517,7 +517,7 @@ u8			g_LastMusicId = 0xFF;
 
 // Gameplay
 u8			g_GameMode = MODE_TRAINNNG;
-u8			g_GameCount = 3;
+u8			g_GameCount;
 Player		g_Players[PLAYER_MAX];	// Players information
 Player		g_TrainPlayer;	// Players information
 u8			g_PlayerMax;
@@ -552,7 +552,6 @@ u16			g_HiTotal = 0;
 
 // Timers
 u8			g_Counter;
-u8			g_TimeMax = 1;
 u8			g_TimeFrame;
 u8			g_TimeMinHigh;
 u8			g_TimeMinLow;
@@ -1083,7 +1082,7 @@ void CheckBattleRoyal()
 	}
 
 	// Clean field and start a new round
-	SetTimer(g_TimeMax);
+	SetTimer(BATTLEROYAL_TIME);
 	DrawLevel();
 	ClearPlayer(lastPly);
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -1779,15 +1778,11 @@ void SetGameMode(u8 newMode)
 	g_GameMode = newMode;
 
 	const ModeInfo* info = &g_ModeInfo[g_GameMode];
-	g_GameCount = info->Rounds;
-	g_TimeMax   = info->Time;
+	g_GameCount = info->Count;
 	g_BonusLen  = info->Bonus;
 
-	// Menu_Update();
-	// Menu_DrawPage(MENU_MULTI);
+	// Update count number
 	Menu_DisplayItem(2);
-	Menu_DisplayItem(3);
-	Menu_DisplayItem(4);
 }
 
 //-----------------------------------------------------------------------------
@@ -2307,7 +2302,7 @@ void MenuOpen_Solo()
 	}
 	
 	g_MenuLevelMinMax.Min = 1;
-	g_MenuLevelMinMax.Max = g_HiLevel;
+	g_MenuLevelMinMax.Max = g_Cheat ? TRAIN_LEVEL_MAX : g_HiLevel;
 	g_MenuLevelMinMax.Step = 1;
 }
 
@@ -2948,7 +2943,7 @@ void State_BattleStart_Begin()
 	DrawTileY(0,  2, 0xEB, 21);
 
 	// Timer board
-	if (g_TimeMax)
+	if (g_ModeInfo[g_GameMode].Time)
 	{
 		DrawTile(14, 23, TILE_CLOCK + 0);
 		DrawTile(15, 23, TILE_CLOCK + 1);
@@ -3145,8 +3140,13 @@ void State_BattleGame_Begin()
 	VDP_DisableSpritesFrom(8);
 
 	// Initialize timer
-	if (g_TimeMax)
-		SetTimer(g_TimeMax);
+	if (g_ModeInfo[g_GameMode].Time)
+	{
+		if(g_GameMode == MODE_BATTLEROYAL)
+			SetTimer(BATTLEROYAL_TIME);
+		else
+			SetTimer(g_GameCount);
+	}
 	g_CollapsePhase = COLLAPSE_OFF;
 
 	// Copy screen buffer to VRAM
@@ -3228,7 +3228,7 @@ void State_BattleGame_Update()
 
 	UpdateInput();
 
-	if (g_TimeMax && (g_CollapsePhase != COLLAPSE_OFF)) // Field is collapsing...
+	if (g_ModeInfo[g_GameMode].Time && (g_CollapsePhase != COLLAPSE_OFF)) // Field is collapsing...
 	{
 		if ((g_CollapseTimer >= 32) && (g_CollapseY0 < 12))
 		{
@@ -3257,7 +3257,7 @@ void State_BattleGame_Update()
 	{
 		VDP_Poke_GM2(g_BonusPos.X, g_BonusPos.Y, g_BonusTile);
 
-		if (g_TimeMax)
+		if (g_ModeInfo[g_GameMode].Time)
 		{
 			bool bZero = !UpdateTimer();
 			if (bZero)
@@ -3356,7 +3356,7 @@ void State_Victory_Begin()
 	ply->PosX = 7;
 	ply->PosY = 15;
 	ply->Dir = DIR_RIGHT;
-	ply->Expect = MIN(ply->Length, 50);
+	ply->Expect = CLAMP8(ply->Length, 3, 50);
 	ply->Length = 1;
 
 	VDP_EnableDisplay(TRUE);
@@ -3769,8 +3769,11 @@ void State_TrainScore_Begin()
 	Print_DrawIntAt(17, 15, g_HiTotal);
 
 	// Move to next level
+	g_Winner = NULL;
 	if(g_TrainLevel < TRAIN_LEVEL_MAX)
 		g_TrainLevel++;
+	else
+		g_Winner = &g_TrainPlayer;
 	if (g_TrainLevel > g_HiLevel)
 		g_HiLevel = g_TrainLevel;
 
@@ -3790,11 +3793,8 @@ void State_TrainScore_Update()
 	if (IsInputButton1())
 	{
 		PlaySFX(SFX_MOVE);
-		if (g_TrainLevel == TRAIN_LEVEL_MAX)
-		{
-			g_Winner = &g_TrainPlayer;
+		if (g_Winner)
 			FSM_SetState(&State_Victory);
-		}
 		else
 			FSM_SetState(&State_TrainGame);
 	}
