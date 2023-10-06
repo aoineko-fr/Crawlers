@@ -506,6 +506,8 @@ u8			g_PalOpt;
 u8			g_VersionVDP;
 u16			g_Scroll;
 bool		g_Initialized = FALSE;
+u8			g_StartPage = 0xFF;
+u8			g_Continue;
 
 // Audio
 bool		g_OptMusic = DEF_MUSIC;
@@ -1855,10 +1857,12 @@ const c8* MenuAction_Start(u8 op, i8 value)
 				FSM_SetState(&State_BattleSelect);
 				break;
 			case START_TRAIN_NEW:
+				g_Continue = FALSE;
 				FSM_SetState(&State_TrainSelect);
 				break;
 			case START_TRAIN_CONTINUE:
-				FSM_SetState(&State_TrainGame);
+				g_Continue = TRUE;
+				FSM_SetState(&State_TrainSelect);
 				break;
 		}
 	}
@@ -2272,6 +2276,8 @@ void MenuOpen_Multi()
 
 	if(g_GameMode == MODE_TRAINNNG)
 		SetGameMode(MODE_GREEDIEST);
+
+	g_StartPage = MENU_MULTI;
 }
 
 //-----------------------------------------------------------------------------
@@ -2304,6 +2310,8 @@ void MenuOpen_Solo()
 	g_MenuLevelMinMax.Min = 1;
 	g_MenuLevelMinMax.Max = g_Cheat ? TRAIN_LEVEL_MAX : g_HiLevel;
 	g_MenuLevelMinMax.Step = 1;
+
+	g_StartPage = MENU_SOLO;
 }
 
 //-----------------------------------------------------------------------------
@@ -2619,11 +2627,18 @@ void State_Title_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
+	if(g_StartPage != 0xFF)
+	{
+		FSM_SetState(&State_Menu);
+		return;
+	}
+
 	PressKeyBlink();
 
 	if (IsInputButton1())
 	{
-		PlaySFX(SFX_SELECT);		
+		PlaySFX(SFX_SELECT);
+		g_StartPage = MENU_MAIN;	
 		FSM_SetState(&State_Menu);
 	}
 }
@@ -2666,7 +2681,8 @@ void State_Menu_Begin()
 	Menu_SetInputCallback(Menu_HandleInput);
 	Menu_SetDrawCallback(Menu_HandleDraw);
 	Menu_SetEventCallback(Menu_HandleEvent);
-	Menu_DrawPage(MENU_MAIN);}
+	Menu_DrawPage(g_StartPage);
+}
 
 //-----------------------------------------------------------------------------
 //
@@ -3525,9 +3541,11 @@ void State_TrainSelect_Begin()
 	// Display player character
 	VDP_WriteLayout_GM2(SELECT_FRAME, TRAIN_FRAME_X, TRAIN_FRAME_Y, 7, 6);
 	VDP_WriteLayout_GM2(SELECT_CHARA, TRAIN_FRAME_X, TRAIN_FRAME_Y + 6, 7, 3);
-	u8 rnd = Math_GetRandom8() % PLAYER_MAX;
-	UnpackCrawler(rnd); // Force to unpack once for MSX1
-	SelectCrawler(rnd);
+	u8 id = g_TrainPlayer.ID;
+	if(!g_Continue)
+		id = Math_GetRandom8() % PLAYER_MAX;
+	UnpackCrawler(id); // Force to unpack once for MSX1
+	SelectCrawler(id);
 	g_SelectEdit = FALSE;
 
 	// Sprite
@@ -3565,8 +3583,11 @@ void State_TrainSelect_Update()
 		if (IsInputButton1())
 		{
 			PlaySFX(SFX_SELECT);
-			g_TrainLevel = 1;
-			g_HiLevel = 1;
+			if(!g_Continue)
+			{
+				g_TrainLevel = 1;
+				g_HiLevel = 1;
+			}
 			FSM_SetState(&State_TrainGame);
 		}
 	}
