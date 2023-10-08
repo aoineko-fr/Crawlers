@@ -10,7 +10,7 @@
 // DEFINES
 //=============================================================================
 
-#define GAME_VERSION				"1.0.6"
+#define GAME_VERSION				"1.0.7"
 
 // Configuration
 #define DEF_MUSIC					TRUE
@@ -169,6 +169,7 @@ enum MENU_START
 	START_BATTLE = 0,
 	START_TRAIN_NEW,
 	START_TRAIN_CONTINUE,
+	START_CTRL_TEST,
 //-----------------------------
 	START_MAX,
 };
@@ -374,6 +375,10 @@ typedef struct
 
 #define SELECT_CHARA			g_DataSelectL35_Names	// 7x3
 
+#define SELECT_TEST_NONE		g_DataSelectL36_Names	// 3x3
+#define SELECT_TEST_BG			g_DataSelectL37_Names	// 3x3
+#define SELECT_TEST_ARROW		g_DataSelectL38_Names	// 4x1
+
 #define SELECT_FACE_1			g_DataFace1L0_Names		// 5x5
 #define SELECT_FACE_2			g_DataFace1L1_Names		// 5x5
 #define SELECT_FACE_3			g_DataFace1L2_Names		// 5x5
@@ -443,6 +448,9 @@ extern const unsigned char g_DataSelectL32_Names[];
 extern const unsigned char g_DataSelectL33_Names[];
 extern const unsigned char g_DataSelectL34_Names[];
 extern const unsigned char g_DataSelectL35_Names[];
+extern const unsigned char g_DataSelectL36_Names[];
+extern const unsigned char g_DataSelectL37_Names[];
+extern const unsigned char g_DataSelectL38_Names[];
 extern const unsigned char g_DataSelect_Patterns[];
 extern const unsigned char g_DataSelect_Colors[];
 extern const unsigned char g_DataSFX[];

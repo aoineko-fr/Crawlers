@@ -95,7 +95,11 @@ REM %MSXtk%\MSXimg.exe datasrc\crawlers.png -out content\title.h -mode gm2 --gm2
 	-l gm2 56  200 56 16 ^
 	-l gm2 112 200 56 16 ^
 	-l gm2 168 200 56 16 ^
-	-l gm2 168 176 56 24
+	-l gm2 168 176 56 24 ^
+	-l gm2 224   0 24 24 ^
+	-l gm2 224  24 24 24 ^
+	-l gm2 224  48 32 8
+
 
 %MSXtk%\MSXimg.exe datasrc\logo.png -out content\logo_tile.h -mode gm2 -compress pletter -name g_DataLogoTile -pos 0 0 -size 48 16 ^
 	-l gm2 0 16 32 32
