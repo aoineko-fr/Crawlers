@@ -17,9 +17,11 @@
 #include "fsm.h"
 #include "game_menu.h"
 #include "device/ninjatap.h"
+#include "device/pac.h"
 #include "arkos/akg_player.h"
 #include "compress/pletter.h"
 #include "dos.h"
+#include "crypt.h"
 
 // Crawlers
 #include "crawlers.h"
@@ -65,10 +67,14 @@ void State_TrainScore_Update();
 void State_CtrlTest_Begin();
 void State_CtrlTest_Update();
 
+void State_ScoreBoard_Begin();
+void State_ScoreBoard_Update();
+
 void MenuOpen_Multi();
 void MenuOpen_Solo();
 void MenuOpen_Control();
 void MenuOpen_Credit();
+void MenuOpen_Save();
 
 const c8* MenuAction_Start(u8 op, i8 value);
 const c8* MenuAction_Mode(u8 op, i8 value);
@@ -79,12 +85,12 @@ const c8* MenuAction_Freq(u8 op, i8 value);
 const c8* MenuAction_Palette(u8 op, i8 value);
 const c8* MenuAction_Music(u8 op, i8 value);
 const c8* MenuAction_SFX(u8 op, i8 value);
+const c8* MenuAction_PAC(u8 op, i8 value);
 const c8* MenuAction_Bonus(u8 op, i8 value);
 const c8* MenuAction_Wall(u8 op, i8 value);
 const c8* MenuAction_Port(u8 op, i8 value);
 const c8* MenuAction_MSX(u8 op, i8 value);
 const c8* MenuAction_VDP(u8 op, i8 value);
-// const c8* MenuAction_Save(u8 op, i8 value);
 const c8* MenuAction_Turn(u8 op, i8 value);
 
 void InitPlayer(Player* ply, u8 id);
@@ -101,12 +107,9 @@ bool IsInputRight();
 bool IsInputButton1();
 bool IsInputButton2();
 
-#if (TARGET_TYPE == TYPE_DOS)
+#if (TARGET_TYPE == TYPE_DOS) // Defined in system.h for 48K ROM
 u8 g_VersionROM = 0;
 u8 g_VersionMSX = 0;
-#else
-extern u8 g_VersionROM;
-extern u8 g_VersionMSX;
 #endif
 
 extern MenuItemMinMax g_MenuLevelMinMax;
@@ -119,107 +122,9 @@ extern MenuItemMinMax g_MenuLevelMinMax;
 	#include "crawlers_p0.c"
 #endif
 
-//
-const Shapes g_Body[] =
-{
-	{ 0x46, 0x47 }, // U+U =>	00:00
-	{ 0x48, 0x48 }, // U+R =>	00:02
-	{ 0,    0,   }, // U+D =>	00:01
-	{ 0x49, 0x49 }, // U+L =>	00:03
-
-	{ 0x4B, 0x4B }, // R+U =>	02:00
-	{ 0x44, 0x45 }, // R+R =>	02:02
-	{ 0x49, 0x49 }, // R+D =>	02:01
-	{ 0,    0,   }, // R+L =>	02:03
-
-	{ 0,    0,   }, // D+U =>	01:00
-	{ 0x4A, 0x4A }, // D+R =>	01:02
-	{ 0x46, 0x47 }, // D+D =>	01:01
-	{ 0x4B, 0x4B }, // D+L =>	01:03
-
-	{ 0x4A, 0x4A }, // L+U =>	02:00
-	{ 0,    0,   }, // L+R =>	02:02
-	{ 0x48, 0x48 }, // L+D =>	02:01
-	{ 0x44, 0x45 }, // L+L =>	02:03
-};
-
-//
-const Character g_CharaInfo[PLAYER_MAX] =
-{
-	{ 0*20, 0   , 2,    5,  SELECT_FACE_1, { 33, 19 }, 12, COLOR_DARK_BLUE },
-	{ 1*20, 1   , 2+7,  5,  SELECT_FACE_2, { 30, 16 }, 13, COLOR_DARK_BLUE },
-	{ 2*20, 0xFF, 2+14, 5,  SELECT_FACE_3, { 30, 15 }, 14, COLOR_BLACK },
-	{ 3*20, 0xFF, 2+21, 5,  SELECT_FACE_4, { 30, 17 }, 15, COLOR_BLACK },
-	{ 4*20, 0xFF, 2,    15, SELECT_FACE_5, { 30, 15 }, 14, COLOR_BLACK },
-	{ 5*20, 0xFF, 2+7,  15, SELECT_FACE_6, { 30, 17 }, 15, COLOR_DARK_BLUE },
-	{ 6*20, 2   , 2+14, 15, SELECT_FACE_7, { 33, 19 }, 12, COLOR_DARK_BLUE },
-	{ 7*20, 3   , 2+21, 15, SELECT_FACE_8, { 30, 16 }, 13, COLOR_BLACK },
-};
-
-//
-const Start g_Starts[PLAYER_MAX] =
-{
-	{  5,  6, DIR_RIGHT },
-	{ 26, 18, DIR_LEFT  },
-	{ 26,  6, DIR_DOWN  },
-	{  5, 18, DIR_UP    },
-	{  9, 10, DIR_DOWN  },
-	{ 22, 16, DIR_UP    },
-	{  9, 16, DIR_RIGHT },
-	{ 22, 10, DIR_LEFT  },
-};
-
-// Alternative
-const u16 g_MSX2Palette[15] =
-{
-	RGB16(0, 0, 0), // black				RGB16(0, 0, 0),
-	RGB16(1, 5, 1), // medium green			RGB16(1, 5, 1),
-	RGB16(3, 6, 3), // light green			RGB16(3, 6, 3),
-	RGB16(2, 2, 6), // dark blue			RGB16(2, 2, 6),
-	RGB16(3, 3, 7), // light blue			RGB16(3, 3, 7),
-	RGB16(5, 2, 2), // dark red				RGB16(5, 2, 2),
-	RGB16(5, 5, 7), // *cyan				RGB16(2, 6, 7),
-	RGB16(6, 3, 3), // *medium red			RGB16(6, 2, 2),
-	RGB16(7, 4, 4), // *light red			RGB16(6, 3, 3),
-	RGB16(5, 5, 3), // *dark yellow			RGB16(5, 5, 2),
-	RGB16(6, 6, 4), // *light yellow		RGB16(6, 6, 3),
-	RGB16(1, 4, 1), // dark green			RGB16(1, 4, 1),
-	RGB16(5, 2, 4), // *magenta				RGB16(5, 2, 5),
-	RGB16(5, 5, 5), // gray					RGB16(5, 5, 5),
-	RGB16(7, 7, 7)  // white				RGB16(7, 7, 7) 
-};
-
-const u16 g_GrayPalette[15] =
-{
-	RGB16(0, 0, 0), // black				RGB16(0, 0, 0),
-	RGB16(3, 3, 3), // medium green			RGB16(1, 5, 1),
-	RGB16(6, 6, 6), // light green			RGB16(3, 6, 3),
-	RGB16(3, 3, 3), // dark blue			RGB16(2, 2, 6),
-	RGB16(4, 4, 4), // light blue			RGB16(3, 3, 7),
-	RGB16(2, 2, 2), // dark red				RGB16(5, 2, 2),
-	RGB16(6, 6, 6), // *cyan				RGB16(2, 6, 7),
-	RGB16(3, 3, 3), // *medium red			RGB16(6, 2, 2),
-	RGB16(4, 4, 4), // *light red			RGB16(6, 3, 3),
-	RGB16(4, 4, 4), // *dark yellow			RGB16(5, 5, 2),
-	RGB16(5, 5, 5), // *light yellow		RGB16(6, 6, 3),
-	RGB16(2, 2, 2), // dark green			RGB16(1, 4, 1),
-	RGB16(4, 4, 4), // *magenta				RGB16(5, 2, 5),
-	RGB16(4, 4, 4), // gray					RGB16(5, 5, 5),
-	RGB16(7, 7, 7)  // white				RGB16(7, 7, 7) 
-};
-
-//
-const u8 g_TitleTile[] =
-{
-	0x70, 0x6D, 0x71, 0xD4, 0xD0, 0xD5, 0x48, 0x45, 0x49, 0x8D, 0x00, 0x7C, 0xA1, 0x00, 0x00, 0xC0, 0xBD, 0xCA, 0xAC, 0xA8, 0xAD, 0x5C, 0x58, 0x55, 
-	0x6F, 0x00, 0x6A, 0xD2, 0xCF, 0xD7, 0x47, 0x00, 0x42, 0x83, 0x00, 0x83, 0x97, 0x00, 0x00, 0xBA, 0x00, 0x00, 0xAA, 0xA7, 0xAF, 0x5A, 0x00, 0x00, 
-	0x6E, 0x00, 0x00, 0xD3, 0xCF, 0xD5, 0x46, 0x43, 0x49, 0x82, 0x00, 0x82, 0x96, 0x00, 0x00, 0xC0, 0xB9, 0x00, 0xAB, 0xA7, 0xAD, 0x5E, 0x59, 0x5D, 
-	0x6F, 0x00, 0x79, 0xD2, 0x00, 0xD3, 0x47, 0x00, 0x47, 0x83, 0x7C, 0x83, 0x97, 0x00, 0x00, 0xBF, 0x00, 0x00, 0xAA, 0x00, 0xAA, 0x00, 0x00, 0x5B, 
-	0x72, 0x6C, 0x73, 0xD9, 0x00, 0xD8, 0x4D, 0x00, 0x4C, 0x86, 0x87, 0x89, 0x9A, 0x94, 0x91, 0xC2, 0xBC, 0xCB, 0xB0, 0x00, 0xB1, 0x63, 0x58, 0x5F, 
-};
-
 const MenuItemMinMax g_MenuRoundsMinMax = { 1, 20, 1 };
 const MenuItemMinMax g_MenuTreesMinMax =  { 0, 100, 10 };
+const MenuItemMinMax g_MenuPACMinMax =  { 1, 8, 1 };
 
 // MENU_MAIN - Main menu
 const MenuItem g_MenuMain[] =
@@ -235,11 +140,9 @@ MenuItem g_MenuSolo[] =
 {
 	{ "NEW GAME",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_NEW },
 	{ "CONTINUE",            MENU_ITEM_ACTION, MenuAction_Start, START_TRAIN_CONTINUE },
-	{ "LEVEL",               MENU_ITEM_INT, &g_TrainLevel, (i16)&g_MenuLevelMinMax },
+	{ "LEVEL",               MENU_ITEM_INT, &g_Option.TrainLevel, (i16)&g_MenuLevelMinMax },
 	{ "SPEED",               MENU_ITEM_ACTION, MenuAction_Speed, 0 },
-	// { "SCORE",               MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_TrainTotal, NULL },
-	// { "HI-SCORE",            MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_HiTotal, NULL },
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "SCORES",              MENU_ITEM_ACTION, MenuAction_Start, START_SCORE_BOARD },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
@@ -250,8 +153,8 @@ const MenuItem g_MenuMulti[] =
 {
 	{ "START",               MENU_ITEM_ACTION, MenuAction_Start, START_BATTLE },
 	{ "MODE",                MENU_ITEM_ACTION, MenuAction_Mode, 0 },
-	{ "COUNT",               MENU_ITEM_INT, &g_GameCount, (i16)&g_MenuRoundsMinMax },
-	{ "WALLS",               MENU_ITEM_INT, &g_WallNum, (i16)&g_MenuTreesMinMax },
+	{ "COUNT",               MENU_ITEM_INT, &g_Option.GameCount, (i16)&g_MenuRoundsMinMax },
+	{ "WALLS",               MENU_ITEM_INT, &g_Option.WallNum, (i16)&g_MenuTreesMinMax },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_MAIN },
@@ -262,11 +165,10 @@ const MenuItem g_MenuMulti[] =
 // MENU_OPTION - Options menu
 const MenuItem g_MenuOption[] =
 {
-	{ "GRAPH",               MENU_ITEM_GOTO, NULL, MENU_GRAPH },
+	{ "GRAPHICS",            MENU_ITEM_GOTO, NULL, MENU_GRAPH },
 	{ "CONTROL",             MENU_ITEM_GOTO, NULL, MENU_CONTROL },
 	{ "AUDIO",               MENU_ITEM_GOTO, NULL, MENU_AUDIO },
-	// { "SAVE",                MENU_ITEM_ACTION, MenuAction_Save, 0 },
-	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "PAC",                 MENU_ITEM_GOTO, NULL, MENU_SAVE },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
@@ -295,6 +197,19 @@ const MenuItem g_MenuControl[] =
 	{ "MAX PLY",             MENU_ITEM_INT|MENU_ITEM_DISABLE, &g_PlayerMax, NULL },
 	{ "TEST",                MENU_ITEM_ACTION, MenuAction_Start, START_CTRL_TEST },
 	{ "TURN",                MENU_ITEM_ACTION, MenuAction_Turn, 0 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
+	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_OPTION },
+};
+
+// MENU_SAVE - Save page
+const MenuItem g_MenuSave[] =
+{
+	{ "SLOT",                MENU_ITEM_ACTION|MENU_ITEM_DISABLE, MenuAction_PAC, 0 },
+	{ "PAGE",                MENU_ITEM_INT, &g_PACPage, (i16)&g_MenuPACMinMax },
+	{ "LOAD",                MENU_ITEM_ACTION, MenuAction_PAC, 1 },
+	{ "SAVE",                MENU_ITEM_ACTION, MenuAction_PAC, 2 },
+	{ "ERASE",               MENU_ITEM_ACTION, MenuAction_PAC, 3 },
+	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ NULL,                  MENU_ITEM_EMPTY, NULL, 0 },
 	{ "BACK",                MENU_ITEM_GOTO, NULL, MENU_OPTION },
 };
@@ -336,6 +251,7 @@ const Menu g_Menus[MENU_MAX] =
 	{ NULL, g_MenuGraph,   numberof(g_MenuGraph),   NULL },				// MENU_GRAPH
 	{ NULL, g_MenuControl, numberof(g_MenuControl), MenuOpen_Control },	// MENU_CONTROL
 	{ NULL, g_MenuAudio,   numberof(g_MenuAudio),   NULL },				// MENU_AUDIO
+	{ NULL, g_MenuSave,    numberof(g_MenuSave),    MenuOpen_Save },	// MENU_SAVE
 };
 
 // List of all states
@@ -351,153 +267,29 @@ const FSM_State State_TrainSelect =		{ 0, State_TrainSelect_Begin,	State_TrainSe
 const FSM_State State_TrainGame =		{ 0, State_TrainGame_Begin,		State_TrainGame_Update,		NULL };
 const FSM_State State_TrainScore =		{ 0, State_TrainScore_Begin,	State_TrainScore_Update,	NULL };
 const FSM_State State_CtrlTest =		{ 0, State_CtrlTest_Begin,		State_CtrlTest_Update,		NULL };
+const FSM_State State_ScoreBoard =		{ 0, State_ScoreBoard_Begin,	State_ScoreBoard_Update,	NULL };
 
-// 
-const SelectDevice g_DeviceSelect[CTRL_MAX] =
-{
-	{ SELECT_DEV_JOY_1,  SELECT_DEV_JOY_1_S },
-	{ SELECT_DEV_JOY_2,  SELECT_DEV_JOY_2_S },
-	{ SELECT_DEV_JOY_3,  SELECT_DEV_JOY_3_S },
-	{ SELECT_DEV_JOY_4,  SELECT_DEV_JOY_4_S },
-	{ SELECT_DEV_JOY_5,  SELECT_DEV_JOY_5_S },
-	{ SELECT_DEV_JOY_6,  SELECT_DEV_JOY_6_S },
-	{ SELECT_DEV_JOY_7,  SELECT_DEV_JOY_7_S },
-	{ SELECT_DEV_JOY_8,  SELECT_DEV_JOY_8_S },
-	{ SELECT_DEV_KEYB_1, SELECT_DEV_KEYB_1_S },
-	{ SELECT_DEV_KEYB_2, SELECT_DEV_KEYB_2_S },
-	{ SELECT_DEV_AI_1,   SELECT_DEV_AI_1_S },
-	{ SELECT_DEV_AI_2,   SELECT_DEV_AI_2_S },
-	{ SELECT_DEV_AI_3,   SELECT_DEV_AI_3_S },
-	{ SELECT_DEV_NONE,   SELECT_DEV_NONE_S },
-};
-
-// 
-const SelectDevice g_TurnSelect[2] =
-{
-	{ SELECT_DEV_REL, SELECT_DEV_REL_S },
-	{ SELECT_DEV_ABS, SELECT_DEV_ABS_S },
-};
-
-// Battle select slots data
-const SelectSlot g_BattleSelectSlot[] =
-{	//                             L   R   U   D
-	{ {  22,  53-8 }, {  58,  89-8 }, -1,  1,  8,  4 }, // 0 - Face 1
-	{ {  78,  53-8 }, { 114,  89-8 },  0,  2,  8,  5 }, // 1 - Face 2
-	{ { 134,  53-8 }, { 170,  89-8 },  1,  3,  9,  6 }, // 2 - Face 3
-	{ { 190,  53-8 }, { 226,  89-8 },  2, -1,  9,  7 }, // 3 - Face 4
-	{ {  22, 125 }, {  58, 161 }, -1,  5,  0, -1 }, // 4 - Face 5
-	{ {  78, 125 }, { 114, 161 },  4,  6,  1, -1 }, // 5 - Face 6
-	{ { 134, 125 }, { 170, 161 },  5,  7,  2, -1 }, // 6 - Face 7
-	{ { 190, 125 }, { 226, 161 },  6, -1,  3, -1 }, // 7 - Face 8
-	{ {  22,  15-8 }, {  58,  22-8 }, -1,  9, -1,  0 }, // 8 - Start
-	{ { 198,  15-8 }, { 226,  22-8 },  8, -1, -1,  3 }, // 9 - Exit
-};
-
-// Cursor offset animation
-const u8 g_CursorAnim[8] = { 1, 1, 2, 1, 1, 0, 0, 0 };
-
-// Hole tile animation
-const u8 g_HoleAnim[4] = { TILE_PREHOLE, (u8)(TILE_PREHOLE+1), (u8)(TILE_PREHOLE+2), TILE_HOLE };
-
-// Controller binding
-const CtrlBind g_CtrlBind[] =
-{
-	{ KEY_DEL,	CTRL_NONE,    TRUE },
-	{ KEY_F1,	CTRL_AI_EASY, TRUE },
-	{ KEY_F2,	CTRL_AI_MED,  TRUE },
-	{ KEY_F3,	CTRL_AI_HARD, TRUE },
-	{ KEY_F4,	CTRL_KEY_1,   FALSE },
-	{ KEY_F5,	CTRL_KEY_2,   FALSE },
-	{ KEY_1,	CTRL_JOY_1,   FALSE },
-	{ KEY_2,	CTRL_JOY_2,   FALSE },
-	{ KEY_3,	CTRL_JOY_3,   FALSE },
-	{ KEY_4,	CTRL_JOY_4,   FALSE },
-	{ KEY_5,	CTRL_JOY_5,   FALSE },
-	{ KEY_6,	CTRL_JOY_6,   FALSE },
-	{ KEY_7,	CTRL_JOY_7,   FALSE },
-	{ KEY_8,	CTRL_JOY_8,   FALSE },
-};
-
-const u8 g_BonusData[8+1] = { 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFF, 0 };
-const u8 g_WallData[4+1] = { TILE_TREE, TILE_TREE2, TILE_FENCE, TILE_WATER, 0 };
-
-const c8 g_DescGreediest[]   = "        GREEDIEST: THE ONE WHO GET A BONUS WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF BONUSES (COUNT) WINS THE BATTLE.";
-const c8 g_DescDeathMatch[]  = "        DEATH MATCH: THE ONE WHO ELIMINATES AN OPPONENT WINS A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF KILLS (COUNT) WINS THE BATTLE.";
-const c8 g_DescSizeMatter[]  = "        SIZE MATTER: AT THE END OF THE CHOSEN NUMBER OF MINUTES (COUNT), THE ONE WHO HAS REACHED THE LARGEST SIZE WINS THE BATTLE.";
-const c8 g_DescBattleRoyal[] = "        BATTLE ROYAL: THE LAST SURVIVOR WINS A ROUND. THE MATCH ENDS WHEN THE CHOSEN NUMBER OF ROUNDS (COUNT) IS REACHED. FIELD COLLAPSE AFTER TIMER ENDS.";
+const c8 g_DescGreediest[]   = "            GREEDIEST: EACH TIME YOU EAT A BONUS, YOU EARN A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF POINTS (COUNT) WINS THE BATTLE.";
+const c8 g_DescDeathmatch[]  = "            DEATHMATCH: EACH TIME YOU ELIMINATE AN OPPONENT, YOU EARN A POINT. EACH TIME YOU CRASH INTO AN OBSTACLE, YOU LOSE A POINT. THE FIRST TO REACH THE CHOSEN NUMBER OF POINTS (COUNT) WINS THE BATTLE.";
+const c8 g_DescSizeMatters[] = "            SIZE MATTERS: WHEN YOUR LENGTH IS GREATER THAN YOUR SCORE IT BECOMES YOUR NEW SCORE. WHEN OTHERS EAT A BONUS, YOU LOSE A POINT. AFTER THE CHOSEN NUMBER OF MINUTES (COUNT), THE ONE WITH THE MOST POINTS WINS THE BATTLE.";
+const c8 g_DescBattleRoyal[] = "            BATTLE ROYAL: THE LAST SURVIVOR OF A ROUND WINS 1 POINT. AFTER ONE MINUTE, IF THE ROUND IS NOT OVER, THE FIELD BEGINS TO COLLAPSE. THE FIRST TO REACH THE CHOSEN NUMBER OF POINTS (COUNT) WINS THE BATTLE.";
 
 const ModeInfo g_ModeInfo[] =
 {//   Name            Dec.               Length                     Rnd Time   Length
 	{ "GREEDIEST",    g_DescGreediest,   sizeof(g_DescGreediest),   10, FALSE, 5 },
-	{ "DEATH MATCH",  g_DescDeathMatch,  sizeof(g_DescDeathMatch),  5,  FALSE, 5 },
-	{ "SIZE MATTER",  g_DescSizeMatter,  sizeof(g_DescSizeMatter),  2,  TRUE,  5 },
+	{ "DEATHMATCH",   g_DescDeathmatch,  sizeof(g_DescDeathmatch),  5,  FALSE, 5 },
+	{ "SIZE MATTERS", g_DescSizeMatters, sizeof(g_DescSizeMatters), 2,  TRUE,  5 },
 	{ "BATTLE ROYAL", g_DescBattleRoyal, sizeof(g_DescBattleRoyal), 3,  TRUE,  5 },
 };
 
-const c8 g_TextCredits[]   = "        CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY TOTTA    GFX ENHANCEMENT BY LUDOVIC 'GFX' AVOT    FONT BY DAMIEN GUARD    THANKS TO ALL MRC, MSX VILLAGE AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F  ";
-
-// 14 13 12  |  OOO  O    OO   OO    O    OO   O
-// 11 10 09  |  O    O      O    O  OO   O    O O
-// 08 07 06  |  OO   OOO  OO    O    O   O    O O
-// 05 04 03  |    O   O     O  O     O   O O  O O
-// 02 01 00  |  OO    O   OO   OOO  OOO   OO   O
-const u16 g_TimerLayout[7] =
-{
-	0b111100110001110, // 5
-	0b100100111010010, // 4
-	0b110001110001110, // 3
-	0b110001010100111, // 2
-	0b010110010010111, // 1
-	0b011100100101011, // G
-	0b010101101101010, // O
-};
-
-//
-const void* g_MusicInfo[MUSIC_MAX] =
-{
-	{ g_MusicIntro   }, // MUSIC_MENU
-	{ g_MusicGame    }, // MUSIC_BATTLE
-	{ g_MusicHurry   }, // MUSIC_HURRYUP
-	{ g_MusicVictory }, // MUSIC_VICTORY
-	{ g_MusicEmpty   }, // MUSIC_EMPTY
-};
-
-//
-const u8 g_BallColor[][8] =
-{
-	{ 0xB5, 0xB5, 0x75, 0x55, 0x55, 0x54, 0xA5, 0xA4 }, // Blue
-	{ 0xB2, 0xB2, 0x32, 0x22, 0x22, 0x2C, 0xA2, 0xAC }, // Green
-	{ 0xB8, 0xB8, 0x98, 0x88, 0x88, 0x86, 0xA8, 0xA6 }, // Red
-};
-
-//
-const SpeedData g_SpeedData[SPEED_MAX] = 
-{
-	{  8, 800 }, // Normal 
-	{  4, 850 }, // Turbo
-	{ 16, 500 }, // Snail
-	{ 12, 600 }, // Chill
-};
-
-//
-const u16 g_ClearBG[] = { (u16)(((TILE_EMPTY + 1) << 8) + TILE_EMPTY), (u16)((TILE_EMPTY << 8) + (TILE_EMPTY + 1)) };
-
-// Training levels list
-const u8* g_TrainLevelList[] =
-{ 
-	g_Level001, g_Level002, g_Level003, g_Level004, g_Level005,
-	g_Level006, g_Level007, g_Level008, g_Level009, g_Level010,
-	g_Level011, g_Level012, g_Level013, g_Level014, g_Level015,
-	g_Level016, g_Level017, g_Level018, g_Level019, g_Level020,
-	g_Level021, g_Level022, g_Level023, g_Level024, g_Level025,
-	g_Level026, g_Level027, g_Level028, g_Level029, g_Level030,
-	g_Level031, g_Level032, g_Level033, g_Level034, g_Level035,
-	g_Level036, g_Level037, g_Level038, g_Level039, g_Level040
-};
+const c8 g_TextCredits[]   = "                CRAWLERS BY PIXEL PHENIX 2023    VERSION " GAME_VERSION "    POWERED BY [\\]^    DESIGN, CODE AND GFX BY GUILLAUME 'AOINEKO' BLANCHARD    MUSIC AND SFX BY THOMAS 'TOTTA' LUNDGREN    GFX ENHANCEMENT BY LUDOVIC 'GFX' AVOT    FONT BY DAMIEN GUARD    THANKS TO ALL MRC, MSX VILLAGE AND [\\]^ DISCORD MEMBERS FOR SUPPORT    MSX STILL ALIVE!!    DEDICATED TO MY WONDERFUL WIFE AND SON \x1F\x1F";
 
 //=============================================================================
 // MEMORY DATA
 //=============================================================================
+
+// Options
+OptionData	g_Option;
 
 // System
 bool		g_VBlank = FALSE;		// Vertical-synchronization flag
@@ -505,37 +297,28 @@ u8			g_Frame = 0;			// Frame counter
 u8			g_6thFrameCount = 0;	// Frame counter
 u8			g_Freq;
 u8			g_FreqDetected;
-u8			g_FreqOpt = FREQ_AUTO;
 bool		g_DoSynch;
-u8			g_PalOpt;
 u8			g_VersionVDP;
 u16			g_Scroll;
 bool		g_Initialized = FALSE;
 u8			g_StartPage = 0xFF;
 u8			g_Continue;
+u8			g_ScorePage;
 
 // Audio
-bool		g_OptMusic = DEF_MUSIC;
 u8			g_OptMusicIdx = 0;
-bool		g_OptSFX = DEF_SFX;
-u8			g_OptSFXIdx = 0;
-u8			g_OptSFXNum;
 u8			g_LastMusicId = 0xFF;
 
 // Gameplay
 u8			g_GameMode = MODE_TRAINNNG;
-u8			g_GameCount;
 Player		g_Players[PLAYER_MAX];	// Players information
 Player		g_TrainPlayer;	// Players information
 u8			g_PlayerMax;
 Vector		g_BonusPos;				// Bonus information
 u8			g_BonusTile;
-u8			g_BonusOpt = 3;
 c8			g_StrBuffer[32];		// String temporary buffer
 u8			g_ScreenBuffer[32*24];
 u8			g_CurrentPlayer;
-u8			g_WallNum = 0;
-u8			g_WallOpt = 0;
 u8			g_BonusLen = BONUS_GROWTH;
 bool		g_Pause;
 u8			g_CollapseTimer;
@@ -545,18 +328,13 @@ u8			g_CollapseY0;
 u8			g_CollapseX1;
 u8			g_CollapseY1;
 Player*		g_Winner;				// Winner player index
-u8			g_Speed = SPEED_NORMAL;
 MenuItemMinMax g_MenuLevelMinMax;
 
 // Solo mode
 Vector		g_PlayerStart;
 u8			g_BonusNum;
-u8			g_TrainLevel = 0;		// Current training level [1~40]
 u16			g_TrainScore[TRAIN_LEVEL_MAX];
 u16			g_TrainTotal = 0;
-u8			g_HiLevel = 0;
-u16			g_HiScore[TRAIN_LEVEL_MAX];
-u16			g_HiTotal = 0;
 
 // Timers
 u8			g_Counter;
@@ -575,8 +353,14 @@ u8			g_SlotIdx;
 bool		g_SelectEdit;
 u8			g_CtrlReg[CTRL_MAX];
 u8			g_MenuInputPrev = 0xFF;
-u8			g_CtrlTurn = TURN_ABSOLUTE;
 bool		g_Cheat = FALSE;
+
+// Save
+bool		g_PACFound;
+u8			g_PACPage = 1;
+const c8*   g_PACLoadMsg;
+const c8*   g_PACSaveMsg;
+const c8*   g_PACEraseMsg;
 
 //=============================================================================
 // FUNCTIONS
@@ -780,7 +564,7 @@ void UpdateInputPressed()
 // Play the given music
 void PlayMusic(u8 id)
 {
-	if (!g_OptMusic)
+	if (!g_Option.OptMusic)
 		id = MUSIC_EMPTY;
 
 	// Load Music data
@@ -795,14 +579,14 @@ void PlayMusic(u8 id)
 
 	// Load SFX data
 	Pletter_UnpackToRAM(g_DataSFX, (void*)0xE800);
-	g_OptSFXNum = AKG_InitSFX((const void*)0xE800);
+	AKG_InitSFX((const void*)0xE800);
 }
 
 //-----------------------------------------------------------------------------
 // Play the given sound effect
 void PlaySFX(u8 id)
 {
-	if (!g_OptSFX)
+	if (!g_Option.OptSFX)
 		return;
 
 	AKG_PlaySFX(id, ARKOS_CHANNEL_C, 0);
@@ -812,40 +596,46 @@ void PlaySFX(u8 id)
 // ...
 //.............................................................................
 
+u16 g_AddrVRAM;
+
+//-----------------------------------------------------------------------------
+// Load in all 3 screen sections
+void VDP_LoadGM2_Pletter(const u8* src)
+{
+	u16 dst = g_AddrVRAM;
+	Pletter_UnpackToVRAM(src, dst);
+	dst += 0x800;
+	Pletter_UnpackToVRAM(src, dst);
+	dst += 0x800;
+	Pletter_UnpackToVRAM(src, dst);
+}
+
 //-----------------------------------------------------------------------------
 // Load patterns in all 3 screen sections
 void VDP_LoadPattern_GM2_Pletter(const u8* src, u8 offset)
 {
-	u16 dst = g_ScreenPatternLow + (offset * 8);
-	Pletter_UnpackToVRAM(src, dst);
-	dst += 0x800;
-	Pletter_UnpackToVRAM(src, dst);
-	dst += 0x800;
-	Pletter_UnpackToVRAM(src, dst);
+	g_AddrVRAM = g_ScreenPatternLow + (offset * 8);
+	VDP_LoadGM2_Pletter(src);
 }
 
 //-----------------------------------------------------------------------------
 // Load colors in all 3 screen sections
 void VDP_LoadColor_GM2_Pletter(const u8* src, u8 offset)
 {
-	u16 dst = g_ScreenColorLow + (offset * 8);
-	Pletter_UnpackToVRAM(src, dst);
-	dst += 0x800;
-	Pletter_UnpackToVRAM(src, dst);
-	dst += 0x800;
-	Pletter_UnpackToVRAM(src, dst);
+	g_AddrVRAM = g_ScreenColorLow + (offset * 8);
+	VDP_LoadGM2_Pletter(src);
 }
 
 //-----------------------------------------------------------------------------
 // 
-inline void PrintChr(u8 x, u8 y, c8 chr)
+void PrintChr(u8 x, u8 y, c8 chr)
 {
 	VDP_Poke_GM2(x++, y, chr);
 }
 
 //-----------------------------------------------------------------------------
 // 
-inline void PrintChrX(u8 x, u8 y, c8 chr, u8 len)
+void PrintChrX(u8 x, u8 y, c8 chr, u8 len)
 {
 	VDP_FillLayout_GM2(chr, x, y, len, 1);
 }
@@ -866,6 +656,17 @@ void EraseChar(u8 x, u8 y)
 }
 
 //-----------------------------------------------------------------------------
+// Update the player score on screen
+void PrintFrame(u8 y)
+{
+	// Draw field
+	PrintChrY(0,  y, TILE_TREE, 24 - y);
+	PrintChrY(31, y, TILE_TREE, 24 - y);
+	PrintChrX(1,  y, TILE_TREE, 30);
+	PrintChrX(1, 23, TILE_TREE, 30);
+}
+
+//-----------------------------------------------------------------------------
 // Clear the frame buffer in RAM
 void ClearLevel()
 {
@@ -879,21 +680,21 @@ void ClearLevel()
 
 //-----------------------------------------------------------------------------
 // Draw the frame buffer in RAM to the VRAM at once
-inline void DrawLevel()
+void DrawLevel()
 {
 	VDP_WriteVRAM(g_ScreenBuffer, g_ScreenLayoutLow, g_ScreenLayoutHigh, 32 * 24);
 }
 
 //-----------------------------------------------------------------------------
 // Get tile value from the RAM frame buffer
-inline u8 GetTile(u8 x, u8 y)
+u8 GetTile(u8 x, u8 y)
 {
 	return g_ScreenBuffer[x + (y * 32)];
 }
 
 //-----------------------------------------------------------------------------
 // Draw a tile in he frame buffer in RAM
-inline void DrawTile(u8 x, u8 y, c8 chr)
+void DrawTile(u8 x, u8 y, c8 chr)
 {
 	g_ScreenBuffer[x + (y * 32)] = chr;
 }
@@ -918,7 +719,7 @@ void DrawTileY(u8 x, u8 y, c8 chr, u8 len)
 //
 u8 GetWallTile()
 {
-	u8 tile = g_WallData[g_WallOpt];
+	u8 tile = g_WallData[g_Option.WallOpt];
 	if (tile == 0)
 		tile = g_WallData[Math_GetRandom8() & 0x03];
 	return tile;
@@ -941,7 +742,7 @@ void UnpackTrainField(u8 id)
 		for(u8 j = 0; j < 4; ++j)
 		{
 			u8 tile = 0;
-			switch(val & 0x3)
+			switch(val & 0x03)
 			{
 			case 1:
 				tile = GetWallTile();
@@ -1000,7 +801,7 @@ void DrawCounter(u8 x, u8 y, u8 step)
 		}
 		bit >>= 1;
 	}
-	// u8 col = step > 4 ? 2 : step & 0x1;
+	// u8 col = step > 4 ? 2 : step & 0x01;
 	// VDP_LoadColor_GM2(g_BallColor[col], 1, TILE_BALL);
 }
 
@@ -1034,7 +835,7 @@ bool UpdateTimer()
 	// Blink the timer when less than 30 seconds remains
 	if (((g_TimeMinHigh | g_TimeMinLow) == 0) && (g_TimeSecHigh < 3))
 	{
-		u8 col = ((g_Frame >> 4) & 0x1) ? COLOR_WHITE : COLOR_LIGHT_RED;
+		u8 col = ((g_Frame >> 4) & 0x01) ? COLOR_WHITE : COLOR_LIGHT_RED;
 		VDP_SetSpriteColorSM1(4, col);
 		VDP_SetSpriteColorSM1(5, col);
 		VDP_SetSpriteColorSM1(6, col);
@@ -1138,7 +939,7 @@ void EditPlayer(u8 id, bool bEdit)
 	
 	// Display turn mode selection
 	u8 yOffset = 0;
-	if (g_CtrlTurn == TURN_CUSTOM)
+	if (g_Option.CtrlTurn == TURN_CUSTOM)
 	{
 		u8 turn = g_Players[id].Turn;
 		VDP_WriteLayout_GM2(bEdit ? g_TurnSelect[turn].Edit : g_TurnSelect[turn].Default, x, y - 1, 7, 2);
@@ -1192,7 +993,7 @@ void CheckBattleRoyal()
 	SetScore(lastPly);
 
 	// Check victory condition
-	if (lastPly->Score >= g_GameCount)
+	if (lastPly->Score >= g_Option.GameCount)
 	{
 		g_Winner = lastPly;
 		FSM_SetState(&State_Victory);
@@ -1210,7 +1011,7 @@ void CheckBattleRoyal()
 
 //-----------------------------------------------------------------------------
 // 
-bool CheckDeathMatch(Player* ply, u8 cell)
+bool CheckDeathmatch(Player* ply, u8 cell)
 {
 	// Check opponant
 	cell -= 64;
@@ -1241,7 +1042,7 @@ bool CheckDeathMatch(Player* ply, u8 cell)
 		SetScore(op);
 
 		// Check victory condition
-		if (op->Score >= g_GameCount)
+		if (op->Score >= g_Option.GameCount)
 		{
 			g_Winner = op;
 			FSM_SetState(&State_Victory);
@@ -1254,7 +1055,7 @@ bool CheckDeathMatch(Player* ply, u8 cell)
 
 //-----------------------------------------------------------------------------
 //
-void CheckSizeMatter()
+void CheckSizeMatters()
 {
 	// Check the longuest crawlers
 	Player* maxPly = &g_Players[0];
@@ -1271,7 +1072,7 @@ void CheckSizeMatter()
 //
 bool CheckGreediest(Player* ply)
 {
-	if (ply->Score >= g_GameCount) // check victory count
+	if (ply->Score >= g_Option.GameCount) // check victory count
 	{
 		g_Winner = ply;
 		FSM_SetState(&State_Victory);
@@ -1311,7 +1112,7 @@ void SpawnBonus()
 	// Spawn the bonus
 	g_BonusPos.X = x;
 	g_BonusPos.Y = y;
-	g_BonusTile = g_BonusData[g_BonusOpt];
+	g_BonusTile = g_BonusData[g_Option.BonusOpt];
 	if (g_BonusTile == 0) // Random bonus tile
 	{
 		u8 rnd = Math_GetRandom8() % 8;
@@ -1369,7 +1170,7 @@ void UpdateAI(Player* ply)
 	}
 
 	// Check right
-	dist = CheckDir(x, y, (ply->Dir + 1) & 0x3 /*% DIR_MAX*/, 3);
+	dist = CheckDir(x, y, (ply->Dir + 1) & 0x03 /*% DIR_MAX*/, 3);
 	if (dist < 3)
 	{
 		i8 w = g_DistWeight[dist];
@@ -1378,7 +1179,7 @@ void UpdateAI(Player* ply)
 	}
 
 	// Check left
-	dist = CheckDir(x, y, (ply->Dir + DIR_MAX - 1) & 0x3 /*% DIR_MAX*/, 3);
+	dist = CheckDir(x, y, (ply->Dir + DIR_MAX - 1) & 0x03 /*% DIR_MAX*/, 3);
 	if (dist < 3)
 	{
 		i8 w = g_DistWeight[dist];
@@ -1563,7 +1364,7 @@ void InitPlayer(Player* ply, u8 id)
 	ply->ID         = id;
 	ply->Score      = 0;
 	ply->Controller = CTRL_FREE;
-	ply->Turn       = (g_CtrlTurn == TURN_ABSOLUTE) ? TURN_ABSOLUTE : TURN_RELATIVE;
+	ply->Turn       = (g_Option.CtrlTurn != TURN_RELATIVE) ? TURN_ABSOLUTE : TURN_RELATIVE;
 	ply->State      = STATE_NONE;
 
 	if (id < g_JoyNum)
@@ -1626,7 +1427,7 @@ void DrawPlayer(Player* ply, u8 x, u8 y)
 	if ((ply->Length < ply->Expect) && (ply->Length < LENGTH_MAX))
 	{
 		ply->Length++;
-		if ((g_GameMode == MODE_SIZEMATTER) && (ply->Length > ply->Score))
+		if ((g_GameMode == MODE_SIZEMATTERS) && (ply->Length > ply->Score))
 		{
 			ply->Score = ply->Length;
 			SetScore(ply);
@@ -1833,9 +1634,9 @@ void UpdatePlayer(Player* ply)
 				CheckBattleRoyal();
 				return;
 			case MODE_DEATHMATCH:
-				if (!CheckDeathMatch(ply, cell))
+				if (!CheckDeathmatch(ply, cell))
 					return;
-			case MODE_SIZEMATTER:
+			case MODE_SIZEMATTERS:
 			case MODE_GREEDIEST:
 				SpawnPlayer(ply);
 				return;
@@ -1860,7 +1661,7 @@ void UpdatePlayer(Player* ply)
 				ply->Expect += g_BonusLen;
 				if (g_GameMode == MODE_TRAINNNG)
 				{
-					DrawTile(x, y, 0xF2);
+					DrawTile(x, y, TILE_PREHOLE);
 					g_BonusNum--;
 					if (g_BonusNum == 0) // Got the last bonus!
 					{
@@ -1878,7 +1679,7 @@ void UpdatePlayer(Player* ply)
 					SetScore(ply);
 					CheckGreediest(ply); // Check victory condition
 				}
-				else if (g_GameMode == MODE_SIZEMATTER)
+				else if (g_GameMode == MODE_SIZEMATTERS)
 				{
 					loop(i, PLAYER_MAX)
 					{
@@ -1910,7 +1711,7 @@ void SetGameMode(u8 newMode)
 	g_GameMode = newMode;
 
 	const ModeInfo* info = &g_ModeInfo[g_GameMode];
-	g_GameCount = info->Count;
+	g_Option.GameCount = info->Count;
 	g_BonusLen  = info->Bonus;
 
 	// Update count number
@@ -1997,6 +1798,10 @@ const c8* MenuAction_Start(u8 op, i8 value)
 			case START_CTRL_TEST:
 				FSM_SetState(&State_CtrlTest);
 				break;
+			case START_SCORE_BOARD:
+				g_ScorePage = 0;
+				FSM_SetState(&State_ScoreBoard);
+				break;
 		}
 	}
 	return NULL;
@@ -2043,15 +1848,15 @@ const c8* MenuAction_Speed(u8 op, i8 value)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
-		g_Speed = (g_Speed + 1) % SPEED_MAX;
+		g_Option.Speed = (g_Option.Speed + 1) % SPEED_MAX;
 		break;
 
 	case MENU_ACTION_DEC:
-		g_Speed = (g_Speed + SPEED_MAX - 1) % SPEED_MAX;
+		g_Option.Speed = (g_Option.Speed + SPEED_MAX - 1) % SPEED_MAX;
 		break;
 
 	case MENU_ACTION_GET:
-		switch(g_Speed)
+		switch(g_Option.Speed)
 		{
 		case SPEED_NORMAL: return "NORMAL \x1F\x1F\x1F"; 
 		case SPEED_TURBO:  return "TURBO  \x1F\x1F\x1F\x1F"; 
@@ -2068,13 +1873,13 @@ const c8* MenuAction_Info(u8 op, i8 value)
 {
 	op;
 	value;
-	if (g_Frame & 0x7)
+	if (g_Frame & 0x07)
 		return NULL;
 
 	if (g_MenuItem != 1)
 		return "";
 
-	if (g_Frame & 0x7)
+	if (g_Frame & 0x07)
 		return NULL;
 
 	const ModeInfo* info = &g_ModeInfo[g_GameMode];
@@ -2087,11 +1892,24 @@ const c8* MenuAction_Credits(u8 op, i8 value)
 {
 	op;
 	value;
-	if (g_Frame & 0x7)
+	if (g_Frame & 0x07)
 		return NULL;
 
 	return ScrollString(g_TextCredits, sizeof(g_TextCredits) - 1);
 }
+
+//-----------------------------------------------------------------------------
+//
+void ApplyFreqOption()
+{
+	if (g_Option.FreqOpt == FREQ_60HZ) 
+		g_Freq = FREQ_60HZ;
+	else if (g_Option.FreqOpt == FREQ_50HZ)
+		g_Freq = FREQ_50HZ;
+	else
+		g_Freq = g_FreqDetected;
+}
+
 
 //-----------------------------------------------------------------------------
 //
@@ -2102,30 +1920,24 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
-		g_FreqOpt = (g_FreqOpt + 1) % FREQ_MAX;
+		g_Option.FreqOpt = (g_Option.FreqOpt + 1) % FREQ_MAX;
 		break;
 	case MENU_ACTION_DEC:
-		g_FreqOpt = (g_FreqOpt + (FREQ_MAX - 1)) % FREQ_MAX;
+		g_Option.FreqOpt = (g_Option.FreqOpt + (FREQ_MAX - 1)) % FREQ_MAX;
 		break;
 	}
 
-	if (g_FreqOpt == FREQ_60HZ) 
+	ApplyFreqOption();
+	if (g_Option.FreqOpt == FREQ_60HZ) 
+		return "60HZ";
+	else if (g_Option.FreqOpt == FREQ_50HZ)
+		return "50HZ";
+	else //if (g_Option.FreqOpt == FREQ_AUTO) 
 	{
-		g_Freq = FREQ_60HZ;
-		return "60 HZ";
-	}
-	else if (g_FreqOpt == FREQ_50HZ)
-	{
-		g_Freq = FREQ_50HZ;
-		return "50 HZ";
-	}
-	else
-	{
-		g_Freq = g_FreqDetected;
 		if (g_Freq == FREQ_50HZ)
-			return "AUTO (50 HZ)";
+			return "AUTO (50HZ)";
 		else
-			return "AUTO (60 HZ)";
+			return "AUTO (60HZ)";
 	}
 
 	return NULL;
@@ -2133,9 +1945,9 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 
 //-----------------------------------------------------------------------------
 //
-void ApplyTurnSetup()
+void ApplyTurnOption()
 {
-	u8 turn = (g_CtrlTurn == TURN_ABSOLUTE) ? TURN_ABSOLUTE : TURN_RELATIVE;
+	u8 turn = (g_Option.CtrlTurn == TURN_ABSOLUTE) ? TURN_ABSOLUTE : TURN_RELATIVE;
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
 		g_Players[i].Turn = turn;
 
@@ -2151,16 +1963,16 @@ const c8* MenuAction_Turn(u8 op, i8 value)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
-		g_CtrlTurn = (g_CtrlTurn + 1) % TURN_MAX;
-		ApplyTurnSetup();
+		g_Option.CtrlTurn = (g_Option.CtrlTurn + 1) % TURN_MAX;
+		ApplyTurnOption();
 		break;
 	case MENU_ACTION_DEC:
-		g_CtrlTurn = (g_CtrlTurn + (TURN_MAX - 1)) % TURN_MAX;
-		ApplyTurnSetup();
+		g_Option.CtrlTurn = (g_Option.CtrlTurn + (TURN_MAX - 1)) % TURN_MAX;
+		ApplyTurnOption();
 		break;
 	}
 
-	switch (g_CtrlTurn)
+	switch (g_Option.CtrlTurn)
 	{
 	case TURN_RELATIVE:
 		return "RELATIVE";
@@ -2171,6 +1983,31 @@ const c8* MenuAction_Turn(u8 op, i8 value)
 	}
 
 	return NULL;
+}
+
+
+//-----------------------------------------------------------------------------
+//
+void ApplyPaletteOption()
+{
+	switch(g_Option.PalOpt)
+	{
+	case PAL_CUSTOM:
+		VDP_SetPalette((u8*)g_CustomPalette);
+		return;
+	case PAL_MSX1: 
+		VDP_SetMSX1Palette();
+		return;
+	case PAL_MSX2: 
+		VDP_SetDefaultPalette();
+		return;
+	case PAL_GRASS:
+		VDP_SetPalette((u8*)g_GrassPalette);
+		return;
+	case PAL_GRAY:
+		VDP_SetPalette((u8*)g_GrayPalette);
+		return;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -2185,26 +2022,25 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
-		g_PalOpt = (g_PalOpt + 1) % PAL_MAX;
+		g_Option.PalOpt = (g_Option.PalOpt + 1) % PAL_MAX;
 		break;
 	case MENU_ACTION_DEC:
-		g_PalOpt = (g_PalOpt + (PAL_MAX - 1)) % PAL_MAX;
+		g_Option.PalOpt = (g_Option.PalOpt + (PAL_MAX - 1)) % PAL_MAX;
 		break;
 	}
 
-	switch(g_PalOpt)
+	ApplyPaletteOption();
+	switch(g_Option.PalOpt)
 	{
 	case PAL_CUSTOM:
-		VDP_SetPalette((u8*)g_MSX2Palette);
 		return "CUSTOM";
 	case PAL_MSX1: 
-		VDP_SetMSX1Palette();
 		return "MSX1";
 	case PAL_MSX2: 
-		VDP_SetDefaultPalette();
 		return "MSX2";
-	case PAL_GRAY: 
-		VDP_SetPalette((u8*)g_GrayPalette);
+	case PAL_GRASS:
+		return "GRASS";
+	case PAL_GRAY:
 		return "GRAY";
 	}
 
@@ -2222,11 +2058,11 @@ const c8* MenuAction_Music(u8 op, i8 value)
 		case MENU_ACTION_SET:
 		case MENU_ACTION_INC:
 		case MENU_ACTION_DEC:
-			TOGGLE(g_OptMusic);
+			TOGGLE(g_Option.OptMusic);
 			PlayMusic(g_OptMusicIdx);
 			break;
 		}
-		return g_OptMusic ? "*" : "/";
+		return g_Option.OptMusic ? "*" : "/";
 	}
 	else
 	{
@@ -2270,10 +2106,126 @@ const c8* MenuAction_SFX(u8 op, i8 value)
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
 	case MENU_ACTION_DEC:
-		TOGGLE(g_OptSFX);
+		TOGGLE(g_Option.OptSFX);
 		break;
 	}
-	return g_OptSFX ? "*" : "/";
+	return g_Option.OptSFX ? "*" : "/";
+}
+
+//-----------------------------------------------------------------------------
+//
+void StoreControllerOption()
+{
+	loop(i, PLAYER_MAX)
+		g_Option.BattleController[i] = g_Players[i].Controller;
+	g_Option.TrainController = g_TrainPlayer.Controller;
+	g_Option.TrainID = g_TrainPlayer.ID;
+}
+
+//-----------------------------------------------------------------------------
+//
+void ApplyControllerOption()
+{
+	loop(i, PLAYER_MAX)
+		g_Players[i].Controller = g_Option.BattleController[i];
+	g_TrainPlayer.Controller = g_Option.TrainController;
+	g_TrainPlayer.ID = g_Option.TrainID;
+}
+
+//-----------------------------------------------------------------------------
+//
+const c8* MenuAction_PAC(u8 op, i8 value)
+{
+	if(value == 0) // slot
+	{
+		if(!g_PACFound)
+			return "/NOT FOUND!";
+		else
+		{
+			u8 slotId = PAC_GetDefaultSlot(); 
+			c8* str = g_StrBuffer;
+			*str++ = '*';
+			*str++ = 'F';
+			*str++ = 'O';
+			*str++ = 'U';
+			*str++ = 'N';
+			*str++ = 'D';
+			*str++ = ' ';
+			*str++ = '(';
+			*str++ = '0' + SLOT_PRIM(slotId);
+			if(IS_SLOT_EXP(slotId))
+			{
+				*str++ = '-';
+				*str++ = '0' + SLOT_SEC(slotId);
+			}
+			*str++ = ')';
+			*str = 0;
+			return g_StrBuffer;
+		}
+	}
+
+	if(!g_PACFound)
+		return NULL;
+
+	if(value == 1) // load
+	{
+		switch(op)
+		{
+		case MENU_ACTION_SET:
+		case MENU_ACTION_INC:
+		case MENU_ACTION_DEC:
+			switch(PAC_Check(g_PACPage - 1))
+			{
+			case PAC_CHECK_EMPTY:
+				g_PACLoadMsg = "EMPTY!";
+				break;
+			case PAC_CHECK_UNDEF:
+			case PAC_CHECK_ERROR:
+				g_PACLoadMsg = "UNDEFINE!";
+				break;
+			case PAC_CHECK_APP:
+				PAC_Read(g_PACPage - 1, (u8*)g_Option, sizeof(g_Option));
+				ApplyFreqOption();
+				ApplyTurnOption();
+				ApplyPaletteOption();
+				ApplyControllerOption();
+				PlayMusic(g_OptMusicIdx);
+				g_PACLoadMsg = "LOADED!";
+				break;
+			} 
+			break;
+		}
+		return g_PACLoadMsg;
+	}
+	else if(value == 2) // save
+	{
+		switch(op)
+		{
+		case MENU_ACTION_SET:
+		case MENU_ACTION_INC:
+		case MENU_ACTION_DEC:
+			StoreControllerOption();
+			PAC_Write(g_PACPage - 1, (const u8*)g_Option, sizeof(g_Option));
+			g_PACSaveMsg = "SAVED!";
+			break;
+		}
+		return g_PACSaveMsg;
+	}
+	else if(value == 3) // erase
+	{
+		switch(op)
+		{
+		case MENU_ACTION_SET:
+		case MENU_ACTION_INC:
+		case MENU_ACTION_DEC:
+			PAC_Format(g_PACPage - 1);
+			g_PACEraseMsg = "FORMATED!";
+			break;
+		}
+		return g_PACEraseMsg;
+	}
+
+	return NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -2285,21 +2237,21 @@ const c8* MenuAction_Bonus(u8 op, i8 value)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
-		g_BonusOpt++;
-		if (g_BonusOpt >= sizeof(g_BonusData))
-			g_BonusOpt = 0;
+		g_Option.BonusOpt++;
+		if (g_Option.BonusOpt >= sizeof(g_BonusData))
+			g_Option.BonusOpt = 0;
 		break;
 	case MENU_ACTION_DEC:
-		g_BonusOpt--;
-		if (g_BonusOpt == 255)
-			g_BonusOpt = sizeof(g_BonusData) - 1;
+		g_Option.BonusOpt--;
+		if (g_Option.BonusOpt == 255)
+			g_Option.BonusOpt = sizeof(g_BonusData) - 1;
 		break;
 	}
 
-	if (g_BonusData[g_BonusOpt] == 0)
+	if (g_BonusData[g_Option.BonusOpt] == 0)
 		return "RANDOM";
 
-	g_StrBuffer[0] = g_BonusData[g_BonusOpt] + 0x20;
+	g_StrBuffer[0] = g_BonusData[g_Option.BonusOpt] + 0x20;
 	g_StrBuffer[1] = 0;
 
 	return g_StrBuffer;
@@ -2314,21 +2266,21 @@ const c8* MenuAction_Wall(u8 op, i8 value)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
-		g_WallOpt++;
-		if (g_WallOpt >= sizeof(g_WallData))
-			g_WallOpt = 0;
+		g_Option.WallOpt++;
+		if (g_Option.WallOpt >= sizeof(g_WallData))
+			g_Option.WallOpt = 0;
 		break;
 	case MENU_ACTION_DEC:
-		g_WallOpt--;
-		if (g_WallOpt == 255)
-			g_WallOpt = sizeof(g_WallData) - 1;
+		g_Option.WallOpt--;
+		if (g_Option.WallOpt == 255)
+			g_Option.WallOpt = sizeof(g_WallData) - 1;
 		break;
 	}
 
-	if (g_WallData[g_WallOpt] == 0)
+	if (g_WallData[g_Option.WallOpt] == 0)
 		return "RANDOM";
 
-	g_StrBuffer[0] = g_WallData[g_WallOpt] + 0x20;
+	g_StrBuffer[0] = g_WallData[g_Option.WallOpt] + 0x20;
 	g_StrBuffer[1] = 0;
 
 	return g_StrBuffer;
@@ -2361,9 +2313,9 @@ const c8* MenuAction_MSX(u8 op, i8 value)
 	value;
 	switch(g_VersionMSX)
 	{
-	case MSXVER_1:  return "MSX 1";
-	case MSXVER_2:  return "MSX 2";
-	case MSXVER_2P: return "MSX 2+";
+	case MSXVER_1:  return "MSX1";
+	case MSXVER_2:  return "MSX2";
+	case MSXVER_2P: return "MSX2+";
 	case MSXVER_TR: return "TURBO R";
 	}
 	return "UNKNOW";
@@ -2386,23 +2338,6 @@ const c8* MenuAction_VDP(u8 op, i8 value)
 
 //-----------------------------------------------------------------------------
 //
-/*const c8* MenuAction_Save(u8 op, i8 value)
-{
-	op;
-	value;
-	switch(op)
-	{
-	case MENU_ACTION_SET:
-	case MENU_ACTION_INC:
-	case MENU_ACTION_DEC:
-		break;
-	}
-
-	return NULL;
-}*/
-
-//-----------------------------------------------------------------------------
-//
 void MenuOpen_Multi()
 {
 	g_Scroll = 0;
@@ -2417,19 +2352,7 @@ void MenuOpen_Multi()
 //
 void MenuOpen_Solo()
 {
-	// Compute total
-	// if(g_TrainLevel > 0)
-	// {
-	// 	g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel - 1);
-	// 	g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel - 1);
-	// }
-	// else
-	// {
-	// 	g_TrainTotal = 0;
-	// 	g_HiTotal = 0;
-	// }
-
-	if(g_TrainLevel)
+	if(g_Option.TrainLevel)
 	{
 		g_MenuSolo[1].Type = MENU_ITEM_ACTION;
 		g_MenuSolo[2].Type = MENU_ITEM_INT;
@@ -2441,7 +2364,7 @@ void MenuOpen_Solo()
 	}
 	
 	g_MenuLevelMinMax.Min = 1;
-	g_MenuLevelMinMax.Max = g_Cheat ? TRAIN_LEVEL_MAX : g_HiLevel;
+	g_MenuLevelMinMax.Max = g_Cheat ? TRAIN_LEVEL_MAX : g_Option.HiLevel;
 	g_MenuLevelMinMax.Step = 1;
 
 	g_StartPage = MENU_SOLO;
@@ -2452,6 +2375,15 @@ void MenuOpen_Solo()
 void MenuOpen_Control()
 {
 	g_StartPage = MENU_CONTROL;
+}
+
+//-----------------------------------------------------------------------------
+//
+void MenuOpen_Save()
+{
+	g_PACLoadMsg = NULL;
+	g_PACSaveMsg = NULL;
+	g_PACEraseMsg = NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -2542,8 +2474,8 @@ void State_Init_Begin()
 	// Initialize palette
 	if (g_VersionVDP > VDP_VERSION_TMS9918A)
 	{
-		VDP_SetPalette((u8*)g_MSX2Palette);
-		g_PalOpt = PAL_CUSTOM;
+		VDP_SetPalette((u8*)g_CustomPalette);
+		g_Option.PalOpt = PAL_CUSTOM;
 	}
 
 	// Initialize frequency
@@ -2572,7 +2504,7 @@ void State_Init_Begin()
 	loop(i, TRAIN_LEVEL_MAX)
 	{
 		g_TrainScore[i] = 0;
-		g_HiScore[i] = 0;
+		g_Option.HiScore[i] = 0;
 	}
 }
 
@@ -2683,18 +2615,14 @@ void State_Title_Begin()
 	VDP_EnableDisplay(FALSE);
 	VDP_ClearVRAM();
 
+	// Initialize tiles data
+	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
+	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
+
 	// Background
 	ClearLevel();
 	DrawLevel();
 
-	// Initialize sprites data
-	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
-	Pletter_UnpackToVRAM(g_DataSprites, g_SpritePatternLow);
-	VDP_HideAllSprites();
-
-	// Initialize tiles data
-	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
-	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
 	const u8* ptr = g_TitleTile;
 	u8 x = 4, y = 3;
 	for(u8 j = 0; j < 5; ++j)
@@ -2710,17 +2638,15 @@ void State_Title_Begin()
 		x = 4;
 	}
 
+	// Initialize sprites data
+	VDP_SetSpriteFlag(VDP_SPRITE_SIZE_8);
+	Pletter_UnpackToVRAM(g_DataSprites, g_SpritePatternLow);
+	VDP_HideAllSprites();
+
 	VDP_SetColor(COLOR_LIGHT_YELLOW);
 
 	// Draw field
-	PrintChr(0,  0, TILE_TREE);
-	PrintChr(31, 0, TILE_TREE);
-	PrintChrX(1, 0, TILE_TREE, 30);
-	PrintChrY(0, 1, TILE_TREE, 22);
-	PrintChrY(31,1, TILE_TREE, 22);
-	PrintChr(0, 23, TILE_TREE);
-	PrintChr(31, 23, TILE_TREE);
-	PrintChrX(1, 23, TILE_TREE, 30);
+	PrintFrame(0);
 
 	// Initialize font
 	g_PrintData.ScreenWidth = 32;
@@ -2941,7 +2867,7 @@ void State_BattleSelect_Update()
 			SetNextPlayerController(ply);
 			EditPlayer(g_SlotIdx, TRUE);
 		}
-		else if ((g_CtrlTurn == TURN_CUSTOM) && (IsInputUp() || IsInputDown()))
+		else if ((g_Option.CtrlTurn == TURN_CUSTOM) && (IsInputUp() || IsInputDown()))
 		{
 			PlaySFX(SFX_MOVE);
 			ply->Turn = 1 - ply->Turn;
@@ -3077,6 +3003,29 @@ void State_BattleSelect_Update()
 
 //-----------------------------------------------------------------------------
 //
+void DrawFrame()
+{
+	DrawTile(0,  1, 0xE9);
+	DrawTileX(1,  1, 0xE8, 30);
+	DrawTile(31, 1, 0xEA);
+	DrawTileY(31, 2, 0xEC, 21);
+	DrawTile(31, 23, 0xEE);
+	DrawTileX(1, 23, 0xE8, 30);
+	DrawTile(0, 23, 0xED);
+	DrawTileY(0,  2, 0xEB, 21);
+
+	// Timer board
+	if ((g_GameMode == MODE_TRAINNNG) || (g_ModeInfo[g_GameMode].Time))
+	{
+		DrawTile(14, 23, TILE_CLOCK + 0);
+		DrawTile(15, 23, TILE_CLOCK + 1);
+		DrawTile(16, 23, TILE_CLOCK + 2);
+		DrawTile(17, 23, TILE_CLOCK + 3);
+	}
+}
+
+//-----------------------------------------------------------------------------
+//
 void State_BattleStart_Begin()
 {
 	// PlaySFX(SFX_START);
@@ -3090,23 +3039,7 @@ void State_BattleStart_Begin()
 
 	// Draw game field
 	ClearLevel();
-	DrawTile(0,  1, 0xE9);
-	DrawTileX(1,  1, 0xE8, 30);
-	DrawTile(31, 1, 0xEA);
-	DrawTileY(31, 2, 0xEC, 21);
-	DrawTile(31, 23, 0xEE);
-	DrawTileX(1, 23, 0xE8, 30);
-	DrawTile(0, 23, 0xED);
-	DrawTileY(0,  2, 0xEB, 21);
-
-	// Timer board
-	if (g_ModeInfo[g_GameMode].Time)
-	{
-		DrawTile(14, 23, TILE_CLOCK + 0);
-		DrawTile(15, 23, TILE_CLOCK + 1);
-		DrawTile(16, 23, TILE_CLOCK + 2);
-		DrawTile(17, 23, TILE_CLOCK + 3);
-	}
+	DrawFrame();
 
 	// Draw score board
 	for(u8 i = 0; i < PLAYER_MAX; ++i)
@@ -3121,7 +3054,7 @@ void State_BattleStart_Begin()
 	}
 
 	// Initialize obstacles
-	for(u8 i = 0; i < g_WallNum; ++i)
+	for(u8 i = 0; i < g_Option.WallNum; ++i)
 	{
 		u8 x = 0, y = 0;
 		bool bLoop = TRUE;
@@ -3298,7 +3231,7 @@ void State_BattleGame_Begin()
 		if(g_GameMode == MODE_BATTLEROYAL)
 			SetTimer(BATTLEROYAL_TIME);
 		else
-			SetTimer(g_GameCount);
+			SetTimer(g_Option.GameCount);
 	}
 	g_CollapsePhase = COLLAPSE_OFF;
 
@@ -3334,9 +3267,9 @@ void UpdatePause()
 	}
 	if(g_Pause && (g_Frame & 0x08))
 	{
-		VDP_SetSpriteSM1(8,  119,      90, 0x1A, COLOR_WHITE);
-		VDP_SetSpriteSM1(9,  119 + 8,  90, 0x1B, COLOR_WHITE);
-		VDP_SetSpriteSM1(10, 119 + 16, 90, 0x1C, COLOR_WHITE);
+		VDP_SetSpriteSM1(8,  (u8)(119),      90, 0x1A, COLOR_WHITE);
+		VDP_SetSpriteSM1(9,  (u8)(119 + 8),  90, 0x1B, COLOR_WHITE);
+		VDP_SetSpriteSM1(10, (u8)(119 + 16), 90, 0x1C, COLOR_WHITE);
 	}
 	else
 	{
@@ -3411,8 +3344,8 @@ void State_BattleGame_Update()
 			{
 				switch(g_GameMode)
 				{
-				case MODE_SIZEMATTER:
-					CheckSizeMatter();
+				case MODE_SIZEMATTERS:
+					CheckSizeMatters();
 					break;
 
 				default:
@@ -3458,14 +3391,7 @@ void State_Victory_Begin()
 	}
 
 	// Draw field
-	PrintChr(0,  1, TILE_TREE);
-	PrintChrX(1, 1, TILE_TREE, 30);
-	PrintChr(31, 1, TILE_TREE);
-	PrintChrY(31,2, TILE_TREE, 22);
-	PrintChr(31, 23, TILE_TREE);
-	PrintChrX(1, 23, TILE_TREE, 30);
-	PrintChr(0, 23, TILE_TREE);
-	PrintChrY(0, 2, TILE_TREE, 22);
+	PrintFrame(1);
 
 	// Text W
 	PrintChrY(7, 9, TILE_BALL, 4);
@@ -3703,8 +3629,8 @@ void State_TrainSelect_Update()
 			PlaySFX(SFX_SELECT);
 			if(!g_Continue)
 			{
-				g_TrainLevel = 1;
-				g_HiLevel = 1;
+				g_Option.TrainLevel = 1;
+				g_Option.HiLevel = 1;
 			}
 			FSM_SetState(&State_TrainGame);
 		}
@@ -3751,31 +3677,20 @@ void State_TrainGame_Begin()
 	VDP_EnableDisplay(FALSE);
 	VDP_HideAllSprites();
 
+	g_GameMode = MODE_TRAINNNG;
+
 	// Initialize tiles data
 	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
 	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
 
 	// Draw game field
 	ClearLevel();
-	DrawTile(0,  1, 0xE9);
-	DrawTileX(1,  1, 0xE8, 30);
-	DrawTile(31, 1, 0xEA);
-	DrawTileY(31, 2, 0xEC, 21);
-	DrawTile(31, 23, 0xEE);
-	DrawTileX(1, 23, 0xE8, 30);
-	DrawTile(0, 23, 0xED);
-	DrawTileY(0,  2, 0xEB, 21);
-
-	// Timer board
-	DrawTile(14, 23, TILE_CLOCK + 0);
-	DrawTile(15, 23, TILE_CLOCK + 1);
-	DrawTile(16, 23, TILE_CLOCK + 2);
-	DrawTile(17, 23, TILE_CLOCK + 3);
+	DrawFrame();
 
 	// Draw score board
 	Player* ply = &g_TrainPlayer;
 	DrawTile(1, 0, 0x42 + g_CharaInfo[ply->ID].TileBase);
-	UnpackTrainField(g_TrainLevel - 1);
+	UnpackTrainField(g_Option.TrainLevel - 1);
 	DrawLevel();
 	
 	// Initialize font
@@ -3787,13 +3702,12 @@ void State_TrainGame_Begin()
 
 	// Draw info
 	Print_DrawTextAt(4, 0, "LEVEL:");
-	Print_DrawInt(g_TrainLevel);
+	Print_DrawInt(g_Option.TrainLevel);
 
 	Print_DrawTextAt(14, 0, "SCORE:");
 	Print_DrawInt(g_TrainTotal);
 
 	// Init player
-	g_GameMode = MODE_TRAINNNG;
 	g_BonusLen = TRAIN_GROWTH;
 	SpawnPlayer(ply);
 	ply->PosX = g_PlayerStart.X;
@@ -3802,7 +3716,7 @@ void State_TrainGame_Begin()
 	ply->Score = 0;
 	
 	SetTimer(0);
-	PlayMusic(g_TrainLevel & 1 ? MUSIC_BATTLE : MUSIC_HURRYUP);
+	PlayMusic(g_Option.TrainLevel & 1 ? MUSIC_BATTLE : MUSIC_HURRYUP);
 
 	g_Pause = FALSE;
 
@@ -3842,7 +3756,7 @@ void State_TrainGame_Update()
 
 	// Update only every 8th frame
 	g_CurrentPlayer++;
-	u8 speed = (ply->State == STATE_PLAYING) ? g_Speed : SPEED_NORMAL;
+	u8 speed = (ply->State == STATE_PLAYING) ? g_Option.Speed : SPEED_NORMAL;
 	if(IsInputButton1Pressed())
 		speed = SPEED_TURBO;
 	if((g_CurrentPlayer < g_SpeedData[speed].Count))
@@ -3889,62 +3803,63 @@ void State_TrainScore_Begin()
 	DrawLevel();
 
 	// Draw field
-	PrintChr(0,  0, TILE_TREE);
-	PrintChrX(1, 0, TILE_TREE, 30);
+	PrintFrame(0);
 	PrintChrX(1, 6, TILE_TREE, 30);
-	PrintChr(31, 0, TILE_TREE);
-	PrintChrY(31,1, TILE_TREE, 22);
-	PrintChr(31, 23, TILE_TREE);
-	PrintChrX(1, 23, TILE_TREE, 30);
-	PrintChr(0, 23, TILE_TREE);
-	PrintChrY(0, 1, TILE_TREE, 22);
 
 	// Compute level score
 	bool bNewHiScore = FALSE;
 	Player* ply = &g_TrainPlayer;
 	u16 score = 0;
-	u16 maxScore = g_SpeedData[g_Speed].Score;
+	u16 maxScore = g_SpeedData[g_Option.Speed].Score;
 	if (ply->Score < maxScore)
 		score = maxScore - ply->Score;
-	if (score > g_HiScore[g_TrainLevel - 1])
+	if (score > g_Option.HiScore[g_Option.TrainLevel - 1])
 	{
-		g_HiScore[g_TrainLevel - 1] = score;
+		g_Option.HiScore[g_Option.TrainLevel - 1] = score;
 		bNewHiScore = TRUE;
 	}
-	g_TrainScore[g_TrainLevel - 1] = score;
+	g_TrainScore[g_Option.TrainLevel - 1] = score;
 
 	// Compute total
-	g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_TrainLevel - 1);
-	g_HiTotal = GetTotalTrainingScore(g_HiScore, g_TrainLevel - 1);
-	bool bNewHiTotal = g_TrainTotal == g_HiTotal;
+	g_TrainTotal = GetTotalTrainingScore(g_TrainScore, g_Option.TrainLevel - 1);
+	g_Option.HiTotal = GetTotalTrainingScore(g_Option.HiScore, g_Option.TrainLevel - 1);
+	bool bNewHiTotal = g_TrainTotal == g_Option.HiTotal;
 
 	Print_DrawTextAt(9, 3, "LEVEL ");
-	Print_DrawInt(g_TrainLevel);
+	Print_DrawInt(g_Option.TrainLevel);
 	Print_DrawText(" CLEAR!");
 
 	Print_DrawTextAt(11, 10, "SCORE:");
-	Print_DrawIntAt(17, 10, g_TrainScore[g_TrainLevel - 1]);
-	Print_DrawTextAt(11, 11, "TOTAL:");
-	Print_DrawIntAt(17, 11, g_TrainTotal);
-
-	Print_DrawTextAt(8, 14, "HI-SCORE:");
-	Print_DrawIntAt(17, 14, g_HiScore[g_TrainLevel - 1]);
+	Print_DrawIntAt(17, 10, g_TrainScore[g_Option.TrainLevel - 1]);
+	Print_DrawTextAt(8, 11, "HI-SCORE:");
+	Print_DrawIntAt(17, 11, g_Option.HiScore[g_Option.TrainLevel - 1]);
 	if(bNewHiScore)
+	{
 		DisplayNewHiScore(0);
+		Print_DrawTextAt(12, 12, "CODE:");
+		ScoreData data;
+		data.Level   = g_Option.TrainLevel;
+		data.Score   = g_Option.HiScore[g_Option.TrainLevel - 1];
+		data.Control = (u8)(data.Level + (data.Score & 0xFF) + (data.Score >> 8));
+		Crypt_Encode(&data, sizeof(ScoreData), Mem_GetHeapAddress());
+		Print_DrawTextAt(17, 12, (const c8*)Mem_GetHeapAddress());
+	}
 
 	Print_DrawTextAt(11, 15, "TOTAL:");
-	Print_DrawIntAt(17, 15, g_HiTotal);
+	Print_DrawIntAt(17, 15, g_TrainTotal);
+	Print_DrawTextAt(8, 16, "HI-SCORE:");
+	Print_DrawIntAt(17, 16, g_Option.HiTotal);
 	if(bNewHiTotal)
 		DisplayNewHiScore(4);
 
 	// Move to next level
 	g_Winner = NULL;
-	if(g_TrainLevel < TRAIN_LEVEL_MAX)
-		g_TrainLevel++;
+	if(g_Option.TrainLevel < TRAIN_LEVEL_MAX)
+		g_Option.TrainLevel++;
 	else
 		g_Winner = &g_TrainPlayer;
-	if (g_TrainLevel > g_HiLevel)
-		g_HiLevel = g_TrainLevel;
+	if (g_Option.TrainLevel > g_Option.HiLevel)
+		g_Option.HiLevel = g_Option.TrainLevel;
 
 	VDP_EnableDisplay(TRUE);
 }
@@ -3970,7 +3885,7 @@ void State_TrainScore_Update()
 	if (Keyboard_IsKeyPushed(KEY_R))
 	{
 		PlaySFX(SFX_SELECT);
-		g_TrainLevel--;
+		g_Option.TrainLevel--;
 		FSM_SetState(&State_TrainGame);
 	}
 	if (Keyboard_IsKeyPushed(KEY_ESC))
@@ -4025,6 +3940,7 @@ void State_CtrlTest_Begin()
 
 	VDP_EnableDisplay(TRUE);
 }
+
 
 //-----------------------------------------------------------------------------
 //
@@ -4092,6 +4008,93 @@ void State_CtrlTest_Update()
 	}
 }
 
+//.............................................................................
+// SCORE BOARD STATE
+//.............................................................................
+
+//-----------------------------------------------------------------------------
+//
+void State_ScoreBoard_Begin()
+{
+	// Initialize VDP
+	VDP_EnableDisplay(FALSE);
+	VDP_HideAllSprites();
+
+	// Initialize tiles data
+	VDP_LoadPattern_GM2_Pletter(g_DataTiles_Patterns, 0);
+	VDP_LoadColor_GM2_Pletter(g_DataTiles_Colors, 0);
+
+	// Draw game field
+	ClearLevel();
+	DrawLevel();
+
+	// Draw field
+	PrintFrame(0);
+
+	Print_DrawTextAt(6, 3, "LVL SCORE CODE");
+
+	// Score board
+	u8 y = 5;
+	u8 lvl = g_ScorePage * 8;
+	loop(i, 8)
+	{
+		// Level
+		Print_DrawIntAt(7, y, lvl + 1);
+
+		// Score
+		u16 score = g_Option.HiScore[lvl];
+		Print_DrawIntAt(11, y, score);
+
+		// Code
+		if(score > 0)
+		{
+			ScoreData data;
+			data.Level   = lvl + 1;
+			data.Score   = score;
+			data.Control = (u8)(data.Level + (score & 0xFF) + (score >> 8));
+			Crypt_Encode(&data, sizeof(ScoreData), Mem_GetHeapAddress());
+			Print_DrawTextAt(17, y, (const c8*)Mem_GetHeapAddress());
+		}
+
+		y += 2;
+		lvl++;
+	}
+
+	if(g_ScorePage > 0)
+		Print_DrawTextAt(2, 21, "<PREV");
+	if(g_ScorePage < 4)
+		Print_DrawTextAt(25, 21, "NEXT>");
+
+	VDP_EnableDisplay(TRUE);
+}
+
+//-----------------------------------------------------------------------------
+//
+void State_ScoreBoard_Update()
+{
+	// Wait V-Synch
+	WaitVBlank();
+
+	// Handle input
+	if (IsInputRight() && (g_ScorePage < 4))
+	{
+		g_ScorePage++;
+		FSM_SetState(&State_ScoreBoard);
+		// State_ScoreBoard_Begin();
+	}
+	if (IsInputLeft() && (g_ScorePage > 0))
+	{
+		g_ScorePage--;
+		FSM_SetState(&State_ScoreBoard);
+		// State_ScoreBoard_Begin();
+	}
+	if ((IsInputButton1()) || Keyboard_IsKeyPushed(KEY_ESC))
+	{
+		PlaySFX(SFX_SELECT);
+		FSM_SetState(&State_Title);
+	}
+}
+
 //=============================================================================
 // MAIN
 //=============================================================================
@@ -4111,7 +4114,7 @@ void CheckCheat()
 
 	PlaySFX(SFX_VICTORY);
 	g_Cheat = TRUE;
-	g_HiLevel = TRAIN_LEVEL_MAX;
+	g_Option.HiLevel = TRAIN_LEVEL_MAX;
 }
 
 //-----------------------------------------------------------------------------
@@ -4130,6 +4133,27 @@ void main()
 	g_JoyInfo = NTap_GetInfo();
 	g_JoyNum = NTap_GetPortNum();
 	g_PlayerMax = MIN(g_JoyNum + 2, 8);
+
+	// Initialise PAC
+	g_PACFound = PAC_Initialize();
+
+	// Set crypt module key 
+	Crypt_SetKey("Crawlers");
+
+	g_Option.FreqOpt = FREQ_AUTO;
+	g_Option.PalOpt = 0;
+	g_Option.OptMusic = DEF_MUSIC;
+	g_Option.OptSFX = DEF_SFX;
+	g_Option.GameCount;
+	g_Option.BonusOpt = 3;
+	g_Option.WallNum = 0;
+	g_Option.WallOpt = 0;
+	g_Option.Speed = SPEED_NORMAL;
+	g_Option.CtrlTurn = TURN_ABSOLUTE;
+	g_Option.TrainLevel = 0;		// Current training level [1~40]
+	g_Option.HiLevel = 0;
+	// g_Option.HiScore[TRAIN_LEVEL_MAX];
+	g_Option.HiTotal = 0;
 
 	// Start the Final State Machine
 	FSM_SetState(&State_Init);

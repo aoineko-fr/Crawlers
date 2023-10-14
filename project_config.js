@@ -26,10 +26,10 @@ Emulator = `${ToolsDir}OpenMSX/openmsx`;
 ProjName = "crawlers";
 
 //-- Project modules to build (use ProjName if not defined)
-ProjModules = [ ProjName ];
+ProjModules = [ ProjName, "lib" ];
 
 //-- List of modules to link
-LibModules = [ "compress/pletter", "arkos/akg_player", "game_menu", "device/ninjatap", "fsm", "vdp", "input", "memory", "math", "print" ];
+LibModules = [ "device/pac", "compress/pletter", "arkos/akg_player", "game_menu", "device/ninjatap", "fsm", "vdp", "input", "print" ];
 
 //-- MSX machine version:
 // - 1		MSX 1
@@ -123,7 +123,7 @@ AsmOptim = "None";
 // - Default
 // - Speed
 // - Size
-Optim = "Speed";
+Optim = "Size";
 
 //-- Compile complexity. The higher the most optimized but the slowest to compile. Can be one of the predefine name or a integer value (string/integer)
 //   - Fast          2000
@@ -131,7 +131,7 @@ Optim = "Speed";
 //   - Optimized     50000
 //   - Ultra         200000
 //   - Insane        10000000
-CompileComplexity = "Default";
+CompileComplexity = 10000;
 
 //-- Additionnal compilation flag
 CompileOpt = "";
@@ -167,6 +167,7 @@ EmulPortB = "";
 //-- Emulator extra parameters to be add to command-line (emulator sotfware specific)
 // EmulExtraParam = '-command "plug joyporta ninjatap" -command "plug ninjatap_port_1 joystick1"'
 // EmulExtraParam = '-command "plug joyporta ninjatap"';
+EmulExtraParam = '-ext pac'
 
 //*******************************************************************************
 // BUILD STEPS
