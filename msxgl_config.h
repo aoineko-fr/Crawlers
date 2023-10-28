@@ -240,28 +240,32 @@
 
 #define MENU_USE_DEFAULT_CALLBACK	FALSE	// Use default input/print callback
 #define MENU_SCREEN_WIDTH			32		// Screen width
-#define MENU_CLEAR					0		// Clear character
-#define MENU_POS_X					4		// Frame position X
-#define MENU_POS_Y					12		// Frame position Y
-#define MENU_WIDTH					24		// Frame width
-#define MENU_HEIGHT					9		// Frame height
+#define MENU_FRAME_X				4		// Frame position X
+#define MENU_FRAME_Y				12		// Frame position Y
+#define MENU_FRAME_WIDTH			24		// Frame width
+#define MENU_FRAME_HEIGHT			9		// Frame height
+#define MENU_CHAR_CLEAR				0		// Clear character
 #define MENU_CHAR_CURSOR			'@'		// Cursor charactter
 #define MENU_CHAR_TRUE				'*'		// True charactter
 #define MENU_CHAR_FALSE				'/'		// False charactter
 #define MENU_CHAR_LEFT				'<'		// Left edit charactter
 #define MENU_CHAR_RIGHT				'>'		// Right edit charactter
+#define MENU_TITLE_X				0		// Title position X
+#define MENU_TITLE_Y				0		// Title position Y
+#define MENU_ITEM_X					6		// Item label X position
+#define MENU_ITEM_Y					MENU_FRAME_Y // Item label X position
+#define MENU_ITEM_X_GOTO			6		// Goto type item label X position
+#define MENU_ITEM_ALIGN				MENU_ITEM_ALIGN_LEFT // Item label alignment
+#define MENU_ITEM_ALIGN_GOTO		MENU_ITEM_ALIGN_LEFT // Goto type item label alignment
+#define MENU_VALUE_X				14		// Item value X position
+#define MENU_USE_DYNAMIC_STATE		FALSE	//
 // Type of cursor
 // - MENU_CURSOR_MODE_NONE ........ No cursor
 // - MENU_CURSOR_MODE_CHAR ........ Character cursor
 // - MENU_CURSOR_MODE_SPRT ........ Sprite cursor
 #define MENU_CURSOR_MODE			MENU_CURSOR_MODE_CHAR
 #define MENU_CURSOR_OFFSET			(-1)	// Cursor X position offset
-#define MENU_ITEM_X					6		// Item label X position
-#define MENU_ITEM_X_GOTO			6		// Goto type item label X position
-#define MENU_ITEM_ALIGN				MENU_ITEM_ALIGN_LEFT // Item label alignment
-#define MENU_ITEM_ALIGN_GOTO		MENU_ITEM_ALIGN_LEFT // Goto type item label alignment
-#define MENU_VALUE_X				14		// Item value X position
-#define MENU_USE_DYNAMIC_STATE		FALSE	//
+
 
 //-----------------------------------------------------------------------------
 // STRING MODULE
