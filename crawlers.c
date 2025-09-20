@@ -22,6 +22,7 @@
 #include "compress/pletter.h"
 #include "dos.h"
 #include "crypt.h"
+#include "system.h"
 
 // Crawlers
 #include "crawlers.h"
@@ -377,7 +378,7 @@ bool IsInputUp()
 	if (Keyboard_IsKeyPushed(KEY_UP))
 		return TRUE;
 
-	for(u8 i = 0; i < g_JoyNum; ++i)
+	for (u8 i = 0; i < g_JoyNum; ++i)
 		if (NTap_IsPushed(i, NTAP_UP))
 			return TRUE;
 
@@ -391,7 +392,7 @@ bool IsInputDown()
 	if (Keyboard_IsKeyPushed(KEY_DOWN))
 		return TRUE;
 
-	for(u8 i = 0; i < g_JoyNum; ++i)
+	for (u8 i = 0; i < g_JoyNum; ++i)
 		if (NTap_IsPushed(i, NTAP_DOWN))
 			return TRUE;
 
@@ -405,7 +406,7 @@ bool IsInputLeft()
 	if (Keyboard_IsKeyPushed(KEY_LEFT))
 		return TRUE;
 
-	for(u8 i = 0; i < g_JoyNum; ++i)
+	for (u8 i = 0; i < g_JoyNum; ++i)
 		if (NTap_IsPushed(i, NTAP_LEFT))
 			return TRUE;
 
@@ -419,7 +420,7 @@ bool IsInputRight()
 	if (Keyboard_IsKeyPushed(KEY_RIGHT))
 		return TRUE;
 
-	for(u8 i = 0; i < g_JoyNum; ++i)
+	for (u8 i = 0; i < g_JoyNum; ++i)
 		if (NTap_IsPushed(i, NTAP_RIGHT))
 			return TRUE;
 
@@ -433,7 +434,7 @@ bool IsInputButton1()
 	if (Keyboard_IsKeyPushed(KEY_SPACE))
 		return TRUE;
 
-	for(u8 i = 0; i < g_JoyNum; ++i)
+	for (u8 i = 0; i < g_JoyNum; ++i)
 		if (NTap_IsPushed(i, NTAP_A))
 			return TRUE;
 
@@ -447,7 +448,7 @@ bool IsInputButton1Pressed()
 	if (Keyboard_IsKeyPressed(KEY_SPACE))
 		return TRUE;
 
-	for(u8 i = 0; i < g_JoyNum; ++i)
+	for (u8 i = 0; i < g_JoyNum; ++i)
 		if (NTap_IsPressed(i, NTAP_A))
 			return TRUE;
 
@@ -461,7 +462,7 @@ bool IsInputButton2()
 	if (Keyboard_IsKeyPushed(KEY_ESC))
 		return TRUE;
 
-	for(u8 i = 0; i < g_JoyNum; ++i)
+	for (u8 i = 0; i < g_JoyNum; ++i)
 		if (NTap_IsPushed(i, NTAP_B))
 			return TRUE;
 
@@ -496,7 +497,7 @@ void UpdateInputPush()
 			g_Input[CTRL_KEY_2] = DIR_DOWN;
 	}
 	// Update joysticks
-	for(u8 i = 0; i < g_JoyNum; ++i)
+	for (u8 i = 0; i < g_JoyNum; ++i)
 	{
 		if (g_Input[i] == DIR_MAX)
 		{
@@ -540,7 +541,7 @@ void UpdateInputPressed()
 			g_Input[CTRL_KEY_2] = DIR_DOWN;
 	}
 	// Update joysticks
-	for(u8 i = 0; i < g_JoyNum; ++i)
+	for (u8 i = 0; i < g_JoyNum; ++i)
 	{
 		if (g_Input[i] == DIR_MAX)
 		{
@@ -644,7 +645,7 @@ void PrintChrX(u8 x, u8 y, c8 chr, u8 len)
 // 
 void PrintChrY(u8 x, u8 y, c8 chr, u8 len)
 {
-	for(u8 i = 0; i < len; ++i)
+	for (u8 i = 0; i < len; ++i)
 		VDP_Poke_GM2(x, y++, chr);
 }
 
@@ -671,7 +672,7 @@ void PrintFrame(u8 y)
 void ClearLevel()
 {
 	u8* ptr = g_ScreenBuffer;
-	for(u8 i = 0; i < 24; ++i)
+	for (u8 i = 0; i < 24; ++i)
 	{
 		Mem_Set_16b(g_ClearBG[i & 1], ptr, 32);
 		ptr += 32;
@@ -703,7 +704,7 @@ void DrawTile(u8 x, u8 y, c8 chr)
 // Draw a horizontal line of tiles
 void DrawTileX(u8 x, u8 y, c8 chr, u8 len)
 {
-	for(u8 i = 0; i < len; ++i)
+	for (u8 i = 0; i < len; ++i)
 		DrawTile(x++, y, chr);
 }
 
@@ -711,7 +712,7 @@ void DrawTileX(u8 x, u8 y, c8 chr, u8 len)
 // Draw a verical line of tiles
 void DrawTileY(u8 x, u8 y, c8 chr, u8 len)
 {
-	for(u8 i = 0; i < len; ++i)
+	for (u8 i = 0; i < len; ++i)
 		DrawTile(x, y++, chr);
 }
 
@@ -736,13 +737,13 @@ void UnpackTrainField(u8 id)
 
 	u8 x = 1;
 	u8 y = 2;
-	for(u8 i = 0; i < 32 * 21 / 4; ++i)
+	for (u8 i = 0; i < 32 * 21 / 4; ++i)
 	{
 		u8 val = *ptr;
-		for(u8 j = 0; j < 4; ++j)
+		for (u8 j = 0; j < 4; ++j)
 		{
 			u8 tile = 0;
-			switch(val & 0x03)
+			switch (val & 0x03)
 			{
 			case 1:
 				tile = GetWallTile();
@@ -787,7 +788,7 @@ void DrawCounter(u8 x, u8 y, u8 step)
 {
 	u8 x0 = x;
 	u16 bit = 0b0100000000000000;
-	for(u8 i = 15; i > 0; --i)
+	for (u8 i = 15; i > 0; --i)
 	{
 		if (g_TimerLayout[step] & bit)
 			PrintChr(x, y, TILE_BALL);
@@ -882,7 +883,7 @@ bool UpdateTimer()
 
 //-----------------------------------------------------------------------------
 // Increment the gameplayer timer
-bool IncTimer()
+void IncTimer()
 {
 	g_TimeFrame++;
 	if (g_TimeFrame == 50)
@@ -964,7 +965,7 @@ void EditPlayer(u8 id, bool bEdit)
 u8 GetHumanCount()
 {
 	u8 count = 0;
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 		if ((g_Players[i].Controller < CTRL_PLY_NUM) && (g_Players[i].State != STATE_NONE))
 			count++;
 	return count;
@@ -978,7 +979,7 @@ void CheckBattleRoyal()
 
 	// Check is there is a last standing
 	Player* lastPly = NULL;
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 	{
 		if ((g_Players[i].Controller != CTRL_NONE) && (g_Players[i].State != STATE_NONE))
 		{
@@ -1004,7 +1005,7 @@ void CheckBattleRoyal()
 	SetTimer(BATTLEROYAL_TIME);
 	DrawLevel();
 	ClearPlayer(lastPly);
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 		SpawnPlayer(&g_Players[i]);
 	g_DoSynch = (GetHumanCount() > 0);
 }
@@ -1016,7 +1017,7 @@ bool CheckDeathmatch(Player* ply, u8 cell)
 	// Check opponant
 	cell -= 64;
 	u8 id = 0xFF;
-	for(u8 i = 0; i < 8; ++i)
+	for (u8 i = 0; i < 8; ++i)
 	{
 		if (cell < 20)
 		{
@@ -1059,7 +1060,7 @@ void CheckSizeMatters()
 {
 	// Check the longuest crawlers
 	Player* maxPly = &g_Players[0];
-	for(u8 i = 1; i < PLAYER_MAX; ++i)
+	for (u8 i = 1; i < PLAYER_MAX; ++i)
 		if (g_Players[i].Controller != CTRL_NONE)
 			if (g_Players[i].Score > maxPly->Score)
 				maxPly = &g_Players[i];
@@ -1107,7 +1108,7 @@ void SpawnBonus()
 		x = 8 + rnd % 16;
 		y = 8 + (rnd >> 4) % 8;
 	}
-	while(VDP_Peek_GM2(x, y) != TILE_EMPTY);
+	while (VDP_Peek_GM2(x, y) != TILE_EMPTY);
 
 	// Spawn the bonus
 	g_BonusPos.X = x;
@@ -1126,9 +1127,9 @@ void SpawnBonus()
 u8 CheckDir(u8 x, u8 y, u8 dir, u8 max)
 {
 	u8 dist = 0;
-	while(dist < max)
+	while (dist < max)
 	{
-		switch(dir)
+		switch (dir)
 		{
 		case DIR_UP:	y--; break;
 		case DIR_RIGHT:	x++; break;
@@ -1188,7 +1189,7 @@ void UpdateAI(Player* ply)
 	}
 
 	// Seek Bonus
-	switch(ply->Dir)
+	switch (ply->Dir)
 	{
 	case DIR_UP:
 		if (g_BonusPos.X > ply->PosX)
@@ -1292,7 +1293,7 @@ void SetPlayerController(Player* ply, u8 ctrl)
 
 	ply->Controller  = ctrl;
 
-	switch(ctrl)
+	switch (ctrl)
 	{
 	case CTRL_JOY_1:
 	case CTRL_JOY_2:
@@ -1323,7 +1324,7 @@ void SetPrevPlayerController(Player* ply)
 {
 	u8 ctrl = ply->Controller;
 	bool bLoop = TRUE;
-	while(bLoop)
+	while (bLoop)
 	{
 		if (ctrl > 0)
 			ctrl--;
@@ -1343,7 +1344,7 @@ void SetNextPlayerController(Player* ply)
 {
 	u8 ctrl = ply->Controller;
 	bool bLoop = TRUE;
-	while(bLoop)
+	while (bLoop)
 	{
 		if (ctrl < CTRL_MAX - 1)
 			ctrl++;
@@ -1401,10 +1402,10 @@ void SpawnPlayer(Player* ply)
 	ply->Idx    = 0;
 	ply->State  = STATE_INIT;
 	ply->Timer  = 0;
-	for(u8 i = 0; i < LENGTH_MIN; ++i)
+	for (u8 i = 0; i < LENGTH_MIN; ++i)
 		ply->Path[i] = start->Dir;
 
-	if(g_GameMode != MODE_TRAINNNG)
+	if (g_GameMode != MODE_TRAINNNG)
 		SetScore(ply);
 }
 
@@ -1442,7 +1443,7 @@ void DrawPlayer(Player* ply, u8 x, u8 y)
 	}
 
 	// Draw crawler
-	for(u8 i = 0; i < ply->Length + 1; ++i)
+	for (u8 i = 0; i < ply->Length + 1; ++i)
 	{
 		// Head
 		if (i == 0)
@@ -1458,7 +1459,7 @@ void DrawPlayer(Player* ply, u8 x, u8 y)
 				{
 					u8 sx = x;
 					u8 sy = y;
-					switch(ply->Path[idx])
+					switch (ply->Path[idx])
 					{
 					case DIR_UP:	sy--; break;
 					case DIR_RIGHT:	sx++; break;
@@ -1505,7 +1506,7 @@ void DrawPlayer(Player* ply, u8 x, u8 y)
 				EraseChar(x, y);
 		}
 
-		switch(ply->Path[idx])
+		switch (ply->Path[idx])
 		{
 		case DIR_UP:	y++; break;
 		case DIR_RIGHT:	x--; break;
@@ -1529,12 +1530,12 @@ void ClearPlayer(Player* ply)
 	u8 idx = ply->Idx;
 
 	// Clear tiles
-	for(u8 i = 0; i < ply->Length; ++i)
+	for (u8 i = 0; i < ply->Length; ++i)
 	{
 		if (VDP_Peek_GM2(x, y) != TILE_HOLE)
 			VDP_Poke_GM2(x, y, g_ScreenBuffer[x + (y * 32)]);
 
-		switch(ply->Path[idx])
+		switch (ply->Path[idx])
 		{
 		case DIR_UP:	y++; break;
 		case DIR_RIGHT:	x--; break;
@@ -1560,7 +1561,7 @@ void UpdatePlayer(Player* ply)
 	if (ply->Controller == CTRL_NONE)
 		return;
 
-	switch(ply->State)
+	switch (ply->State)
 	{
 	case STATE_NONE:
 		return;
@@ -1615,7 +1616,7 @@ void UpdatePlayer(Player* ply)
 		// Move
 		u8 x = ply->PosX;
 		u8 y = ply->PosY;
-		switch(ply->Dir)
+		switch (ply->Dir)
 		{
 		case DIR_UP:	y--; break;
 		case DIR_RIGHT:	x++; break;
@@ -1628,7 +1629,7 @@ void UpdatePlayer(Player* ply)
 		if (cell < 0xF0) // Obstacle
 		{
 			ClearPlayer(ply);
-			switch(g_GameMode)
+			switch (g_GameMode)
 			{
 			case MODE_BATTLEROYAL:
 				CheckBattleRoyal();
@@ -1647,7 +1648,7 @@ void UpdatePlayer(Player* ply)
 		}
 		else // No obstacle
 		{
-			switch(cell)
+			switch (cell)
 			{
 			case TILE_BONUS:
 			case TILE_BONUS+1:
@@ -1684,7 +1685,7 @@ void UpdatePlayer(Player* ply)
 					loop(i, PLAYER_MAX)
 					{
 						Player* p2 = &g_Players[i];
-						if((p2->ID != ply->ID) && (p2->Score > 0))
+						if ((p2->ID != ply->ID) && (p2->Score > 0))
 						{
 							p2->Score--;
 							SetScore(p2);
@@ -1726,7 +1727,7 @@ const c8* ScrollString(const c8* src, u16 size)
 		g_Scroll = 0;
 
 	u16 j = g_Scroll;
-	for(u8 i = 0; i < STR_SCROLL_LEN; ++i)
+	for (u8 i = 0; i < STR_SCROLL_LEN; ++i)
 	{
 		g_StrBuffer[i] = src[j];
 		if (++j >= size)
@@ -1761,7 +1762,7 @@ void VDP_InterruptHandler()
 void WaitVBlank()
 {
 wait_loop:
-	while(!g_VBlank) {} // Wait for VDP interruption
+	while (!g_VBlank) {} // Wait for VDP interruption
 	g_VBlank = FALSE;
 
 	// Skip the 6th frame on 60 Hz VDP
@@ -1782,7 +1783,7 @@ const c8* MenuAction_Start(u8 op, i8 value)
 	value;
 	if (op == MENU_ACTION_SET)
 	{
-		switch(value)
+		switch (value)
 		{
 			case START_BATTLE:
 				FSM_SetState(&State_BattleSelect);
@@ -1813,7 +1814,7 @@ const c8* MenuAction_Mode(u8 op, i8 value)
 {
 	value;
 	
-	switch(op)
+	switch (op)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
@@ -1844,7 +1845,7 @@ const c8* MenuAction_Speed(u8 op, i8 value)
 {
 	value;
 	
-	switch(op)
+	switch (op)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
@@ -1856,7 +1857,7 @@ const c8* MenuAction_Speed(u8 op, i8 value)
 		break;
 
 	case MENU_ACTION_GET:
-		switch(g_Option.Speed)
+		switch (g_Option.Speed)
 		{
 		case SPEED_NORMAL: return "NORMAL \x1F\x1F\x1F"; 
 		case SPEED_TURBO:  return "TURBO  \x1F\x1F\x1F\x1F"; 
@@ -1876,7 +1877,7 @@ const c8* MenuAction_Info(u8 op, i8 value)
 	if (g_Frame & 0x07)
 		return NULL;
 
-	if (g_MenuItem != 1)
+	if (g_MenuData.Item != 1)
 		return "";
 
 	if (g_Frame & 0x07)
@@ -1916,7 +1917,7 @@ void ApplyFreqOption()
 const c8* MenuAction_Freq(u8 op, i8 value)
 {
 	value;
-	switch(op)
+	switch (op)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
@@ -1948,7 +1949,7 @@ const c8* MenuAction_Freq(u8 op, i8 value)
 void ApplyTurnOption()
 {
 	u8 turn = (g_Option.CtrlTurn == TURN_ABSOLUTE) ? TURN_ABSOLUTE : TURN_RELATIVE;
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 		g_Players[i].Turn = turn;
 
 	g_TrainPlayer.Turn = turn;
@@ -1990,7 +1991,7 @@ const c8* MenuAction_Turn(u8 op, i8 value)
 //
 void ApplyPaletteOption()
 {
-	switch(g_Option.PalOpt)
+	switch (g_Option.PalOpt)
 	{
 	case PAL_CUSTOM:
 		VDP_SetPalette((u8*)g_CustomPalette);
@@ -2018,7 +2019,7 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 	if (g_VersionVDP == VDP_VERSION_TMS9918A)
 		return "(FOR MSX2)";
 
-	switch(op)
+	switch (op)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
@@ -2030,7 +2031,7 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 	}
 
 	ApplyPaletteOption();
-	switch(g_Option.PalOpt)
+	switch (g_Option.PalOpt)
 	{
 	case PAL_CUSTOM:
 		return "CUSTOM";
@@ -2051,9 +2052,9 @@ const c8* MenuAction_Palette(u8 op, i8 value)
 //
 const c8* MenuAction_Music(u8 op, i8 value)
 {
-	if(value == 0)
+	if (value == 0)
 	{
-		switch(op)
+		switch (op)
 		{
 		case MENU_ACTION_SET:
 		case MENU_ACTION_INC:
@@ -2066,7 +2067,7 @@ const c8* MenuAction_Music(u8 op, i8 value)
 	}
 	else
 	{
-		switch(op)
+		switch (op)
 		{
 		case MENU_ACTION_INC:
 			if (g_OptMusicIdx < numberof(g_MusicInfo) - 2)
@@ -2084,7 +2085,7 @@ const c8* MenuAction_Music(u8 op, i8 value)
 			break;
 		}
 
-		switch(g_OptMusicIdx)
+		switch (g_OptMusicIdx)
 		{
 			case MUSIC_MENU:    return "MENU";
 			case MUSIC_BATTLE:  return "BATTLE";
@@ -2101,7 +2102,7 @@ const c8* MenuAction_Music(u8 op, i8 value)
 const c8* MenuAction_SFX(u8 op, i8 value)
 {
 	value;
-	switch(op)
+	switch (op)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
@@ -2136,9 +2137,9 @@ void ApplyControllerOption()
 //
 const c8* MenuAction_PAC(u8 op, i8 value)
 {
-	if(value == 0) // slot
+	if (value == 0) // slot
 	{
-		if(!g_PACFound)
+		if (!g_PACFound)
 			return "/NOT FOUND!";
 		else
 		{
@@ -2153,7 +2154,7 @@ const c8* MenuAction_PAC(u8 op, i8 value)
 			*str++ = ' ';
 			*str++ = '(';
 			*str++ = '0' + SLOT_PRIM(slotId);
-			if(IS_SLOT_EXP(slotId))
+			if (IS_SLOT_EXP(slotId))
 			{
 				*str++ = '-';
 				*str++ = '0' + SLOT_SEC(slotId);
@@ -2164,17 +2165,17 @@ const c8* MenuAction_PAC(u8 op, i8 value)
 		}
 	}
 
-	if(!g_PACFound)
+	if (!g_PACFound)
 		return NULL;
 
-	if(value == 1) // load
+	if (value == 1) // load
 	{
-		switch(op)
+		switch (op)
 		{
 		case MENU_ACTION_SET:
 		case MENU_ACTION_INC:
 		case MENU_ACTION_DEC:
-			switch(PAC_Check(g_PACPage - 1))
+			switch (PAC_Check(g_PACPage - 1))
 			{
 			case PAC_CHECK_EMPTY:
 				g_PACLoadMsg = "EMPTY!";
@@ -2197,9 +2198,9 @@ const c8* MenuAction_PAC(u8 op, i8 value)
 		}
 		return g_PACLoadMsg;
 	}
-	else if(value == 2) // save
+	else if (value == 2) // save
 	{
-		switch(op)
+		switch (op)
 		{
 		case MENU_ACTION_SET:
 		case MENU_ACTION_INC:
@@ -2211,9 +2212,9 @@ const c8* MenuAction_PAC(u8 op, i8 value)
 		}
 		return g_PACSaveMsg;
 	}
-	else if(value == 3) // erase
+	else if (value == 3) // erase
 	{
-		switch(op)
+		switch (op)
 		{
 		case MENU_ACTION_SET:
 		case MENU_ACTION_INC:
@@ -2233,7 +2234,7 @@ const c8* MenuAction_PAC(u8 op, i8 value)
 const c8* MenuAction_Bonus(u8 op, i8 value)
 {
 	value;
-	switch(op)
+	switch (op)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
@@ -2262,7 +2263,7 @@ const c8* MenuAction_Bonus(u8 op, i8 value)
 const c8* MenuAction_Wall(u8 op, i8 value)
 {
 	value;
-	switch(op)
+	switch (op)
 	{
 	case MENU_ACTION_SET:
 	case MENU_ACTION_INC:
@@ -2296,7 +2297,7 @@ const c8* MenuAction_Port(u8 op, i8 value)
 		tap = (g_JoyInfo >> 4) & 0x03;
 	else if (value == 1)
 		tap = (g_JoyInfo >> 6);
-	switch(tap)
+	switch (tap)
 	{
 	case NTAP_TYPE_NONE:    return "JOYSTICK";
 	case NTAP_TYPE_NINJA:   return "NINJA TAP";
@@ -2311,7 +2312,7 @@ const c8* MenuAction_MSX(u8 op, i8 value)
 {
 	op;
 	value;
-	switch(g_VersionMSX)
+	switch (g_VersionMSX)
 	{
 	case MSXVER_1:  return "MSX1";
 	case MSXVER_2:  return "MSX2";
@@ -2327,7 +2328,7 @@ const c8* MenuAction_VDP(u8 op, i8 value)
 {
 	op;
 	value;
-	switch(g_VersionVDP)
+	switch (g_VersionVDP)
 	{
 	case VDP_VERSION_TMS9918A: return "TMS9918";
 	case VDP_VERSION_V9938:    return "V9938";
@@ -2342,7 +2343,7 @@ void MenuOpen_Multi()
 {
 	g_Scroll = 0;
 
-	if(g_GameMode == MODE_TRAINNNG)
+	if (g_GameMode == MODE_TRAINNNG)
 		SetGameMode(MODE_GREEDIEST);
 
 	g_StartPage = MENU_MULTI;
@@ -2352,7 +2353,7 @@ void MenuOpen_Multi()
 //
 void MenuOpen_Solo()
 {
-	if(g_Option.TrainLevel)
+	if (g_Option.TrainLevel)
 	{
 		g_MenuSolo[1].Type = MENU_ITEM_ACTION;
 		g_MenuSolo[2].Type = MENU_ITEM_INT;
@@ -2429,7 +2430,7 @@ void Menu_HandleDraw(u8 x, u8 y, u8 type, const void* text)
 // Callback to handle menu events
 void Menu_HandleEvent(u8 event)
 {
-	switch(event)
+	switch (event)
 	{
 	case MENU_EVENT_UP:
 	case MENU_EVENT_DOWN:
@@ -2625,9 +2626,9 @@ void State_Title_Begin()
 
 	const u8* ptr = g_TitleTile;
 	u8 x = 4, y = 3;
-	for(u8 j = 0; j < 5; ++j)
+	for (u8 j = 0; j < 5; ++j)
 	{
-		for(u8 i = 0; i < 24; ++i)
+		for (u8 i = 0; i < 24; ++i)
 		{
 			if (*ptr)
 				VDP_Poke_GM2(x, y, *ptr);
@@ -2693,7 +2694,7 @@ void State_Title_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
-	if(g_StartPage != 0xFF)
+	if (g_StartPage != 0xFF)
 	{
 		FSM_SetState(&State_Menu);
 		return;
@@ -2771,7 +2772,7 @@ u8 GetPlayerNum()
 {
 	u8 num = 0;
 	loop(i, PLAYER_MAX)
-		if(g_Players[i].Controller != CTRL_NONE)
+		if (g_Players[i].Controller != CTRL_NONE)
 			num++;
 
 	return num;
@@ -2817,7 +2818,7 @@ void State_BattleSelect_Begin()
 	VDP_WriteLayout_GM2(SELECT_START, 2, 1, 7, 2);
 	VDP_WriteLayout_GM2(SELECT_EXIT, 24, 1, 6, 2);
 	// Frames and devices
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 	{
 		const Character* info = &g_CharaInfo[i];
 		u8 x = info->FrameX;
@@ -2924,7 +2925,7 @@ void State_BattleSelect_Update()
 		if (IsInputButton1())
 		{
 			PlaySFX(SFX_SELECT);
-			switch(g_SlotIdx)
+			switch (g_SlotIdx)
 			{
 			case 0:
 			case 1:
@@ -2937,7 +2938,7 @@ void State_BattleSelect_Update()
 				EditPlayer(g_SlotIdx, TRUE);
 				break;
 			case 8:
-				if(GetPlayerNum() >= 2)
+				if (GetPlayerNum() >= 2)
 					FSM_SetState(&State_BattleStart);
 				else
 					PlaySFX(SFX_DEATH);
@@ -2950,7 +2951,7 @@ void State_BattleSelect_Update()
 
 		if (Keyboard_IsKeyPushed(KEY_RET))
 		{
-			if(GetPlayerNum() >= 2)
+			if (GetPlayerNum() >= 2)
 			{
 				PlaySFX(SFX_SELECT);
 				FSM_SetState(&State_BattleStart);
@@ -2969,7 +2970,7 @@ void State_BattleSelect_Update()
 		// Handle special keys
 		loop(i, numberof(g_CtrlBind))
 		{
-			if(g_CtrlBind[i].bAll && Keyboard_IsKeyPressed(KEY_CTRL))
+			if (g_CtrlBind[i].bAll && Keyboard_IsKeyPressed(KEY_CTRL))
 			{
 				if (Keyboard_IsKeyPushed(g_CtrlBind[i].Key))
 				{
@@ -3042,23 +3043,23 @@ void State_BattleStart_Begin()
 	DrawFrame();
 
 	// Draw score board
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 	{
 		DrawTile(i * 4, 0, 0x42 + g_CharaInfo[i].TileBase);
 	}
 	// Draw pre-hole
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 	{
 		const Start* start = &g_Starts[i];
 		DrawTile(start->X, start->Y, TILE_PREHOLE);
 	}
 
 	// Initialize obstacles
-	for(u8 i = 0; i < g_Option.WallNum; ++i)
+	for (u8 i = 0; i < g_Option.WallNum; ++i)
 	{
 		u8 x = 0, y = 0;
 		bool bLoop = TRUE;
-		while(bLoop)
+		while (bLoop)
 		{
 			bLoop = FALSE;
 			x = Math_GetRandom8() % 32;
@@ -3067,7 +3068,7 @@ void State_BattleStart_Begin()
 			if (GetTile(x, y) != TILE_EMPTY)
 				bLoop = TRUE;
 			// No obstacle in hole lines
-			for(u8 j = 0; j < PLAYER_MAX; ++j)
+			for (u8 j = 0; j < PLAYER_MAX; ++j)
 			{
 				if (x == g_Starts[j].X)
 				{
@@ -3088,7 +3089,7 @@ void State_BattleStart_Begin()
 	DrawLevel();
 
 	// Spawn players
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 	{
 		ResetPlayer(&g_Players[i]);
 		// VDP_HideSprite(i);
@@ -3133,7 +3134,7 @@ void State_BattleStart_Update()
 
 	if (g_Counter & 1)
 	{
-		for(u8 i = 0; i < PLAYER_MAX; ++i)
+		for (u8 i = 0; i < PLAYER_MAX; ++i)
 		{
 			const Player* ply = &g_Players[i];
 			if (ply->Controller != CTRL_NONE)
@@ -3148,13 +3149,13 @@ void State_BattleStart_Update()
 	}
 	else
 	{
-		for(u8 i = 0; i < PLAYER_MAX; ++i)
+		for (u8 i = 0; i < PLAYER_MAX; ++i)
 		{
 			const Player* ply = &g_Players[i];
 
 			u8 num = 0xFF;
 			u8 tile = TILE_BONUS;
-			switch(ply->Controller)
+			switch (ply->Controller)
 			{
 			case CTRL_JOY_1:
 			case CTRL_JOY_2:
@@ -3194,7 +3195,7 @@ void State_BattleStart_Update()
 
 	// Time counter
 	u8 step = g_Counter >> 2;
-	switch(step)
+	switch (step)
 	{
 	case 0: // 5
 	case 1: // 4
@@ -3228,7 +3229,7 @@ void State_BattleGame_Begin()
 	// Initialize timer
 	if (g_ModeInfo[g_GameMode].Time)
 	{
-		if(g_GameMode == MODE_BATTLEROYAL)
+		if (g_GameMode == MODE_BATTLEROYAL)
 			SetTimer(BATTLEROYAL_TIME);
 		else
 			SetTimer(g_Option.GameCount);
@@ -3239,12 +3240,12 @@ void State_BattleGame_Begin()
 	DrawLevel();
 
 	// Draw score
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 		if (g_Players[i].Controller != CTRL_NONE)
 			SetScore(&g_Players[i]);
 
 	// Draw pre-hole
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 	{
 		const Start* start = &g_Starts[i];
 		PrintChr(start->X, start->Y, TILE_PREHOLE);
@@ -3265,7 +3266,7 @@ void UpdatePause()
 		PlaySFX(SFX_SELECT);		
 		g_Pause = !g_Pause;
 	}
-	if(g_Pause && (g_Frame & 0x08))
+	if (g_Pause && (g_Frame & 0x08))
 	{
 		VDP_SetSpriteSM1(8,  (u8)(119),      90, 0x1A, COLOR_WHITE);
 		VDP_SetSpriteSM1(9,  (u8)(119 + 8),  90, 0x1B, COLOR_WHITE);
@@ -3297,7 +3298,7 @@ void State_BattleGame_Update()
 
 	// Update pause status
 	UpdatePause();
-	if(g_Pause)
+	if (g_Pause)
 		return;
 
 	// Update one of the players
@@ -3342,7 +3343,7 @@ void State_BattleGame_Update()
 			bool bZero = !UpdateTimer();
 			if (bZero)
 			{
-				switch(g_GameMode)
+				switch (g_GameMode)
 				{
 				case MODE_SIZEMATTERS:
 					CheckSizeMatters();
@@ -3378,14 +3379,14 @@ void State_Victory_Begin()
 	// VDP_FillLayout_GM2(TILE_EMPTY, 0, 0, 32, 24);
 	ClearLevel();
 	// Draw score board
-	for(u8 i = 0; i < PLAYER_MAX; ++i)
+	for (u8 i = 0; i < PLAYER_MAX; ++i)
 		DrawTile(i * 4, 0, 0x42 + g_CharaInfo[i].TileBase);
 	DrawLevel();
 
 	// Draw score
-	if(g_GameMode != MODE_TRAINNNG)
+	if (g_GameMode != MODE_TRAINNNG)
 	{
-		for(u8 i = 0; i < PLAYER_MAX; ++i)
+		for (u8 i = 0; i < PLAYER_MAX; ++i)
 			if (g_Players[i].Controller != CTRL_NONE)
 				SetScore(&g_Players[i]);
 	}
@@ -3461,7 +3462,7 @@ void State_Victory_Update()
 	u8 x = ply->PosX;
 	u8 y = ply->PosY;
 	u8 nextDir = ply->Dir;
-	switch(ply->Dir)
+	switch (ply->Dir)
 	{
 	case DIR_UP:
 		y--;
@@ -3517,9 +3518,9 @@ void SelectCrawler(u8 id)
 	VDP_HideSprite(0); // Eyes
 
 	// Load data
-	if(g_VersionVDP == VDP_VERSION_TMS9918A)
+	if (g_VersionVDP == VDP_VERSION_TMS9918A)
 	{
-		if((prev / 4) != (id / 4))
+		if ((prev / 4) != (id / 4))
 		{
 			VDP_EnableDisplay(FALSE);
 			UnpackCrawler(id); // On MSX 1, unpack is too fast when screen is enable
@@ -3589,7 +3590,7 @@ void State_TrainSelect_Begin()
 	VDP_WriteLayout_GM2(SELECT_FRAME, TRAIN_FRAME_X, TRAIN_FRAME_Y, 7, 6);
 	VDP_WriteLayout_GM2(SELECT_CHARA, TRAIN_FRAME_X, TRAIN_FRAME_Y + 6, 7, 3);
 	u8 id = g_TrainPlayer.ID;
-	if(!g_Continue)
+	if (!g_Continue)
 		id = Math_GetRandom8() % PLAYER_MAX;
 	UnpackCrawler(id); // Force to unpack once for MSX1
 	SelectCrawler(id);
@@ -3605,13 +3606,13 @@ void State_TrainSelect_Update()
 	// Wait V-Synch
 	WaitVBlank();
 
-	if(g_SelectEdit)
+	if (g_SelectEdit)
 	{
 		if (IsInputRight())
 		{
 			PlaySFX(SFX_MOVE);
 			u8 ctrl = (g_TrainPlayer.Controller + 1) % CTRL_PLY_NUM;
-			if((ctrl >= g_JoyNum) && (ctrl < CTRL_KEY_1))
+			if ((ctrl >= g_JoyNum) && (ctrl < CTRL_KEY_1))
 				ctrl = CTRL_KEY_1;
 			SelectControl(ctrl);
 		}
@@ -3619,7 +3620,7 @@ void State_TrainSelect_Update()
 		{
 			PlaySFX(SFX_MOVE);
 			u8 ctrl = (g_TrainPlayer.Controller + CTRL_PLY_NUM - 1) % CTRL_PLY_NUM;
-			if((ctrl >= g_JoyNum) && (ctrl < CTRL_KEY_1))
+			if ((ctrl >= g_JoyNum) && (ctrl < CTRL_KEY_1))
 				ctrl = g_JoyNum - 1;
 			SelectControl(ctrl);
 		}
@@ -3627,7 +3628,7 @@ void State_TrainSelect_Update()
 		if (IsInputButton1())
 		{
 			PlaySFX(SFX_SELECT);
-			if(!g_Continue)
+			if (!g_Continue)
 			{
 				g_Option.TrainLevel = 1;
 				g_Option.HiLevel = 1;
@@ -3744,29 +3745,29 @@ void State_TrainGame_Update()
 
 	// Update pause status
 	UpdatePause();
-	if(g_Pause)
+	if (g_Pause)
 		return;
 		
 	UpdateInputPush();
 
 	// Timer
 	Player* ply = &g_TrainPlayer;
-	if(ply->State == STATE_PLAYING)
+	if (ply->State == STATE_PLAYING)
 		IncTimer();
 
 	// Update only every 8th frame
 	g_CurrentPlayer++;
 	u8 speed = (ply->State == STATE_PLAYING) ? g_Option.Speed : SPEED_NORMAL;
-	if(IsInputButton1Pressed())
+	if (IsInputButton1Pressed())
 		speed = SPEED_TURBO;
-	if((g_CurrentPlayer < g_SpeedData[speed].Count))
+	if ((g_CurrentPlayer < g_SpeedData[speed].Count))
 		return;
 	
 	g_CurrentPlayer = 0;
 
 	// Update one of the players
 	UpdatePlayer(ply);
-	if(ply->State == STATE_PLAYING)
+	if (ply->State == STATE_PLAYING)
 		ply->Score++;
 }
 
@@ -3833,7 +3834,7 @@ void State_TrainScore_Begin()
 	Print_DrawIntAt(17, 10, g_TrainScore[g_Option.TrainLevel - 1]);
 	Print_DrawTextAt(8, 11, "HI-SCORE:");
 	Print_DrawIntAt(17, 11, g_Option.HiScore[g_Option.TrainLevel - 1]);
-	if(bNewHiScore)
+	if (bNewHiScore)
 	{
 		DisplayNewHiScore(0);
 		Print_DrawTextAt(12, 12, "CODE:");
@@ -3849,12 +3850,12 @@ void State_TrainScore_Begin()
 	Print_DrawIntAt(17, 15, g_TrainTotal);
 	Print_DrawTextAt(8, 16, "HI-SCORE:");
 	Print_DrawIntAt(17, 16, g_Option.HiTotal);
-	if(bNewHiTotal)
+	if (bNewHiTotal)
 		DisplayNewHiScore(4);
 
 	// Move to next level
 	g_Winner = NULL;
-	if(g_Option.TrainLevel < TRAIN_LEVEL_MAX)
+	if (g_Option.TrainLevel < TRAIN_LEVEL_MAX)
 		g_Option.TrainLevel++;
 	else
 		g_Winner = &g_TrainPlayer;
@@ -3926,12 +3927,12 @@ void State_CtrlTest_Begin()
 	{
 		VDP_WriteLayout_GM2(SELECT_FRAME, x, y, 7, 6);
 		const u8* bg = SELECT_TEST_BG;
-		if((i < CTRL_KEY_1) && (i >= g_JoyNum))
+		if ((i < CTRL_KEY_1) && (i >= g_JoyNum))
 			bg = SELECT_TEST_NONE;
 		VDP_WriteLayout_GM2(bg, x + 2, y + 2, 3, 3);
 		VDP_WriteLayout_GM2(g_DeviceSelect[i].Default, x, y + 6, 7, 3);
 		x += 8;
-		if(x > 32)
+		if (x > 32)
 		{
 			y += 8;
 			x = 1;
@@ -3946,7 +3947,7 @@ void State_CtrlTest_Begin()
 //
 void DisplayArrow(u8 x, u8 y, u8 dir)
 {
-	switch(dir)
+	switch (dir)
 	{
 	case DIR_UP:
 		x += 3;
@@ -3985,15 +3986,15 @@ void State_CtrlTest_Update()
 	u8 y = 0;
 	loop(i, CTRL_PLY_NUM)
 	{
-		if((i >= CTRL_KEY_1) || (i < g_JoyNum))
+		if ((i >= CTRL_KEY_1) || (i < g_JoyNum))
 		{
 			VDP_WriteLayout_GM2(SELECT_TEST_BG, x + 2, y + 2, 3, 3); // Restore background
 			u8 dir = g_Input[i];
-			if(dir != DIR_MAX)
+			if (dir != DIR_MAX)
 				DisplayArrow(x, y, dir);
 		}
 		x += 8;
-		if(x > 32)
+		if (x > 32)
 		{
 			y += 8;
 			x = 1;
@@ -4046,7 +4047,7 @@ void State_ScoreBoard_Begin()
 		Print_DrawIntAt(11, y, score);
 
 		// Code
-		if(score > 0)
+		if (score > 0)
 		{
 			ScoreData data;
 			data.Level   = lvl + 1;
@@ -4060,9 +4061,9 @@ void State_ScoreBoard_Begin()
 		lvl++;
 	}
 
-	if(g_ScorePage > 0)
+	if (g_ScorePage > 0)
 		Print_DrawTextAt(2, 21, "<PREV");
-	if(g_ScorePage < 4)
+	if (g_ScorePage < 4)
 		Print_DrawTextAt(25, 21, "NEXT>");
 
 	VDP_EnableDisplay(TRUE);
@@ -4103,13 +4104,13 @@ void State_ScoreBoard_Update()
 // Check if cheat is activated or no
 void CheckCheat()
 {
-	if(g_Cheat)
+	if (g_Cheat)
 		return;
-	if(!Keyboard_IsKeyPressed(KEY_N))
+	if (!Keyboard_IsKeyPressed(KEY_N))
 		return;
-	if(!Keyboard_IsKeyPressed(KEY_O))
+	if (!Keyboard_IsKeyPressed(KEY_O))
 		return;
-	if(!Keyboard_IsKeyPressed(KEY_E))
+	if (!Keyboard_IsKeyPressed(KEY_E))
 		return;
 
 	PlaySFX(SFX_VICTORY);
@@ -4157,7 +4158,7 @@ void main()
 
 	// Start the Final State Machine
 	FSM_SetState(&State_Init);
-	while(1)
+	while (1)
 	{
 		Keyboard_Update();
 		CheckCheat();

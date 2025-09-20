@@ -420,7 +420,7 @@ bool Crypt_Encode(const void* data, u8 size, c8* str)
 
 //-----------------------------------------------------------------------------
 // 8-bits fast 10 times division 
-i8 Math_Div10(i8 val) __FASTCALL __PRESERVES(a, b, c, iyl, iyh)
+i8 Math_Div10(i8 val) __FASTCALL __PRESERVES(a, b, c, iyl, iyh) __NAKED
 {
 	val; // L
 	__asm
@@ -434,6 +434,7 @@ i8 Math_Div10(i8 val) __FASTCALL __PRESERVES(a, b, c, iyl, iyh)
 		add		hl, de
 		add		hl, hl
 		ld		l, h
+		ret
 	 __endasm;
 }
 
@@ -443,7 +444,7 @@ i8 Math_Div10(i8 val) __FASTCALL __PRESERVES(a, b, c, iyl, iyh)
 // Outputs:		A	HL mod 10
 //				Z	Flag is set if divisible by 10
 // 20 bytes, 83 cycles
-u8 Math_Mod10(u8 val) __PRESERVES(b, c, d, e, iyl, iyh)
+u8 Math_Mod10(u8 val) __PRESERVES(b, c, d, e, iyl, iyh)  __NAKED
 {
 	val; // A
 	__asm
@@ -463,6 +464,7 @@ u8 Math_Mod10(u8 val) __PRESERVES(b, c, d, e, iyl, iyh)
 		add		a, l
 		daa
 		and		#0x0F
+		ret
 	__endasm;
 }
 
@@ -475,10 +477,10 @@ void Math_SetRandomSeed8(u8 seed) { g_RandomSeed8 = (u16)seed; }
 //-----------------------------------------------------------------------------
 // Generates 8-bit pseudorandom numbers
 // Ion Random by Joe Wingbermuehle (https://wikiti.brandonw.net/index.php?title=Z80_Routines:Math:Random)
-u8 Math_GetRandom8()
+u8 Math_GetRandom8() __NAKED
 {
 	__asm
-	#if(0)
+	#if (0)
 		ld		hl, (_g_RandomSeed8)
 		ld		a, r
 		ld		d, a
@@ -499,6 +501,7 @@ u8 Math_GetRandom8()
 		ld		l, a
 		ld		(_g_RandomSeed8), hl
 	#endif
+		ret
 	__endasm;
 }
 
@@ -510,11 +513,12 @@ u8 Math_GetRandom8()
 
 //-----------------------------------------------------------------------------
 // Fill a memory block with a given 16-bits value (minimal size of 2 bytes).
-void Mem_Set_16b(u16 val, void* dest, u16 size)
+void Mem_Set_16b(u16 val, void* dest, u16 size) __NAKED
 {
 	val;	// HL
 	dest;	// DE
 	size;	// SP[2]
+
 	__asm
 		push	de
 		ex		de, hl

@@ -1,9 +1,9 @@
-// â–ˆâ–ˆâ–€â–€â–ˆâ–€â–€â–ˆâ–ˆâ–€â–€â–€â–€â–€â–€â–€â–ˆâ–€â–€â–ˆ â–„â–„   â–„
-// â–ˆâ–ˆ  â–€  â–ˆâ–„  â–€â–ˆâ–ˆâ–„ â–€ â–„â–ˆ â–ˆâ–ˆâ–„  â–„  â–ˆâ–ˆâ–€â–„
-// â–ˆ  â–ˆ â–ˆ  â–€â–€  â–„â–ˆ  â–ˆ  â–ˆ â–ˆâ–ˆâ–„â–€ â–ˆâ–ˆ â–ˆâ–ˆ â–ˆ
-// â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€â–€
-// MSXbin 1.4.1 by Guillaume "Aoineko" Blanchard (2022) under CC BY-SA free license
-// File generated on Sun Oct  8 18:56:47 2023
+// ██▀▀█▀▀██▀▀▀▀▀▀▀█▀▀█ ▄▄   ▄
+// ██  ▀  █▄  ▀██▄ ▀ ▄█ ██▄  ▄  ██▀▄
+// █  █ █  ▀▀  ▄█  █  █ ██▄▀ ██ ██ █
+// ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+// MSXbin 1.4.3 by Guillaume "Aoineko" Blanchard (2022) under CC BY-SA free license
+// File generated on Mon Mar  3 19:46:26 2025
 // Soure file: datasrc\music_empty.pl5
 const unsigned char g_MusicEmpty[] = {
 	0x00, 0x41, 0x54, 0x32, 0x30, 0x0E, 0xD0, 0xE6, 0x01, 0x13, 0x00, 0x01, 0x10, 0xD0, 0x00, 0x00, //      0
